@@ -1,9 +1,9 @@
 from __future__ import division
-import numpy as np
-import scipy as sc
-import sys
+import pandas as pd
+import sys, operator, os
 from PyQt5 import QtGui, QtCore
 from GSAImage import GSAImage
+from gresq.csv2db import build_db
 from gresq.database import sample, preparation_step, dal, Base
 from sqlalchemy import String, Integer, Float, Numeric
 from gresq.config import config
@@ -46,7 +46,8 @@ furnace_fields = [
     'name',
     'furnace_temperature',
     'furnace_pressure',
-    'carbon_source'
+    'carbon_source',
+    'carbon_source_flow_rate'
 ]
 
 sql_validator = {
@@ -55,10 +56,20 @@ sql_validator = {
 	'str': lambda x: isinstance(x.property.columns[0].type,String)
 }
 
+operators = {
+	'==': operator.eq,
+	'!=': operator.ne,
+	'<': operator.lt,
+	'>': operator.gt,
+	'<=': operator.le,
+	'>=': operator.ge
+}
+
 class GSAQuery(QtGui.QWidget):
 	def __init__(self,parent=None):
 		super(GSAQuery,self).__init__(parent=parent)
-		self.filters = QtGui.QStackedWidget()
+		self.filters = []
+		self.filter_fields = QtGui.QStackedWidget()
 		self.filters_dict = {}
 		for field in graphene_fields+conditions_fields:
 			widget = self.generate_field(field)
@@ -80,16 +91,30 @@ class GSAQuery(QtGui.QWidget):
 		self.secondary_selection.activated[str].connect(lambda x: self.filter_fields.setCurrentWidget(self.filters_dict[x]))
 
 		self.filter_table = QtGui.QTableWidget()
+		self.filter_table.setColumnCount(4)
+		self.filter_table.setHorizontalHeaderLabels(['Field','','Value',''])
+		self.filter_table.setColumnWidth(0,150)
+		self.filter_table.setColumnWidth(1,30)
+		self.filter_table.setColumnWidth(2,100)
+		self.filter_table.setColumnWidth(3,25)
+		self.filter_table.setWordWrap(True)
+
+		self.results_table = QtGui.QTableView()
+		self.results_table.setFixedWidth(700)
 
 		self.addFilterBtn = QtGui.QPushButton('Add Filter')
-		self.addFilterBtn.clicked.connect(lambda: self.search(self.filter_fields.currentWidget()))
+		self.addFilterBtn.clicked.connect(lambda: self.addFilter(self.filter_fields.currentWidget()))
 
+		self.searchBtn = QtGui.QPushButton('Search')
+		self.searchBtn.clicked.connect(self.query)
 
-		self.layout.addWidget(self.primary_selection,0,0)
-		self.layout.addWidget(self.secondary_selection,0,1)
-		self.layout.addWidget(self.filters,1,0,1,2)
-		self.layout.addWidget(self.searchBtn,2,0,1,2)
-		self.layout.addWidget(self.filter_table,3,0,1,2)
+		self.layout.addWidget(self.primary_selection,0,0,1,1)
+		self.layout.addWidget(self.secondary_selection,1,0,1,1)
+		self.layout.addWidget(self.filter_fields,2,0,1,1)
+		self.layout.addWidget(self.addFilterBtn,3,0,1,1)
+		self.layout.addWidget(self.filter_table,4,0,1,1)
+		self.layout.addWidget(self.searchBtn,5,0,1,1)
+		self.layout.addWidget(self.results_table,0,1,6,6)
 
 	def generate_field(self,field):
 		if field in graphene_fields or field in conditions_fields:
@@ -97,18 +122,21 @@ class GSAQuery(QtGui.QWidget):
 		elif field in furnace_fields:
 			cla = preparation_step
 		if sql_validator['int'](getattr(cla,field)) == True:
-			return ValueFilter(validate='int',label=getattr(cla,field).info['verbose_name'])
+			vf = ValueFilter(model=cla,field=field,validate=int)
+			vf.input.returnPressed.connect(lambda: self.addFilter(self.filter_fields.currentWidget()))
+			return vf
 		elif sql_validator['float'](getattr(cla,field)) == True:
-			return ValueFilter(validate='float',label=getattr(cla,field).info['verbose_name'])
+			vf = ValueFilter(model=cla,field=field,validate=int)
+			vf.input.returnPressed.connect(lambda: self.addFilter(self.filter_fields.currentWidget()))
+			return vf
 		elif sql_validator['str'](getattr(cla,field)) == True:
 			with dal.session_scope() as session:
 				classes = []
 				for v in session.query(getattr(cla,field)).distinct():
 					classes.append(getattr(v,field))
-			return ClassFilter(classes=classes,label=getattr(cla,field).info['verbose_name'])
+			return ClassFilter(model=cla,field=field,classes=classes,validate=str)
 		else:
 			raise ValueError('Field %s data type (%s) not recognized.'%(field,getattr(cla,field).property.columns[0].type))
-
 
 	def populate_secondary(self,selection):
 		selection_list = {
@@ -123,34 +151,89 @@ class GSAQuery(QtGui.QWidget):
 		self.secondary_selection.clear()
 		self.secondary_selection.addItems([getattr(cla,v).info['verbose_name'] for v in selection_list[selection]])
 
-	def search(self,widget):
-		
+	def addFilter(self,widget):
+		if widget.valid():
+			self.filters.append(widget.sqlalchemy_filter())
+			row = self.filter_table.rowCount()
+			self.filter_table.insertRow(row)
+			self.filter_table.setItem(row,0,QtGui.QTableWidgetItem(widget.label.text()))
+			self.filter_table.setItem(row,1,QtGui.QTableWidgetItem(widget.operation))
+			self.filter_table.setItem(row,2,QtGui.QTableWidgetItem(str(widget.value)))
+			# self.filter_table.resizeRowsToContents()
+
+			delRowBtn = QtGui.QPushButton('X')
+			delRowBtn.clicked.connect(self.deleteRow)
+			self.filter_table.setCellWidget(row,3,delRowBtn)
+			widget.clear()
+
+	def deleteRow(self):
+		row = self.filter_table.indexAt(self.sender().parent().pos()).row()
+		if row >= 0:
+			self.filter_table.removeRow(row)
+			del self.filters[row]
+
+	def query(self):
+		self.results_model = ResultsTableModel()
+		with dal.session_scope() as session:
+			q = session.query(sample).join(preparation_step,sample.preparation_steps).filter(*self.filters).distinct()
+			self.results_model.read_sqlalchemy(q.statement,session)
+		self.results_table.setModel(self.results_model)
 
 class ValueFilter(QtGui.QWidget):
-	def __init__(self,label,validate=None,parent=None):
+	def __init__(self,model,field,validate=None,parent=None):
 		super(ValueFilter,self).__init__(parent=parent)
+		self.field = field
+		self.model = model
+		self.validate = validate
+
 		layout = QtGui.QGridLayout(self)
-		self.label = QtGui.QLabel(label)
+		self.label = QtGui.QLabel(getattr(model,field).info['verbose_name'])
 		self.label.setFixedWidth(150)
 		self.label.setWordWrap(True)
 		self.comparator = QtGui.QComboBox()
-		self.comparator.addItems(['=','!=','<','<=','>','>='])
+		self.comparator.addItems(sorted(list(operators)))
 		self.input = QtGui.QLineEdit()
 		self.input.setFixedWidth(100)
-		if validate == 'int':
+
+		if self.validate == int:
 			self.input.setValidator(QtGui.QIntValidator())
-		elif validate == 'float':
+		elif self.validate == float:
 			self.input.setValidator(QtGui.QDoubleValidator())
 
 		layout.addWidget(self.label,0,0)
 		layout.addWidget(self.comparator,0,1)
 		layout.addWidget(self.input,0,2)
 
+	@property
+	def operation(self):
+		return self.comparator.currentText()
+
+	@property
+	def value(self):
+		return self.validate(self.input.text())
+
+	def valid(self):
+		try:
+			self.value
+			return True
+		except:
+			return False
+
+	def sqlalchemy_filter(self):
+		return operators[self.comparator.currentText()](getattr(self.model,self.field),self.value)
+
+	def clear(self):
+		self.input.clear()
+
 class ClassFilter(QtGui.QWidget):
-	def __init__(self,label,classes=[],parent=None):
+	def __init__(self,model,field,validate=None,classes=[],parent=None):
 		super(ClassFilter,self).__init__(parent=parent)
+		self.field = field
+		self.model = model
+		self.validate = validate
+
 		layout = QtGui.QGridLayout(self)
-		self.label = QtGui.QLabel(label)
+		self.label = QtGui.QLabel(getattr(model,field).info['verbose_name'])
 		self.label.setFixedWidth(150)
 		self.label.setWordWrap(True)
 		self.classes = QtGui.QComboBox()
@@ -159,10 +242,57 @@ class ClassFilter(QtGui.QWidget):
 		layout.addWidget(self.label,0,0)
 		layout.addWidget(self.classes,0,1)
 
+	@property
+	def operation(self):
+		return 'OR'
+
+	@property
+	def value(self):
+		assert self.classes.count() > 0
+		return self.validate(self.classes.currentText())
+
+	def valid(self):
+		try:
+			self.value
+			return True
+		except:
+			return False
+
+	def sqlalchemy_filter(self):
+		return operator.eq(getattr(self.model,self.field),self.value)
+
+	def clear(self):
+		pass
+
+class ResultsTableModel(QtCore.QAbstractTableModel):
+	def __init__(self,parent=None):
+		super(ResultsTableModel,self).__init__(parent=parent)
+		self.df = None
+
+	def read_sqlalchemy(self,statement,session):
+		self.beginResetModel()
+		self.df = pd.read_sql_query(statement,session.connection())
+		self.endResetModel()
+
+	def rowCount(self, parent):
+		return self.df.shape[0]
+
+	def columnCount(self, parent):
+		return self.df.shape[1]
+
+	def data(self,index,role=QtCore.Qt.DisplayRole):
+		if index.isValid():
+			if role == QtCore.Qt.DisplayRole:
+				i,j = index.row(),index.column()
+				return str(self.df.iloc[i,j])
+		return QtCore.QVariant()
+
 if __name__ == '__main__':
 	dal.init_db(config['development'])
 	Base.metadata.drop_all(bind=dal.engine)
 	Base.metadata.create_all(bind=dal.engine)
+	with dal.session_scope() as session:
+		build_db(session,os.path.join(os.getcwd(),'data'))
 	app = QtGui.QApplication([])
 	query = GSAQuery()
 	query.show()
