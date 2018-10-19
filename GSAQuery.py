@@ -50,6 +50,8 @@ furnace_fields = [
     'carbon_source_flow_rate'
 ]
 
+results_fields = graphene_fields+conditions_fields
+
 sql_validator = {
 	'int': lambda x: isinstance(x.property.columns[0].type,Integer),
 	'float': lambda x: isinstance(x.property.columns[0].type,Float),
@@ -70,6 +72,7 @@ class GSAQuery(QtGui.QWidget):
 		super(GSAQuery,self).__init__(parent=parent)
 		self.filters = []
 		self.filter_fields = QtGui.QStackedWidget()
+		self.filter_fields.setSizePolicy(QtGui.QSizePolicy.Fixed,QtGui.QSizePolicy.Preferred)
 		self.filters_dict = {}
 		for field in graphene_fields+conditions_fields:
 			widget = self.generate_field(field)
@@ -93,28 +96,37 @@ class GSAQuery(QtGui.QWidget):
 		self.filter_table = QtGui.QTableWidget()
 		self.filter_table.setColumnCount(4)
 		self.filter_table.setHorizontalHeaderLabels(['Field','','Value',''])
-		self.filter_table.setColumnWidth(0,150)
+		header = self.filter_table.horizontalHeader()       
+		header.setSectionResizeMode(0, QtGui.QHeaderView.Stretch)
 		self.filter_table.setColumnWidth(1,30)
 		self.filter_table.setColumnWidth(2,100)
 		self.filter_table.setColumnWidth(3,25)
 		self.filter_table.setWordWrap(True)
+		self.filter_table.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,QtGui.QSizePolicy.Preferred)
 
+
+		self.results_model = ResultsTableModel()
 		self.results_table = QtGui.QTableView()
 		self.results_table.setFixedWidth(700)
+		self.results_table.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+		self.results_table.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
+
+		self.preview = PreviewWidget()
+		self.results_table.activated.connect(lambda x: self.preview.select(self.results_model,x))
 
 		self.addFilterBtn = QtGui.QPushButton('Add Filter')
 		self.addFilterBtn.clicked.connect(lambda: self.addFilter(self.filter_fields.currentWidget()))
 
-		self.searchBtn = QtGui.QPushButton('Search')
-		self.searchBtn.clicked.connect(self.query)
+		# self.searchBtn = QtGui.QPushButton('Search')
+		# self.searchBtn.clicked.connect(self.query)
 
 		self.layout.addWidget(self.primary_selection,0,0,1,1)
 		self.layout.addWidget(self.secondary_selection,1,0,1,1)
 		self.layout.addWidget(self.filter_fields,2,0,1,1)
 		self.layout.addWidget(self.addFilterBtn,3,0,1,1)
-		self.layout.addWidget(self.filter_table,4,0,1,1)
-		self.layout.addWidget(self.searchBtn,5,0,1,1)
-		self.layout.addWidget(self.results_table,0,1,6,6)
+		self.layout.addWidget(self.filter_table,4,0,4,1)
+		self.layout.addWidget(self.results_table,0,1,5,3)
+		self.layout.addWidget(self.preview,5,1,3,3)
 
 	def generate_field(self,field):
 		if field in graphene_fields or field in conditions_fields:
@@ -165,19 +177,26 @@ class GSAQuery(QtGui.QWidget):
 			delRowBtn.clicked.connect(self.deleteRow)
 			self.filter_table.setCellWidget(row,3,delRowBtn)
 			widget.clear()
+			self.query()
 
 	def deleteRow(self):
 		row = self.filter_table.indexAt(self.sender().parent().pos()).row()
 		if row >= 0:
 			self.filter_table.removeRow(row)
 			del self.filters[row]
+			self.query()
+
 
 	def query(self):
 		self.results_model = ResultsTableModel()
-		with dal.session_scope() as session:
-			q = session.query(sample).join(preparation_step,sample.preparation_steps).filter(*self.filters).distinct()
-			self.results_model.read_sqlalchemy(q.statement,session)
+		if len(self.filters)>0:
+			with dal.session_scope() as session:
+				q = session.query(sample).join(preparation_step,sample.preparation_steps).filter(*self.filters).distinct()
+				self.results_model.read_sqlalchemy(q.statement,session)
 		self.results_table.setModel(self.results_model)
+		for c in range(self.results_model.columnCount(parent=None)):
+			if self.results_model.df.columns[c] not in results_fields:
+				self.results_table.hideColumn(c)
 
 class ValueFilter(QtGui.QWidget):
 	def __init__(self,model,field,validate=None,parent=None):
@@ -264,10 +283,45 @@ class ClassFilter(QtGui.QWidget):
 	def clear(self):
 		pass
 
+class PreviewWidget(QtGui.QTabWidget):
+	def __init__(self,parent=None):
+		super(PreviewWidget,self).__init__(parent=parent)
+		self.detail_tab = GrapheneWidget()
+
+		self.addTab(self.detail_tab,'Details')
+
+	def select(self,model,index):
+		self.detail_tab.setData(model,index)
+
+class GrapheneWidget(QtGui.QWidget):
+	def __init__(self,parent=None):
+		super(GrapheneWidget,self).__init__(parent=parent)
+		self.layout = QtGui.QGridLayout(self)
+		self.layout.setAlignment(QtCore.Qt.AlignTop)
+		self.fields = {}
+
+		elements_per_row = 10
+		for f,field in enumerate(graphene_fields):
+			self.fields[field] = {}
+			self.fields[field]['label'] = QtGui.QLabel(getattr(sample,field).info['verbose_name'])
+			self.fields[field]['label'].setWordWrap(True)
+			self.fields[field]['label'].setFixedWidth(150)
+			self.fields[field]['value'] = QtGui.QLabel(' '*10)
+			self.fields[field]['value'].setFixedWidth(150)
+			self.layout.addWidget(self.fields[field]['label'],f%elements_per_row,2*(f//elements_per_row))
+			self.layout.addWidget(self.fields[field]['value'],f%elements_per_row,2*(f//elements_per_row)+1)
+
+	def setData(self,model,index):
+		for field in graphene_fields:
+			value = model.df[field][index.row()]
+			if pd.isnull(value):
+				value = ''
+			self.fields[field]['value'].setText(str(value))
+
 class ResultsTableModel(QtCore.QAbstractTableModel):
 	def __init__(self,parent=None):
 		super(ResultsTableModel,self).__init__(parent=parent)
-		self.df = None
+		self.df = pd.DataFrame()
 
 	def read_sqlalchemy(self,statement,session):
 		self.beginResetModel()
@@ -284,8 +338,17 @@ class ResultsTableModel(QtCore.QAbstractTableModel):
 		if index.isValid():
 			if role == QtCore.Qt.DisplayRole:
 				i,j = index.row(),index.column()
-				return str(self.df.iloc[i,j])
+				value = self.df.iloc[i,j]
+				if pd.isnull(value):
+					return ''
+				else:
+					return str(value)
 		return QtCore.QVariant()
+
+	def headerData(self,section,orientation,role=QtCore.Qt.DisplayRole):
+		if role == QtCore.Qt.DisplayRole and orientation == QtCore.Qt.Horizontal:
+			return getattr(sample,self.df.columns[section]).info['verbose_name']
+		return QtCore.QAbstractTableModel.headerData(self,section,orientation,role)
 
 if __name__ == '__main__':
 	dal.init_db(config['development'])
