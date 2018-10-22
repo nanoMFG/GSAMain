@@ -3,6 +3,7 @@ import pandas as pd
 import sys, operator, os
 from PyQt5 import QtGui, QtCore
 from GSAImage import GSAImage
+from GSAStats import GSAStats
 from gresq.csv2db import build_db
 from gresq.database import sample, preparation_step, dal, Base
 from sqlalchemy import String, Integer, Float, Numeric
@@ -67,11 +68,14 @@ operators = {
 	'>=': operator.ge
 }
 
+label_font = QtGui.QFont("Helvetica", 28, QtGui.QFont.Bold) 
+
 class GSAQuery(QtGui.QWidget):
 	def __init__(self,parent=None):
 		super(GSAQuery,self).__init__(parent=parent)
 		self.filters = []
 		self.filter_fields = QtGui.QStackedWidget()
+		self.filter_fields.setMaximumHeight(50)
 		self.filter_fields.setSizePolicy(QtGui.QSizePolicy.Fixed,QtGui.QSizePolicy.Preferred)
 		self.filters_dict = {}
 		for field in graphene_fields+conditions_fields:
@@ -102,17 +106,12 @@ class GSAQuery(QtGui.QWidget):
 		self.filter_table.setColumnWidth(2,100)
 		self.filter_table.setColumnWidth(3,25)
 		self.filter_table.setWordWrap(True)
-		self.filter_table.setSizePolicy(QtGui.QSizePolicy.MinimumExpanding,QtGui.QSizePolicy.Preferred)
 
-
-		self.results_model = ResultsTableModel()
-		self.results_table = QtGui.QTableView()
-		self.results_table.setFixedWidth(700)
-		self.results_table.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
-		self.results_table.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
+		self.results = ResultsWidget()
+		self.results.setFixedWidth(500)
 
 		self.preview = PreviewWidget()
-		self.results_table.activated.connect(lambda x: self.preview.select(self.results_model,x))
+		self.results.results_table.activated.connect(lambda x: self.preview.select(self.results.results_model,x))
 
 		self.addFilterBtn = QtGui.QPushButton('Add Filter')
 		self.addFilterBtn.clicked.connect(lambda: self.addFilter(self.filter_fields.currentWidget()))
@@ -120,13 +119,26 @@ class GSAQuery(QtGui.QWidget):
 		# self.searchBtn = QtGui.QPushButton('Search')
 		# self.searchBtn.clicked.connect(self.query)
 
-		self.layout.addWidget(self.primary_selection,0,0,1,1)
-		self.layout.addWidget(self.secondary_selection,1,0,1,1)
-		self.layout.addWidget(self.filter_fields,2,0,1,1)
-		self.layout.addWidget(self.addFilterBtn,3,0,1,1)
-		self.layout.addWidget(self.filter_table,4,0,4,1)
-		self.layout.addWidget(self.results_table,0,1,5,3)
-		self.layout.addWidget(self.preview,5,1,3,3)
+		searchLabel = QtGui.QLabel('Query')
+		searchLabel.setFont(label_font)
+
+		previewLabel = QtGui.QLabel('Preview')
+		previewLabel.setFont(label_font)
+
+		resultsLabel = QtGui.QLabel('Results')
+		resultsLabel.setFont(label_font)
+
+		self.layout.addWidget(searchLabel,0,0,1,1)
+		self.layout.addWidget(self.primary_selection,1,0,1,1)
+		self.layout.addWidget(self.secondary_selection,2,0,1,1)
+		self.layout.addWidget(self.filter_fields,3,0,1,1)
+		self.layout.addWidget(self.addFilterBtn,4,0,1,1)
+		self.layout.addWidget(self.filter_table,5,0,4,1)
+		self.layout.addWidget(resultsLabel,0,1,1,1)
+		self.layout.addWidget(self.results,1,1,8,1)
+		self.layout.addWidget(previewLabel,0,2,1,1)
+		self.layout.addWidget(self.preview,1,2,8,1)
+		self.layout.setColumnStretch(0,0.5)
 
 	def generate_field(self,field):
 		if field in graphene_fields or field in conditions_fields:
@@ -177,26 +189,14 @@ class GSAQuery(QtGui.QWidget):
 			delRowBtn.clicked.connect(self.deleteRow)
 			self.filter_table.setCellWidget(row,3,delRowBtn)
 			widget.clear()
-			self.query()
+			self.results.query(self.filters)
 
 	def deleteRow(self):
 		row = self.filter_table.indexAt(self.sender().parent().pos()).row()
 		if row >= 0:
 			self.filter_table.removeRow(row)
 			del self.filters[row]
-			self.query()
-
-
-	def query(self):
-		self.results_model = ResultsTableModel()
-		if len(self.filters)>0:
-			with dal.session_scope() as session:
-				q = session.query(sample).join(preparation_step,sample.preparation_steps).filter(*self.filters).distinct()
-				self.results_model.read_sqlalchemy(q.statement,session)
-		self.results_table.setModel(self.results_model)
-		for c in range(self.results_model.columnCount(parent=None)):
-			if self.results_model.df.columns[c] not in results_fields:
-				self.results_table.hideColumn(c)
+			self.results.query(self.filters)
 
 class ValueFilter(QtGui.QWidget):
 	def __init__(self,model,field,validate=None,parent=None):
@@ -207,9 +207,10 @@ class ValueFilter(QtGui.QWidget):
 
 		layout = QtGui.QGridLayout(self)
 		self.label = QtGui.QLabel(getattr(model,field).info['verbose_name'])
-		self.label.setFixedWidth(150)
+		# self.label.setFixedWidth(150)
 		self.label.setWordWrap(True)
 		self.comparator = QtGui.QComboBox()
+		self.comparator.setFixedWidth(50)
 		self.comparator.addItems(sorted(list(operators)))
 		self.input = QtGui.QLineEdit()
 		self.input.setFixedWidth(100)
@@ -253,7 +254,7 @@ class ClassFilter(QtGui.QWidget):
 
 		layout = QtGui.QGridLayout(self)
 		self.label = QtGui.QLabel(getattr(model,field).info['verbose_name'])
-		self.label.setFixedWidth(150)
+		# self.label.setFixedWidth(150)
 		self.label.setWordWrap(True)
 		self.classes = QtGui.QComboBox()
 		self.classes.addItems(classes)
@@ -263,7 +264,7 @@ class ClassFilter(QtGui.QWidget):
 
 	@property
 	def operation(self):
-		return 'OR'
+		return 'AND'
 
 	@property
 	def value(self):
@@ -287,8 +288,12 @@ class PreviewWidget(QtGui.QTabWidget):
 	def __init__(self,parent=None):
 		super(PreviewWidget,self).__init__(parent=parent)
 		self.detail_tab = GrapheneWidget()
+		self.setTabPosition(QtGui.QTabWidget.South)
 
 		self.addTab(self.detail_tab,'Details')
+		self.addTab(QtGui.QWidget(),'SEM')
+		self.addTab(QtGui.QWidget(),'Raman')
+		self.addTab(QtGui.QWidget(),'Recipe')
 
 	def select(self,model,index):
 		self.detail_tab.setData(model,index)
@@ -300,14 +305,15 @@ class GrapheneWidget(QtGui.QWidget):
 		self.layout.setAlignment(QtCore.Qt.AlignTop)
 		self.fields = {}
 
-		elements_per_row = 10
+		elements_per_row = 30
 		for f,field in enumerate(graphene_fields):
 			self.fields[field] = {}
 			self.fields[field]['label'] = QtGui.QLabel(getattr(sample,field).info['verbose_name'])
 			self.fields[field]['label'].setWordWrap(True)
-			self.fields[field]['label'].setFixedWidth(150)
-			self.fields[field]['value'] = QtGui.QLabel(' '*10)
-			self.fields[field]['value'].setFixedWidth(150)
+			self.fields[field]['label'].setFixedWidth(120)
+			self.fields[field]['value'] = QtGui.QLabel()
+			self.fields[field]['value'].setMinimumWidth(50)
+			self.fields[field]['value'].setAlignment(QtCore.Qt.AlignRight)
 			self.layout.addWidget(self.fields[field]['label'],f%elements_per_row,2*(f//elements_per_row))
 			self.layout.addWidget(self.fields[field]['value'],f%elements_per_row,2*(f//elements_per_row)+1)
 
@@ -317,6 +323,35 @@ class GrapheneWidget(QtGui.QWidget):
 			if pd.isnull(value):
 				value = ''
 			self.fields[field]['value'].setText(str(value))
+
+class ResultsWidget(QtGui.QTabWidget):
+	def __init__(self,parent=None):
+		super(ResultsWidget,self).__init__(parent=parent)
+		self.setTabPosition(QtGui.QTabWidget.South)
+		self.results_model = ResultsTableModel()
+		self.results_table = QtGui.QTableView()
+		self.results_table.setMinimumWidth(400)
+		self.results_table.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+		self.results_table.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
+		self.results_table.setSortingEnabled(True)
+
+		self.stats = GSAStats()
+
+		self.addTab(self.results_table,'Query Results')
+		self.addTab(self.stats,'Statistics')
+
+	def query(self,filters):
+		self.results_model = ResultsTableModel()
+		if len(filters)>0:
+			with dal.session_scope() as session:
+				q = session.query(sample).join(preparation_step,sample.preparation_steps).filter(*filters).distinct()
+				self.results_model.read_sqlalchemy(q.statement,session)
+		self.results_table.setModel(self.results_model)
+		for c in range(self.results_model.columnCount(parent=None)):
+			if self.results_model.df.columns[c] not in results_fields:
+				self.results_table.hideColumn(c)
+		self.results_table.resizeColumnsToContents()
+		self.stats.setData(self.results_model.df)
 
 class ResultsTableModel(QtCore.QAbstractTableModel):
 	def __init__(self,parent=None):
@@ -349,6 +384,14 @@ class ResultsTableModel(QtCore.QAbstractTableModel):
 		if role == QtCore.Qt.DisplayRole and orientation == QtCore.Qt.Horizontal:
 			return getattr(sample,self.df.columns[section]).info['verbose_name']
 		return QtCore.QAbstractTableModel.headerData(self,section,orientation,role)
+
+	def sort(self,column,order=QtCore.Qt.AscendingOrder):
+		self.layoutAboutToBeChanged.emit()
+		if order == QtCore.Qt.AscendingOrder:
+			self.df = self.df.sort_values(by=self.df.columns[column],ascending=True)
+		elif order == QtCore.Qt.DescendingOrder:
+			self.df = self.df.sort_values(by=self.df.columns[column],ascending=False)
+		self.layoutChanged.emit()
 
 if __name__ == '__main__':
 	dal.init_db(config['development'])
