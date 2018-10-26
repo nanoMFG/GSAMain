@@ -351,7 +351,9 @@ class ResultsWidget(QtGui.QTabWidget):
 			if self.results_model.df.columns[c] not in results_fields:
 				self.results_table.hideColumn(c)
 		self.results_table.resizeColumnsToContents()
-		self.stats.setData(self.results_model.df)
+		stats_df = self.results_model.df.copy(deep=True)
+		# stats_df.columns = [getattr(sample,field).info['verbose_name'] for field in self.stats.df.columns]
+		self.stats.setData(stats_df)
 
 class ResultsTableModel(QtCore.QAbstractTableModel):
 	def __init__(self,parent=None):
