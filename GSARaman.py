@@ -1,3 +1,4 @@
+from __future__ import division
 from PyQt5 import QtGui, QtCore, QtWidgets
 import pyqtgraph as pg
 import pandas as pd
@@ -19,7 +20,7 @@ cdat={'mono':layer1,'bi':layer2,'tri':layer3,'quad':layer4,'pent':layer5,'graph'
 class GSARaman(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(GSARaman,self).__init__(parent=parent)
-        self.resize(500,500)
+        self.resize(700,700)
         self.spect_type=''
         self.data=[]
 
@@ -101,7 +102,6 @@ class SingleSpect(QtWidgets.QWidget):
         I=((I_raw-np.min(I_raw))/np.max(I_raw-np.min(I_raw)));
         return I
 
-
     def fitToPlot(self,x,y):
         I=self.backgroundFit(x,y)
         fit_params,fit_cov=curve_fit(self.Lfit,x,y,
@@ -110,9 +110,29 @@ class SingleSpect(QtWidgets.QWidget):
         y_fit=self.Lfit(x,fit_params[0],fit_params[1],fit_params[2],fit_params[3],fit_params[4],fit_params[5],fit_params[6],fit_params[7],fit_params[8])
         self.fit_plot=pg.plot(x,y_fit)
 
+        self.fitting_params=QtWidgets.QLabel(
+            """Fitting Parameters:
+            G Peak:
+                """u'\u03b1'"""="""+str(round(fit_params[0],4))+"""
+                """u'\u0393'"""="""+str(round(fit_params[1],4))+"""
+                """u'\u03c9'"""="""+str(round(fit_params[2],4))+"""
+            G' Peak:
+                """u'\u03b1'"""="""+str(round(fit_params[3],4))+"""
+                """u'\u0393'"""="""+str(round(fit_params[4],4))+"""
+                """u'\u03c9'"""="""+str(round(fit_params[5],4))+"""
+            D Peak:
+                """u'\u03b1'"""="""+str(round(fit_params[6],4))+"""
+                """u'\u0393'"""="""+str(round(fit_params[7],4))+"""
+                """u'\u03c9'"""="""+str(round(fit_params[8],4)))
+
+        raman.layout.addWidget(self.fitting_params,2,2)
+
     def plotSpect(self,x,y):
-        self.spect_plot=pg.plot(x,y)
-        self.fitToPlot(x,y)
+        y_norm=[]
+        for i in y:
+            y_norm.append((i-np.min(y))/(np.max(y)-np.min(y)))
+        self.spect_plot=pg.plot(x,y_norm)
+        self.fitToPlot(x,y_norm)
 
         raman.layout.addWidget(self.spect_plot,2,0)
         raman.layout.addWidget(self.fit_plot,2,1)
