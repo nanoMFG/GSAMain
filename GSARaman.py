@@ -102,6 +102,26 @@ class SingleSpect(QtWidgets.QWidget):
         I=((I_raw-np.min(I_raw))/np.max(I_raw-np.min(I_raw)));
         return I
 
+    def checkParams(self,params):
+        x=[1,2,3,4,5,6]
+        diffs=[]
+        for key in cdat.keys():
+            Gdiff=[np.absolute(100*((cdat[key][0]['a']-params[0])/cdat[key][0]['a'])),
+            np.absolute(100*((cdat[key][0]['w']-params[1])/cdat[key][0]['w'])),
+            np.absolute(100*((cdat[key][0]['b']-params[2])/cdat[key][0]['b']))]
+
+            Gpdiff=[np.absolute(100*((cdat[key][1]['a']-params[3])/cdat[key][1]['a'])),
+            np.absolute(100*((cdat[key][1]['w']-params[4])/cdat[key][1]['w'])),
+            np.absolute(100*((cdat[key][1]['b']-params[5])/cdat[key][1]['b']))]
+
+            dfG=np.average(Gdiff)
+            dfGp=np.average(Gpdiff)
+            df=np.average([dfG,dfGp])
+            diffs.append(df)
+
+        self.diff_plot=pg.plot(x,diffs,pen=None,symbol='o')
+        #raman.layout.addWidget(self.diff_graph,3,1)
+
     def fitToPlot(self,x,y):
         I=self.backgroundFit(x,y)
         fit_params,fit_cov=curve_fit(self.Lfit,x,y,
@@ -109,6 +129,8 @@ class SingleSpect(QtWidgets.QWidget):
         
         y_fit=self.Lfit(x,fit_params[0],fit_params[1],fit_params[2],fit_params[3],fit_params[4],fit_params[5],fit_params[6],fit_params[7],fit_params[8])
         self.fit_plot=pg.plot(x,y_fit)
+        self.overlay_plot=pg.plot(x,y_fit,pen=(0,2))
+        self.overlay_plot.plot(x,y,pen=(1,2))
 
         self.fitting_params=QtWidgets.QLabel(
             """Fitting Parameters:
@@ -125,6 +147,7 @@ class SingleSpect(QtWidgets.QWidget):
                 """u'\u0393'"""="""+str(round(fit_params[7],4))+"""
                 """u'\u03c9'"""="""+str(round(fit_params[8],4)))
 
+        self.checkParams(fit_params)
         raman.layout.addWidget(self.fitting_params,2,2)
 
     def plotSpect(self,x,y):
@@ -134,11 +157,13 @@ class SingleSpect(QtWidgets.QWidget):
         self.spect_plot=pg.plot(x,y_norm)
         self.fitToPlot(x,y_norm)
 
+        self.TabWidget=QtWidgets.QTabWidget()
+        self.TabWidget.addTab(self.fit_plot,"Fit")
+        self.TabWidget.addTab(self.overlay_plot,"Overlay")
+        self.TabWidget.addTab(self.diff_plot,"Diffs")
+
+        raman.layout.addWidget(self.TabWidget,2,1)
         raman.layout.addWidget(self.spect_plot,2,0)
-        raman.layout.addWidget(self.fit_plot,2,1)
-
-
-
 
 class MapFit(QtWidgets.QWidget):
     def __init__(self, parent=None):
