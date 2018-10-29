@@ -251,7 +251,7 @@ class GSAImage:
 
 	def removeMod(self):
 		if len(self.modifications) > 0:
-			self.modifications[-1].widget().hide()
+			self.wDetail.removeWidget(self.modifications[-1].widget())
 			del[self.modifications[-1]]
 			self.wModList.takeItem(self.wModList.count()-1)
 			if self.wModList.count() > 0:
