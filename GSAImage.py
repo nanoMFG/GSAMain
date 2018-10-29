@@ -235,7 +235,7 @@ class GSAImage:
 			self.wModList.setCurrentRow(self.wModList.count()-1)
 
 	def selectMod(self,index):
-		if index > 0:
+		if index >= 0:
 			# try:
 			self.modifications[index].update_view()
 			# except:
