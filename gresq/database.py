@@ -58,9 +58,9 @@ from sqlalchemy.orm import relationship, backref
 # Declarative classes to define GresQ DB schema
 class sample(Base):
     __tablename__ = 'samples'
-    id = Column(Integer,primary_key=True)
+    id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
     material_name = Column(String(32),info={'verbose_name':'Material Name'})
-    formula = Column(String(32),info={'verbose_name','Formula'})
+    formula = Column(String(32),info={'verbose_name':'Formula'})
     identifier = Column(String(32),info={'verbose_name':'Identifier'})
     reference = Column(String(32),info={'verbose_name':'Reference'})
 
@@ -100,7 +100,7 @@ class sample(Base):
 
 class preparation_step(Base):
     __tablename__ = 'preparation_steps'
-    sample_id = Column(Integer,ForeignKey(sample.id),primary_key=True)
+    sample_id = Column(Integer,ForeignKey(sample.id),primary_key=True,info={'verbose_name':'Sample ID'})
     name = Column(String(16),primary_key=True,info={'verbose_name':'Name'})
     timestamp = Column(Integer,info={'verbose_name':'Timestamp'})
     furnace_temperature = Column(Float,info={'verbose_name':'Furnace Temperature'})
@@ -124,10 +124,3 @@ class image(Base):
     location = Column(String(256))
     size = Column(Integer)
     hash = Column(String(128))
-
-class citrine_csv_map(Base):
-    __tablename__ = 'citrine_csv_map'
-    table = Column(String(32),primary_key=True)
-    table_column_name = Column(String(128),primary_key=True)
-    csv_column_name = Column(String(128))
-

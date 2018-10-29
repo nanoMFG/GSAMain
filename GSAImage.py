@@ -154,6 +154,7 @@ class GSAImage:
 				return
 
 	def importState(self):
+		self.clear()
 		if self.mode == 'local':
 			try:
 				file_path = QtGui.QFileDialog.getOpenFileName()
@@ -183,6 +184,7 @@ class GSAImage:
 		self.updateAll()
 
 	def importImage(self):
+		self.clear()
 		if self.mode == 'local':
 			try:
 				img_file_path = QtGui.QFileDialog.getOpenFileName()
@@ -234,10 +236,10 @@ class GSAImage:
 
 	def selectMod(self,index):
 		if index >= 0:
-			try:
-				self.modifications[index].update_view()
-			except:
-				pass
+			# try:
+			self.modifications[index].update_view()
+			# except:
+				# pass
 			self.wDetail.setCurrentIndex(index)
 		elif self.wModList.count() > 0:
 			self.wModList.setCurrentRow(self.wModList.count()-1)
@@ -249,7 +251,7 @@ class GSAImage:
 
 	def removeMod(self):
 		if len(self.modifications) > 0:
-			self.modifications[-1].widget().hide()
+			self.wDetail.removeWidget(self.modifications[-1].widget())
 			del[self.modifications[-1]]
 			self.wModList.takeItem(self.wModList.count()-1)
 			if self.wModList.count() > 0:
