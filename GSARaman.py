@@ -15,31 +15,42 @@ layer3=[{'a':1.04128278e+00,'w':2.63152833e+01,'b':1.60154940e+03},{'a':6.501556
 layer4=[{'a':1.01520762e+00,'w':2.79110458e+01,'b':1.61188139e+03},{'a':5.18657822e-01,'w':6.83826156e+01,'b':2.73099972e+03}]
 layer5=[{'a':9.67793017e-01,'w':2.80824430e+01,'b':1.62490732e+03},{'a':4.30042148e-01,'w':6.41600512e+01,'b':2.75285511e+03}]
 graphene=[{'a':9.98426340e-01,'w':2.83949973e+01,'b':1.63840546e+03},{'a':4.22730948e-01,'w':7.98338055e+01,'b':2.76274546e+03}]
-cdat={'mono':layer1,'bi':layer2,'tri':layer3,'quad':layer4,'pent':layer5,'graph':graphene}
+cdat={'monolayer':layer1,'bilayer':layer2,'trilayer':layer3,'four layers':layer4,'five layers':layer5,'graphene':graphene}
 
 class GSARaman(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(GSARaman,self).__init__(parent=parent)
-        self.resize(700,700)
+        self.resize(1100,600)
         self.spect_type=''
         self.data=[]
 
         self.layout=QtWidgets.QGridLayout(self)
+        self.layout.setAlignment(QtCore.Qt.AlignTop)
 
         self.flbut=QtWidgets.QPushButton('Upload File')
         self.flbut.clicked.connect(self.openFileName)
+        self.flbut.setFixedSize(400,30)
         self.layout.addWidget(self.flbut,0,0)
 
         self.fitbut=QtWidgets.QPushButton('Do Fitting')
         self.fitbut.clicked.connect(self.doFitting)
+        self.fitbut.setEnabled(False)
+        self.fitbut.setFixedSize(400,30)
         self.layout.addWidget(self.fitbut,0,1)
 
         self.download_but=QtWidgets.QPushButton('Download Data')
+        self.download_but.setEnabled(False)
+        self.download_but.setFixedSize(400,30)
         self.layout.addWidget(self.download_but,1,1)
 
     def openFileName(self):
         fpath=QtWidgets.QFileDialog.getOpenFileName()
         filelist.append(fpath)
+        if filelist[-1][0]!=u'':
+            self.fitbut.setEnabled(True)
+        else:
+            del filelist[-1]
+        print filelist
 
     def checkFileType(self):
         for flnm in filelist:
@@ -65,6 +76,7 @@ class GSARaman(QtWidgets.QWidget):
             x=np.array(self.data.iloc[:,0])
             y=np.array(self.data.iloc[:,1])
             self.widget.plotSpect(x,y)
+            self.fitbut.setEnabled(False)
         else:
             self.widget=MapFit()
 
@@ -75,13 +87,6 @@ class SingleSpect(QtWidgets.QWidget):
 
     def Single_Lorentz(self, x,a,w,b):
         return a*(((w/2)**2)/(((x-b)**2)+((w/2)**2)))
-
-    def Lfit(self,x,a1,w1,b1,a2,w2,b2,a3,w3,b3):
-        LGfit=self.Single_Lorentz(x,a1,w1,b1)
-        LGpfit=self.Single_Lorentz(x,a2,w2,b2)
-        LDfit=self.Single_Lorentz(x,a3,w3,b3)
-        Lfit=LGfit+LGpfit+LDfit
-        return Lfit
 
     def backgroundFit(self,x,y):
         I_raw=y
@@ -102,65 +107,113 @@ class SingleSpect(QtWidgets.QWidget):
         I=((I_raw-np.min(I_raw))/np.max(I_raw-np.min(I_raw)));
         return I
 
-    def checkParams(self,params):
-        x=[1,2,3,4,5,6]
+    def checkParams(self,G_params,Gp_params):
+        x=np.array([1,2,3,4,5,6])
         diffs=[]
-        for key in cdat.keys():
-            Gdiff=[np.absolute(100*((cdat[key][0]['a']-params[0])/cdat[key][0]['a'])),
-            np.absolute(100*((cdat[key][0]['w']-params[1])/cdat[key][0]['w'])),
-            np.absolute(100*((cdat[key][0]['b']-params[2])/cdat[key][0]['b']))]
 
-            Gpdiff=[np.absolute(100*((cdat[key][1]['a']-params[3])/cdat[key][1]['a'])),
-            np.absolute(100*((cdat[key][1]['w']-params[4])/cdat[key][1]['w'])),
-            np.absolute(100*((cdat[key][1]['b']-params[5])/cdat[key][1]['b']))]
+        PGp=np.array(Gp_params)
+        PG=np.array(G_params)
 
-            dfG=np.average(Gdiff)
-            dfGp=np.average(Gpdiff)
-            df=np.average([dfG,dfGp])
+        layer_keys=['monolayer','bilayer','trilayer','four layers','five layers','graphene']
+
+        for key in layer_keys:
+            LGp=np.array([cdat[key][1]['a'],cdat[key][1]['w'],cdat[key][1]['b']])
+            LG=np.array([cdat[key][0]['a'],cdat[key][0]['w'],cdat[key][0]['b']])
+
+            dfGp=np.average(np.absolute(100*(PGp-LGp)/LGp),weights=[1,1,0.5])
+            dfG=np.average(np.absolute(100*(PG-LG)/LG),weights=[1,1,0.5])
+            drat=np.absolute(100*(((PG[0]/PGp[0])-(LG[0]/LGp[0]))/(LG[0]/LGp[0])))
+            df=np.average([dfGp,dfG,drat],weights=[0.5,0.5,1])
             diffs.append(df)
 
-        self.diff_plot=pg.plot(x,diffs,pen=None,symbol='o')
-        #raman.layout.addWidget(self.diff_graph,3,1)
+        diff_array=np.array(diffs)
+        idx=diffs.index(np.min(diff_array))
+        
+        self.layers=layer_keys[idx]
+
+        self.diff_plot=pg.plot(x,diff_array,pen=None,symbol='o')
+        self.diff_plot.setLabel('left',u'\u0394'+'[%]')
+        self.diff_plot.setLabel('bottom','# Layers')
+        self.diff_plot.win.hide()
 
     def fitToPlot(self,x,y):
         I=self.backgroundFit(x,y)
-        fit_params,fit_cov=curve_fit(self.Lfit,x,y,
-            bounds=([0.3*np.max(I),33,1400,0.3*np.max(I),32,2000,0,10,1300],[1.5*np.max(I),60,2000,1.5*np.max(I),60,3000,np.max(I),50,1400]))
-        
-        y_fit=self.Lfit(x,fit_params[0],fit_params[1],fit_params[2],fit_params[3],fit_params[4],fit_params[5],fit_params[6],fit_params[7],fit_params[8])
-        self.fit_plot=pg.plot(x,y_fit)
-        self.overlay_plot=pg.plot(x,y_fit,pen=(0,2))
-        self.overlay_plot.plot(x,y,pen=(1,2))
+        pG=[1.1*np.max(I), 50, 1581.6] #a w b
+        pGp=[1.1*np.max(I), 50, 2675]
+        pD=[0.1*np.max(I),15,1350]
+
+        #fit G peak
+        G_param,G_cov=curve_fit(self.Single_Lorentz,x,y,bounds=([0.3*np.max(I),33,1400],[1.5*np.max(I),60,2000]),p0=pG)
+        G_fit=self.Single_Lorentz(x,G_param[0],G_param[1],G_param[2])
+
+        #fit G' peak
+        Gp_param,Gp_cov=curve_fit(self.Single_Lorentz,x,y,bounds=([0.3*np.max(I),32,2000],[1.5*np.max(I),60,3000]),p0=pGp)
+        Gp_fit=self.Single_Lorentz(x,Gp_param[0],Gp_param[1],Gp_param[2])
+
+        #fit D peak
+        D_param,D_cov=curve_fit(self.Single_Lorentz,x,y,bounds=([0,10,1300],[np.max(I),50,1400]),p0=pD)
+        D_fit=self.Single_Lorentz(x,D_param[0],D_param[1],D_param[2])
+
+        y_fit=G_fit+Gp_fit+D_fit
+        self.checkParams(G_param,Gp_param)
+
+        test_params=cdat[self.layers]
+        G_test=self.Single_Lorentz(x,test_params[0]['a'],test_params[0]['w'],test_params[0]['b'])
+        Gp_test=self.Single_Lorentz(x,test_params[1]['a'],test_params[1]['w'],test_params[1]['b'])
+        y_test=G_test+Gp_test
+
+        self.fit_plot=pg.plot(x,y_fit,pen='k')
+        self.fit_plot.setRange(yRange=[0,1])
+        self.fit_plot.setLabel('left','I<sub>norm</sub>[arb]')
+        self.fit_plot.setLabel('bottom',u'\u03c9'+'[cm<sup>-1</sup>]')
+        self.fit_plot.win.hide()
+
+        self.overlay_plot=pg.plot()
+        self.overlay_plot.addLegend(offset=(-1,1))
+        self.overlay_plot.plot(x,y,pen='g',name='Raw Data')
+        self.overlay_plot.plot(x,y_fit,pen='r',name='Fitted Data')
+        self.overlay_plot.plot(x,y_test,pen='b',name='Test Data')
+        self.overlay_plot.setLabel('left','I<sub>norm</sub>[arb]')
+        self.overlay_plot.setLabel('bottom',u'\u03c9'+'[cm<sup>-1</sup>]')
+        self.overlay_plot.win.hide()
 
         self.fitting_params=QtWidgets.QLabel(
             """Fitting Parameters:
             G Peak:
-                """u'\u03b1'"""="""+str(round(fit_params[0],4))+"""
-                """u'\u0393'"""="""+str(round(fit_params[1],4))+"""
-                """u'\u03c9'"""="""+str(round(fit_params[2],4))+"""
+                """u'\u03b1'"""="""+str(round(G_param[0],4))+"""
+                """u'\u0393'"""="""+str(round(G_param[1],4))+"""
+                """u'\u03c9'"""="""+str(round(G_param[2],4))+"""
             G' Peak:
-                """u'\u03b1'"""="""+str(round(fit_params[3],4))+"""
-                """u'\u0393'"""="""+str(round(fit_params[4],4))+"""
-                """u'\u03c9'"""="""+str(round(fit_params[5],4))+"""
+                """u'\u03b1'"""="""+str(round(Gp_param[0],4))+"""
+                """u'\u0393'"""="""+str(round(Gp_param[1],4))+"""
+                """u'\u03c9'"""="""+str(round(Gp_param[2],4))+"""
             D Peak:
-                """u'\u03b1'"""="""+str(round(fit_params[6],4))+"""
-                """u'\u0393'"""="""+str(round(fit_params[7],4))+"""
-                """u'\u03c9'"""="""+str(round(fit_params[8],4)))
+                """u'\u03b1'"""="""+str(round(D_param[0],4))+"""
+                """u'\u0393'"""="""+str(round(D_param[1],4))+"""
+                """u'\u03c9'"""="""+str(round(D_param[2],4))+"""
+            Quality="""+str(round(1-(D_param[0]/G_param[0]),4))+"""
+            Best Case Match: """+self.layers)
 
-        self.checkParams(fit_params)
+        self.fitting_params.setFixedSize(300,500)
         raman.layout.addWidget(self.fitting_params,2,2)
 
     def plotSpect(self,x,y):
         y_norm=[]
         for i in y:
             y_norm.append((i-np.min(y))/(np.max(y)-np.min(y)))
-        self.spect_plot=pg.plot(x,y_norm)
+        self.spect_plot=pg.plot(x,y_norm,pen='k')
+        self.spect_plot.setFixedSize(400,500)
+        self.spect_plot.setLabel('left','I<sub>norm</sub>[arb]')
+        self.spect_plot.setLabel('bottom',u'\u03c9'+'[cm<sup>-1</sup>]')
+        self.spect_plot.win.hide()
+
         self.fitToPlot(x,y_norm)
 
         self.TabWidget=QtWidgets.QTabWidget()
         self.TabWidget.addTab(self.fit_plot,"Fit")
         self.TabWidget.addTab(self.overlay_plot,"Overlay")
         self.TabWidget.addTab(self.diff_plot,"Diffs")
+        self.TabWidget.setFixedSize(400,500)
 
         raman.layout.addWidget(self.TabWidget,2,1)
         raman.layout.addWidget(self.spect_plot,2,0)
