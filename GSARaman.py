@@ -27,6 +27,11 @@ class GSARaman(QtWidgets.QWidget):
         self.layout=QtWidgets.QGridLayout(self)
         self.layout.setAlignment(QtCore.Qt.AlignTop)
 
+        self.displayWidget=QtWidgets.QStackedWidget()
+        self.displayWidget.addWidget(SingleSpect)
+        self.displayWidget.addWidget(MapFit)
+        self.layout.addWidget(self.displayWidget,2,0,1,3)
+
         self.flbut=QtWidgets.QPushButton('Upload File')
         self.flbut.clicked.connect(self.openFileName)
         self.flbut.setFixedSize(400,30)
@@ -59,14 +64,13 @@ class GSARaman(QtWidgets.QWidget):
                 self.fitbut.setEnabled(True)
         else:
             del filelist[-1]
-        print filelist
 
     def checkFileType(self):
         for flnm in filelist:
             if flnm[0][-3:]=='csv':
                 self.data=pd.read_csv(flnm[0])
             else:
-                self.data=pd.read_fwf(flnm[0])
+                self.data=pd.read_csv(flnm[0])
 
             cols=self.data.shape[1]
             rows=self.data.shape[0]
@@ -85,18 +89,29 @@ class GSARaman(QtWidgets.QWidget):
     def doFitting(self):
         self.checkFileType()
         if self.spect_type=='single':
-            self.widget=SingleSpect()
+            self.widget=SingleSpect
+            self.displayWidget.setCurrentWidget(self.widget)
+
             x=np.array(self.data.iloc[:,0])
             y=np.array(self.data.iloc[:,1])
+
             self.widget.plotSpect(x,y)
             self.fitbut.setEnabled(False)
         else:
-            self.widget=MapFit()
+            self.widget=MapFit
+            self.displayWidget.setCurrentWidget(self.widget)
+
+            x=np.array(self.data.iloc[1:,0])
+            y_data=pd.DataFrame(self.data.iloc[:,1:])
+
+            print x
 
 
 class SingleSpect(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(SingleSpect,self).__init__(parent=parent)
+        self.layout=QtWidgets.QGridLayout(self)
+        self.layout.setAlignment(QtCore.Qt.AlignTop)
 
     def Single_Lorentz(self, x,a,w,b):
         return a*(((w/2)**2)/(((x-b)**2)+((w/2)**2)))
@@ -211,7 +226,7 @@ class SingleSpect(QtWidgets.QWidget):
             Best Case Match: """+self.layers+"""(Ratio of D to G)""")
 
         self.fitting_params.setFixedSize(300,500)
-        raman.layout.addWidget(self.fitting_params,2,2)
+        self.layout.addWidget(self.fitting_params,2,2)
 
     def plotSpect(self,x,y):
         y_norm=[]
@@ -231,21 +246,42 @@ class SingleSpect(QtWidgets.QWidget):
         self.TabWidget.addTab(self.diff_plot,"Diffs")
         self.TabWidget.setFixedSize(400,500)
 
-        raman.layout.addWidget(self.TabWidget,2,1)
-        raman.layout.addWidget(self.spect_plot,2,0)
+        self.layout.addWidget(self.TabWidget,2,1)
+        self.layout.addWidget(self.spect_plot,2,0)
 
 class MapFit(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(MapFit,self).__init__(parent=parent)
+        self.layout=QtWidgets.QGridLayout(self)
+        self.layout.setAlignment(QtCore.Qt.AlignTop)
 
         self.pickParam=QtWidgets.QComboBox()
+        self.pickParam.setFixedSize(400,30)
         self.pickParam.addItem("G Peak")
         self.pickParam.addItem("G' Peak")
         self.pickParam.addItem("D Peak")
-        raman.layout.addWidget(self.pickParam,1,0)
+        self.pickParam.setEnabled(False)
+
+        self.mapPlot=QtWidgets.QTabWidget()
+        self.mapPlot.setFixedSize(400,500)
+
+        self.spectPlots=QtWidgets.QTabWidget()
+        self.spectPlots.setFixedSize(400,500)
+        self.layout.addWidget(self.spectPlots,)
+
+        self.layout.addWidget(self.pickParam,0,0)
+        self.layout.addWidget(self.mapPlot,1,0)
+        self.layout.addWidget(self.spectPlots,1,1)
+
+    #def mapLoop(self,x,y_data):
+        #for column in y_data:
+            #need to find the fitting parameters
+
 
 
 app=QtWidgets.QApplication([])
+SingleSpect=SingleSpect()
+MapFit=MapFit()
 raman=GSARaman()
 raman.show()
 app.exec_()
