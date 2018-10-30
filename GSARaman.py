@@ -43,18 +43,31 @@ class GSARaman(QtWidgets.QWidget):
         self.download_but.setFixedSize(400,30)
         self.layout.addWidget(self.download_but,1,1)
 
+        self.errmsg=QtWidgets.QMessageBox()
+
     def openFileName(self):
         fpath=QtWidgets.QFileDialog.getOpenFileName()
         filelist.append(fpath)
         if filelist[-1][0]!=u'':
-            self.fitbut.setEnabled(True)
+            if filelist[-1][0][-3:]!='txt' and filelist[-1][0][-3:]!='csv':
+                self.errmsg.setIcon(QtWidgets.QMessageBox.Critical)
+                self.errmsg.setText('Please upload a .txt or .csv')
+                self.errmsg.exec_()
+
+                del filelist[-1]
+            else:
+                self.fitbut.setEnabled(True)
         else:
             del filelist[-1]
         print filelist
 
     def checkFileType(self):
         for flnm in filelist:
-            self.data=pd.read_csv(flnm[0])
+            if flnm[0][-3:]=='csv':
+                self.data=pd.read_csv(flnm[0])
+            else:
+                self.data=pd.read_fwf(flnm[0])
+
             cols=self.data.shape[1]
             rows=self.data.shape[0]
             if cols == 1:
@@ -134,6 +147,9 @@ class SingleSpect(QtWidgets.QWidget):
         self.diff_plot=pg.plot(x,diff_array,pen=None,symbol='o')
         self.diff_plot.setLabel('left',u'\u0394'+'[%]')
         self.diff_plot.setLabel('bottom','# Layers')
+        ticks=[list(zip(range(7),('','1','2','3','4','5','graphene')))]
+        self.diff_label=self.diff_plot.getAxis('bottom')
+        self.diff_label.setTicks(ticks)
         self.diff_plot.win.hide()
 
     def fitToPlot(self,x,y):
@@ -192,7 +208,7 @@ class SingleSpect(QtWidgets.QWidget):
                 """u'\u0393'"""="""+str(round(D_param[1],4))+"""
                 """u'\u03c9'"""="""+str(round(D_param[2],4))+"""
             Quality="""+str(round(1-(D_param[0]/G_param[0]),4))+"""
-            Best Case Match: """+self.layers)
+            Best Case Match: """+self.layers+"""(Ratio of D to G)""")
 
         self.fitting_params.setFixedSize(300,500)
         raman.layout.addWidget(self.fitting_params,2,2)
@@ -221,6 +237,12 @@ class SingleSpect(QtWidgets.QWidget):
 class MapFit(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(MapFit,self).__init__(parent=parent)
+
+        self.pickParam=QtWidgets.QComboBox()
+        self.pickParam.addItem("G Peak")
+        self.pickParam.addItem("G' Peak")
+        self.pickParam.addItem("D Peak")
+        raman.layout.addWidget(self.pickParam,1,0)
 
 
 app=QtWidgets.QApplication([])
