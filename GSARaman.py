@@ -4,6 +4,7 @@ import pyqtgraph as pg
 import pandas as pd
 import numpy as np
 from scipy.optimize import curve_fit
+from multiprocessing import Pool
 
 pg.setConfigOption('background','w')
 pg.setConfigOption('foreground','k')
@@ -70,7 +71,7 @@ class GSARaman(QtWidgets.QWidget):
             if flnm[0][-3:]=='csv':
                 self.data=pd.read_csv(flnm[0])
             else:
-                self.data=pd.read_csv(flnm[0])
+                self.data=pd.read_table(flnm[0])
 
             cols=self.data.shape[1]
             rows=self.data.shape[0]
@@ -101,10 +102,7 @@ class GSARaman(QtWidgets.QWidget):
             self.widget=MapFit
             self.displayWidget.setCurrentWidget(self.widget)
 
-            x=np.array(self.data.iloc[1:,0])
-            y_data=pd.DataFrame(self.data.iloc[:,1:])
-
-            print x
+            self.widget.prepareData(self.data)
 
 
 class SingleSpect(QtWidgets.QWidget):
@@ -232,6 +230,7 @@ class SingleSpect(QtWidgets.QWidget):
         y_norm=[]
         for i in y:
             y_norm.append((i-np.min(y))/(np.max(y)-np.min(y)))
+
         self.spect_plot=pg.plot(x,y_norm,pen='k')
         self.spect_plot.setFixedSize(400,500)
         self.spect_plot.setLabel('left','I<sub>norm</sub>[arb]')
@@ -273,9 +272,66 @@ class MapFit(QtWidgets.QWidget):
         self.layout.addWidget(self.mapPlot,1,0)
         self.layout.addWidget(self.spectPlots,1,1)
 
-    #def mapLoop(self,x,y_data):
-        #for column in y_data:
-            #need to find the fitting parameters
+        self.param_dict={}
+
+    def prepareData(self,data):
+        rows=data.shape[0]
+
+        freqs=np.array(data.columns.values[2:])
+        
+        pos=np.array(data.iloc[:,0:2])
+        I_data=np.array(data.iloc[:,2:])
+
+        self.data_dict={}
+        keys=[]
+        values=[]
+        for i in range(rows):
+            keys.append(tuple(pos[i]))
+            values.append(I_data[i])
+    
+        self.data_dict=dict(zip(keys,values))
+
+    def fitting(self,point):
+        #normalize y
+        y=self.data_dict[point]
+        y_norm=[]
+        for i in y:
+            y_norm.append((i-np.min(y))/(np.max(y)-np.min(y)))
+
+        #perform background fitting
+        I=self.backgroundFit(x,y)
+
+        #set bounds on parameters
+        pG=[1.1*np.max(I), 50, 1581.6] #a w b
+        pGp=[1.1*np.max(I), 50, 2675]
+        pD=[0.1*np.max(I),15,1350]
+
+        #find parameters
+        #fit G peak
+        G_param,G_cov=curve_fit(self.Single_Lorentz,x,y,bounds=([0.3*np.max(I),33,1400],[1.5*np.max(I),60,2000]),p0=pG)
+        G_fit=self.Single_Lorentz(x,G_param[0],G_param[1],G_param[2])
+
+        #fit G' peak
+        Gp_param,Gp_cov=curve_fit(self.Single_Lorentz,x,y,bounds=([0.3*np.max(I),32,2000],[1.5*np.max(I),60,3000]),p0=pGp)
+        Gp_fit=self.Single_Lorentz(x,Gp_param[0],Gp_param[1],Gp_param[2])
+
+        #fit D peak
+        D_param,D_cov=curve_fit(self.Single_Lorentz,x,y,bounds=([0,10,1300],[np.max(I),50,1400]),p0=pD)
+        D_fit=self.Single_Lorentz(x,D_param[0],D_param[1],D_param[2])
+
+        #return dictionary with: key=point, list[Gdict, Gpdict, Ddict]
+        Gdict={'a':G_param[0],'w':G_param[1],'b':G_param[2]}
+        Gpdict={'a':Gp_param[0],'w':Gp_param[1],'b':Gp_param[2]}
+        Ddict={'a':D_param[0],'w':D_param[1],'b':D_param[2]}
+
+        self.param_dict.update({point:[Gdict,Gpdict,Ddict]})
+
+    def mapLoop(self):
+        pool=Pool(processes=None)
+
+        pool.map(self.fitting,data_dict.keys())
+
+
 
 
 
