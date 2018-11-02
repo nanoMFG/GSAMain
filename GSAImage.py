@@ -236,10 +236,10 @@ class GSAImage:
 
 	def selectMod(self,index):
 		if index >= 0:
-			# try:
-			self.modifications[index].update_view()
-			# except:
-				# pass
+			try:
+				self.modifications[index].update_view()
+			except:
+				pass
 			self.wDetail.setCurrentIndex(index)
 		elif self.wModList.count() > 0:
 			self.wModList.setCurrentRow(self.wModList.count()-1)
@@ -1383,7 +1383,7 @@ class DrawScale(Modification):
 		super(DrawScale,self).__init__(mod_in,img_item,properties)
 		self.wLayout = pg.LayoutWidget()
 		self.wLayout.layout.setAlignment(QtCore.Qt.AlignTop)
-
+		self.properties['scale'] = 1
 		self.wImgBox = pg.GraphicsLayoutWidget()
 		self.wImgBox_VB = self.wImgBox.addViewBox(row=1,col=1)
 		self.wImgROI = pg.ImageItem()
@@ -1397,7 +1397,7 @@ class DrawScale(Modification):
 		self.wScale = QtGui.QLabel('1')
 		self.wScale.setFixedWidth(60)
 
-		self.wLengthEdit = QtGui.QLineEdit(str(self.scale))
+		self.wLengthEdit = QtGui.QLineEdit(str(self.properties['scale']))
 		self.wLengthEdit.setFixedWidth(60)
 		self.wLengthEdit.setValidator(QtGui.QDoubleValidator())
 		x,y = self.mod_in.image().shape
@@ -1437,7 +1437,7 @@ class DrawScale(Modification):
 		self.properties['num_pixels'] = len(self.roi.getArrayRegion(self.mod_in.image(),self.img_item))
 		self.wPixels.setNum(self.properties['num_pixels'])
 		self.properties['scale_length_um'] = float(self.wLengthEdit.text())
-		if self.num_pixels != 0:
+		if self.properties['num_pixels'] != 0:
 			self.properties['scale'] = self.properties['scale_length_um'] / self.properties['num_pixels']
 		self.wScale.setText(str(self.properties['scale']))
 

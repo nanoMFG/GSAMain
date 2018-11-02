@@ -2,8 +2,9 @@ from __future__ import division
 import pandas as pd
 import sys, operator, os
 from PyQt5 import QtGui, QtCore
+from models import ResultsTableModel
 from GSAImage import GSAImage
-from GSAStats import GSAStats
+from GSAStats import TSNEWidget, PlotWidget
 from gresq.csv2db import build_db
 from gresq.database import sample, preparation_step, dal, Base
 from sqlalchemy import String, Integer, Float, Numeric
@@ -76,14 +77,16 @@ class GSAQuery(QtGui.QWidget):
 		self.filters = []
 		self.filter_fields = QtGui.QStackedWidget()
 		self.filter_fields.setMaximumHeight(50)
-		self.filter_fields.setSizePolicy(QtGui.QSizePolicy.Fixed,QtGui.QSizePolicy.Preferred)
+		self.filter_fields.setSizePolicy(QtGui.QSizePolicy.Maximum,QtGui.QSizePolicy.Preferred)
 		self.filters_dict = {}
 		for field in graphene_fields+conditions_fields:
 			widget = self.generate_field(field)
+			widget.setSizePolicy(QtGui.QSizePolicy.Maximum,QtGui.QSizePolicy.Preferred)
 			self.filters_dict[getattr(sample,field).info['verbose_name']] = widget
 			self.filter_fields.addWidget(widget)
 		for field in furnace_fields:
 			widget = self.generate_field(field)
+			widget.setSizePolicy(QtGui.QSizePolicy.Maximum,QtGui.QSizePolicy.Preferred)
 			self.filters_dict[getattr(preparation_step,field).info['verbose_name']] = widget
 			self.filter_fields.addWidget(widget)
 
@@ -106,9 +109,10 @@ class GSAQuery(QtGui.QWidget):
 		self.filter_table.setColumnWidth(2,100)
 		self.filter_table.setColumnWidth(3,25)
 		self.filter_table.setWordWrap(True)
+		self.filter_table.verticalHeader().setVisible(False)
 
 		self.results = ResultsWidget()
-		self.results.setFixedWidth(500)
+		self.results.setMinimumWidth(500)
 
 		self.preview = PreviewWidget()
 		self.results.results_table.activated.connect(lambda x: self.preview.select(self.results.results_model,x))
@@ -138,7 +142,6 @@ class GSAQuery(QtGui.QWidget):
 		self.layout.addWidget(self.results,1,1,8,1)
 		self.layout.addWidget(previewLabel,0,2,1,1)
 		self.layout.addWidget(self.preview,1,2,8,1)
-		self.layout.setColumnStretch(0,0.5)
 
 	def generate_field(self,field):
 		if field in graphene_fields or field in conditions_fields:
@@ -319,7 +322,7 @@ class GrapheneWidget(QtGui.QWidget):
 
 	def setData(self,model,index):
 		for field in graphene_fields:
-			value = model.df[field][index.row()]
+			value = model.df[field].iloc[index.row()]
 			if pd.isnull(value):
 				value = ''
 			self.fields[field]['value'].setText(str(value))
@@ -335,10 +338,12 @@ class ResultsWidget(QtGui.QTabWidget):
 		self.results_table.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
 		self.results_table.setSortingEnabled(True)
 
-		self.stats = GSAStats()
+		self.tsne = TSNEWidget()
+		self.plot = PlotWidget()
 
 		self.addTab(self.results_table,'Query Results')
-		self.addTab(self.stats,'Statistics')
+		self.addTab(self.plot,'Plotting')
+		self.addTab(self.tsne,'t-SNE')
 
 	def query(self,filters):
 		self.results_model = ResultsTableModel()
@@ -351,49 +356,10 @@ class ResultsWidget(QtGui.QTabWidget):
 			if self.results_model.df.columns[c] not in results_fields:
 				self.results_table.hideColumn(c)
 		self.results_table.resizeColumnsToContents()
-		stats_df = self.results_model.df.copy(deep=True)
 		# stats_df.columns = [getattr(sample,field).info['verbose_name'] for field in self.stats.df.columns]
-		self.stats.setData(stats_df)
+		self.plot.setData(self.results_model.df.copy(deep=True))
+		self.tsne.setData(self.results_model.df.copy(deep=True))
 
-class ResultsTableModel(QtCore.QAbstractTableModel):
-	def __init__(self,parent=None):
-		super(ResultsTableModel,self).__init__(parent=parent)
-		self.df = pd.DataFrame()
-
-	def read_sqlalchemy(self,statement,session):
-		self.beginResetModel()
-		self.df = pd.read_sql_query(statement,session.connection())
-		self.endResetModel()
-
-	def rowCount(self, parent):
-		return self.df.shape[0]
-
-	def columnCount(self, parent):
-		return self.df.shape[1]
-
-	def data(self,index,role=QtCore.Qt.DisplayRole):
-		if index.isValid():
-			if role == QtCore.Qt.DisplayRole:
-				i,j = index.row(),index.column()
-				value = self.df.iloc[i,j]
-				if pd.isnull(value):
-					return ''
-				else:
-					return str(value)
-		return QtCore.QVariant()
-
-	def headerData(self,section,orientation,role=QtCore.Qt.DisplayRole):
-		if role == QtCore.Qt.DisplayRole and orientation == QtCore.Qt.Horizontal:
-			return getattr(sample,self.df.columns[section]).info['verbose_name']
-		return QtCore.QAbstractTableModel.headerData(self,section,orientation,role)
-
-	def sort(self,column,order=QtCore.Qt.AscendingOrder):
-		self.layoutAboutToBeChanged.emit()
-		if order == QtCore.Qt.AscendingOrder:
-			self.df = self.df.sort_values(by=self.df.columns[column],ascending=True)
-		elif order == QtCore.Qt.DescendingOrder:
-			self.df = self.df.sort_values(by=self.df.columns[column],ascending=False)
-		self.layoutChanged.emit()
 
 if __name__ == '__main__':
 	dal.init_db(config['development'])
