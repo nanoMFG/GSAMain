@@ -3,11 +3,10 @@ import pyqtgraph as pg
 import numpy as np
 from pandas.api.types import is_numeric_dtype
 import copy
-from mlxtend.frequent_patterns import apriori
 from sklearn.manifold import TSNE
 from PyQt5 import QtGui, QtCore
 from gresq.database import sample, preparation_step, dal, Base
-from GSAImage import GSAImage
+from models import ItemsetsTableModel
 
 class PlotWidget(QtGui.QWidget):
 	def __init__(self,parent=None):
@@ -158,54 +157,4 @@ class FeatureSelectionItem(QtGui.QWidget):
 
 	def get_selected_features(self):
 		return self.feature_list.selectedItems()
-
-class ItemsetsTableModel(QtCore.QAbstractTableModel):
-	def __init__(self,parent=None):
-		super(ItemsetsTableModel,self).__init__(parent=parent)
-		self.frequent_itemsets = pd.DataFrame()
-		self.items = []
-
-	def rowCount(self, parent):
-		return self.frequent_itemsets.shape[0]
-
-	def columnCount(self, parent):
-		return self.frequent_itemsets.shape[1]
-
-	def data(self,index,role=QtCore.Qt.DisplayRole):
-		if index.isValid():
-			if role == QtCore.Qt.DisplayRole:
-				i,j = index.row(),index.column()
-				value = self.frequent_itemsets.iloc[i,j]
-				if pd.isnull(value):
-					return ''
-				else:
-					return str(value)
-		return QtCore.QVariant()
-
-	def headerData(self,section,orientation,role=QtCore.Qt.DisplayRole):
-		if role == QtCore.Qt.DisplayRole and orientation == QtCore.Qt.Horizontal:
-			return self.frequent_itemsets.columns[section]
-		return QtCore.QAbstractTableModel.headerData(self,section,orientation,role)
-
-	def sort(self,column,order=QtCore.Qt.AscendingOrder):
-		self.layoutAboutToBeChanged.emit()
-		if order == QtCore.Qt.AscendingOrder:
-			self.frequent_itemsets.sort_values(by=self.frequent_itemsets.columns[column],ascending=True,inplace=True)
-		elif order == QtCore.Qt.DescendingOrder:
-			self.frequent_itemsets.sort_values(by=self.frequent_itemsets.columns[column],ascending=False,inplace=True)
-		self.layoutChanged.emit()
-
-	def update_frequent_itemsets(self,df,min_support=0.5):
-		self.beginResetModel()
-		dfisnull = ~pd.isnull(df)
-		self.items = df.columns
-		self.frequent_itemsets = apriori(dfisnull,use_colnames=True,min_support=0.5)
-		self.frequent_itemsets.columns = ['Support','Feature Set']
-		self.frequent_itemsets['# Features'] = self.frequent_itemsets['Feature Set'].apply(lambda x: len(x))
-		self.frequent_itemsets['Feature Set'] = self.frequent_itemsets['Feature Set'].apply(lambda x: tuple(x))
-		self.frequent_itemsets.sort_values(by='# Features',ascending=False)
-		self.frequent_itemsets = self.frequent_itemsets[['Support','# Features','Feature Set']]
-		self.endResetModel()
-
-
 

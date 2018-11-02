@@ -2,6 +2,7 @@ from __future__ import division
 import pandas as pd
 import sys, operator, os
 from PyQt5 import QtGui, QtCore
+from models import ResultsTableModel
 from GSAImage import GSAImage
 from GSAStats import TSNEWidget, PlotWidget
 from gresq.csv2db import build_db
@@ -359,45 +360,6 @@ class ResultsWidget(QtGui.QTabWidget):
 		self.plot.setData(self.results_model.df.copy(deep=True))
 		self.tsne.setData(self.results_model.df.copy(deep=True))
 
-class ResultsTableModel(QtCore.QAbstractTableModel):
-	def __init__(self,parent=None):
-		super(ResultsTableModel,self).__init__(parent=parent)
-		self.df = pd.DataFrame()
-
-	def read_sqlalchemy(self,statement,session):
-		self.beginResetModel()
-		self.df = pd.read_sql_query(statement,session.connection())
-		self.endResetModel()
-
-	def rowCount(self, parent):
-		return self.df.shape[0]
-
-	def columnCount(self, parent):
-		return self.df.shape[1]
-
-	def data(self,index,role=QtCore.Qt.DisplayRole):
-		if index.isValid():
-			if role == QtCore.Qt.DisplayRole:
-				i,j = index.row(),index.column()
-				value = self.df.iloc[i,j]
-				if pd.isnull(value):
-					return ''
-				else:
-					return str(value)
-		return QtCore.QVariant()
-
-	def headerData(self,section,orientation,role=QtCore.Qt.DisplayRole):
-		if role == QtCore.Qt.DisplayRole and orientation == QtCore.Qt.Horizontal:
-			return getattr(sample,self.df.columns[section]).info['verbose_name']
-		return QtCore.QAbstractTableModel.headerData(self,section,orientation,role)
-
-	def sort(self,column,order=QtCore.Qt.AscendingOrder):
-		self.layoutAboutToBeChanged.emit()
-		if order == QtCore.Qt.AscendingOrder:
-			self.df = self.df.sort_values(by=self.df.columns[column],ascending=True)
-		elif order == QtCore.Qt.DescendingOrder:
-			self.df = self.df.sort_values(by=self.df.columns[column],ascending=False)
-		self.layoutChanged.emit()
 
 if __name__ == '__main__':
 	dal.init_db(config['development'])
