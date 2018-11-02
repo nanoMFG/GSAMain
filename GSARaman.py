@@ -49,6 +49,9 @@ class GSARaman(QtWidgets.QWidget):
         self.download_but.setFixedSize(400,30)
         self.layout.addWidget(self.download_but,1,1)
 
+        self.statusBar=QtWidgets.QProgressBar()
+        self.layout.addWidget(self.statusBar,0,2)
+
         self.errmsg=QtWidgets.QMessageBox()
 
     def openFileName(self):
@@ -102,7 +105,7 @@ class GSARaman(QtWidgets.QWidget):
             self.widget=MapFit
             self.displayWidget.setCurrentWidget(self.widget)
 
-            self.widget.prepareData(self.data)
+            self.widget.mapLoop(self.data)
 
 
 class SingleSpect(QtWidgets.QWidget):
@@ -273,65 +276,85 @@ class MapFit(QtWidgets.QWidget):
         self.layout.addWidget(self.spectPlots,1,1)
 
         self.param_dict={}
-
+    
     def prepareData(self,data):
         rows=data.shape[0]
 
-        freqs=np.array(data.columns.values[2:])
+        self.freqs=np.array(data.columns.values[2:],dtype=float)
         
-        pos=np.array(data.iloc[:,0:2])
-        I_data=np.array(data.iloc[:,2:])
+        self.pos=np.array(data.iloc[:,0:2],)
+        self.I_data=np.array(data.iloc[:,2:])
 
-        self.data_dict={}
-        keys=[]
-        values=[]
+        self.I_norm=[]
+        for i in self.I_data:
+            self.I_norm.append((i-np.min(self.I_data))/(np.max(self.I_data)-np.min(self.I_data)))
+        self.I_norm=np.array(self.I_norm,dtype=float)
+
+        self.data_list=[]
         for i in range(rows):
-            keys.append(tuple(pos[i]))
-            values.append(I_data[i])
-    
-        self.data_dict=dict(zip(keys,values))
+            self.data_list.append((tuple(self.pos[i]),self.freqs,self.I_norm[i]))
 
-    def fitting(self,point):
-        #normalize y
-        y=self.data_dict[point]
-        y_norm=[]
-        for i in y:
-            y_norm.append((i-np.min(y))/(np.max(y)-np.min(y)))
+    def mapLoop(self,data):
+        self.prepareData(data)
+        self.completed=0
+        length=len(self.data_list)
 
-        #perform background fitting
-        I=self.backgroundFit(x,y)
-
-        #set bounds on parameters
-        pG=[1.1*np.max(I), 50, 1581.6] #a w b
-        pGp=[1.1*np.max(I), 50, 2675]
-        pD=[0.1*np.max(I),15,1350]
-
-        #find parameters
-        #fit G peak
-        G_param,G_cov=curve_fit(self.Single_Lorentz,x,y,bounds=([0.3*np.max(I),33,1400],[1.5*np.max(I),60,2000]),p0=pG)
-        G_fit=self.Single_Lorentz(x,G_param[0],G_param[1],G_param[2])
-
-        #fit G' peak
-        Gp_param,Gp_cov=curve_fit(self.Single_Lorentz,x,y,bounds=([0.3*np.max(I),32,2000],[1.5*np.max(I),60,3000]),p0=pGp)
-        Gp_fit=self.Single_Lorentz(x,Gp_param[0],Gp_param[1],Gp_param[2])
-
-        #fit D peak
-        D_param,D_cov=curve_fit(self.Single_Lorentz,x,y,bounds=([0,10,1300],[np.max(I),50,1400]),p0=pD)
-        D_fit=self.Single_Lorentz(x,D_param[0],D_param[1],D_param[2])
-
-        #return dictionary with: key=point, list[Gdict, Gpdict, Ddict]
-        Gdict={'a':G_param[0],'w':G_param[1],'b':G_param[2]}
-        Gpdict={'a':Gp_param[0],'w':Gp_param[1],'b':Gp_param[2]}
-        Ddict={'a':D_param[0],'w':D_param[1],'b':D_param[2]}
-
-        self.param_dict.update({point:[Gdict,Gpdict,Ddict]})
-
-    def mapLoop(self):
         pool=Pool(processes=None)
+        for i in pool.imap_unordered(fitting, self.data_list):
+            self.completed+=(1/length)*100
+            raman.statusBar.setValue(self.completed)
+            self.param_dict.update(i)
 
-        pool.map(self.fitting,data_dict.keys())
+def Single_Lorentz(x,a,w,b):
+    return a*(((w/2)**2)/(((x-b)**2)+((w/2)**2)))
 
+def backgroundFit(x,y):
+    I_raw=y
+    W=x
 
+    polyx=np.array([W[0],W[int(len(W)/2)],W[len(W)-1]])
+    polyy=np.array([I_raw[0],I_raw[int(len(W)/2)],I_raw[len(W)-1]])        
+    bkgfit=np.polyfit(polyx,polyy,2)
+    bkgpoly=(bkgfit[0]*W**2)+(bkgfit[1]*W)+bkgfit[2]
+    I_raw=I_raw-bkgpoly
+    
+    m=(I_raw[len(W)-1]-I_raw[0])/(W[len(W)-1]-W[0])
+    b=I_raw[len(W)-1]-m*W[len(W)-1]
+    bkglin=m*W+b
+    
+    I_raw=I_raw-bkglin
+    
+    I=((I_raw-np.min(I_raw))/np.max(I_raw-np.min(I_raw)));
+    return I
+
+def fitting(data_tuple):
+    pos=data_tuple[0]
+    x=data_tuple[1]
+    y=data_tuple[2]
+
+    I=backgroundFit(x,y)
+
+    pG=[1.1*np.max(I), 50, 1581.6] #a w b
+    pGp=[1.1*np.max(I), 50, 2675]
+    pD=[0.1*np.max(I),15,1350]
+
+    #fit G peak
+    G_param,G_cov=curve_fit(Single_Lorentz,x,y,bounds=([0.3*np.max(I),33,1400],[1.5*np.max(I),60,2000]),p0=pG)
+    G_fit=Single_Lorentz(x,G_param[0],G_param[1],G_param[2])
+
+    #fit G' peak
+    Gp_param,Gp_cov=curve_fit(Single_Lorentz,x,y,bounds=([0.3*np.max(I),32,2000],[1.5*np.max(I),60,3000]),p0=pGp)
+    Gp_fit=Single_Lorentz(x,Gp_param[0],Gp_param[1],Gp_param[2])
+
+    #fit D peak
+    D_param,D_cov=curve_fit(Single_Lorentz,x,y,bounds=([0,10,1300],[np.max(I),50,1400]),p0=pD)
+    D_fit=Single_Lorentz(x,D_param[0],D_param[1],D_param[2])
+
+    Gdict={'a':G_param[0],'w':G_param[1],'b':G_param[2]}
+    Gpdict={'a':Gp_param[0],'w':Gp_param[1],'b':Gp_param[2]}
+    Ddict={'a':D_param[0],'w':D_param[1],'b':D_param[2]}
+
+    return {pos:[Gdict,Gpdict,Ddict]}
 
 
 
