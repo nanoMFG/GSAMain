@@ -6,14 +6,14 @@ import copy
 from sklearn.manifold import TSNE
 from PyQt5 import QtGui, QtCore
 from gresq.database import sample, preparation_step, dal, Base
-from models import ItemsetsTableModel
+from models import ItemsetsTableModel, ResultsTableModel
 
 class PlotWidget(QtGui.QWidget):
 	def __init__(self,parent=None):
 		super(PlotWidget,self).__init__(parent=parent)
 		self.layout = QtGui.QGridLayout(self)
 		self.layout.setAlignment(QtCore.Qt.AlignTop)
-		self.df = pd.DataFrame()
+		self.model = ResultsTableModel()
 
 
 		self.xaxisbox = QtGui.QComboBox()
@@ -32,15 +32,14 @@ class PlotWidget(QtGui.QWidget):
 		self.layout.addWidget(self.yaxisbox,1,1,1,1)
 		self.layout.addWidget(self.plot_widget,2,0,1,2)
 
-	def setData(self,df):
-		self.df = df
-		for c in self.df.columns:
-			if not is_numeric_dtype(self.df[c]):
-				self.df.drop(c,inplace=True,axis=1)
+	def setModel(self,model):
+		self.model = model
 		self.yaxisbox.clear()
 		self.xaxisbox.clear()
-		self.xaxisbox.addItems(self.df.columns)
-		self.yaxisbox.addItems(self.df.columns)
+		for c in self.model.df.columns:
+			if is_numeric_dtype(self.model.df[c]):
+				self.xaxisbox.addItem(c)
+				self.yaxisbox.addItem(c)
 
 	def updatePlot(self):
 		x = self.xaxisbox.currentText()
@@ -70,38 +69,88 @@ class TSNEWidget(QtGui.QStackedWidget):
 		self.addWidget(self.feature)
 		self.addWidget(self.tsne)
 
-		self.tsne.run_button.clicked.connect(lambda: self.tsne.run(self.feature.get_selected_features()))
-
-	def setData(self,df):
-		pass
+		self.tsne.run_button.clicked.connect(
+			lambda: self.tsne.run(self.feature.get_selected_features()))
+		self.feature.go_button.clicked.connect(lambda: self.setCurrentWidget(self.tsne))
+		self.tsne.back_button.clicked.connect(lambda: self.setCurrentWidget(self.feature))
 
 	def setModel(self,model):
 		self.results_model = model
 		self.itemsets_model.update_frequent_itemsets(
-			df=model.df.select_dtypes(include='number'),
+			df=model.df.select_dtypes(include=[np.number]),
 			min_support=float(self.feature.min_support_edit.text())
 			)
 		self.feature.setModel(self.itemsets_model)
+		self.tsne.setModel(self.results_model)
 		
 class TSNEPlot(QtGui.QWidget):
 	def __init__(self,parent=None):
 		super(TSNEPlot,self).__init__(parent=parent)
+		self.model = ResultsTableModel()
+
 		self.layout = QtGui.QGridLayout(self)
 		self.layout.setAlignment(QtCore.Qt.AlignTop)
 
 		self.random_seed = np.random.randint(1,99999)
 		self.plot_widget = pg.PlotWidget()
-		self.tsne_plot = pg.ScatterPlotItem()
+		self.tsne_plot = pg.ScatterPlotItem(symbol="o", size=10, pen=pg.mkPen(0.2),brush=pg.mkBrush(0.7),antialias=True)
+		self.plot_widget.hideAxis('left')
+		self.plot_widget.hideAxis('bottom')
+		self.plot_widget.addItem(self.tsne_plot)
 		
 		self.random_seed_edit = QtGui.QLineEdit(str(self.random_seed))
 		self.random_seed_edit.setValidator(QtGui.QIntValidator(1,99999))
 
-		self.run_button = QtGui.QPushButton('Run t-SNE')
-		self.feature_box = QtGui.QComboBox()
+		self.select_feature = QtGui.QComboBox()
 
-	def run(self,df):
+		self.run_button = QtGui.QPushButton('Run t-SNE')
+		self.back_button = QtGui.QPushButton('<<< Feature Selection')
+		self.save_button = QtGui.QPushButton('')
+		self.save_button.setIcon(self.style().standardIcon(QtGui.QStyle.SP_FileDialogStart))
+		self.save_button.setMaximumWidth(50)
+
+		self.layout.addWidget(self.select_feature,0,0,1,2)
+		self.layout.addWidget(self.plot_widget,1,0,1,2)
+		self.layout.addWidget(self.run_button,2,1)
+		self.layout.addWidget(self.back_button,2,0)
+		self.layout.addWidget(self.save_button,3,0)
+
+		self.select_feature.activated[str].connect(self.setBrushes)
+
+	def setModel(self,model):
+		self.model = model
+		self.select_feature.clear()
+		self.select_feature.addItem('No Coloring')
+		self.select_feature.addItems(list(self.model.df.columns))
+
+	def setBrushes(self,feature):
+		if feature in self.model.df.columns:
+			brushes = []
+			if is_numeric_dtype(self.model.df[feature]):
+				values = self.model.df[feature][self.nonnull_indexes]
+				maxVal = max(values)
+				minVal = min(values)
+				for val in values:
+					if ~pd.isnull(val):
+						index  = int((val-minVal)/(maxVal-minVal)*100)
+						brushes.append(pg.mkBrush(pg.intColor(index=index,values=100)))
+					else:
+						brushes.append(pg.mkBrush(0.2))
+			else:
+				values = self.model.df[feature].unique()
+				for v,val in enumerate(values):
+					if ~pd.isnull(val):
+						index = int(v/len(values)*100)
+						brushes.append(pg.mkBrush(pg.intColor(index=index,values=100)))
+					else:
+						brushes.append(pg.mkBrush(0.2))
+			self.tsne_plot.setBrush(brushes)
+
+	def run(self,features):
+		self.features = features
 		self.tsne = TSNE(random_state=self.random_seed)
-		self.tsne.fit(df)
+		self.nonnull_indexes = ~self.model.df[self.features].isnull().any(1)
+		self.tsne.fit(self.model.df[self.features][self.nonnull_indexes])
 		self.tsne_plot.setData(x=self.tsne.embedding_[:,0],y=self.tsne.embedding_[:,1])
 
 class FeatureSelectionItem(QtGui.QWidget):
@@ -128,11 +177,15 @@ class FeatureSelectionItem(QtGui.QWidget):
 		self.min_support_edit.setFixedWidth(75)
 		self.min_support_edit.setValidator(QtGui.QDoubleValidator(0,1,3))
 
-		self.layout.addWidget(QtGui.QLabel('Manual Feature Selection'),0,0,1,1)
-		self.layout.addWidget(self.feature_list,1,0,4,1)
-		self.layout.addWidget(QtGui.QLabel('Minimum Support:'),1,1,1,1)
-		self.layout.addWidget(self.min_support_edit,1,2,1,1)
-		self.layout.addWidget(self.itemsets_view,5,0,5,3)
+		self.go_button = QtGui.QPushButton('Go to Plot >>>')
+
+		self.layout.addWidget(QtGui.QLabel('Minimum Support'),0,0)
+		self.layout.addWidget(self.min_support_edit,1,0)
+		self.layout.addWidget(self.itemsets_view,2,0)
+		self.layout.addWidget(QtGui.QLabel('Manual Feature Selection'),3,0)
+		self.layout.addWidget(self.feature_list,4,0)
+		
+		self.layout.addWidget(self.go_button,11,0,1,1)
 
 	def setModel(self,model):
 		self.model = model
@@ -150,5 +203,5 @@ class FeatureSelectionItem(QtGui.QWidget):
 			list_item.setSelected(True)
 
 	def get_selected_features(self):
-		return self.feature_list.selectedItems()
+		return [s.text() for s in self.feature_list.selectedItems()]
 

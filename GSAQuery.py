@@ -313,7 +313,7 @@ class GrapheneWidget(QtGui.QWidget):
 			self.fields[field] = {}
 			self.fields[field]['label'] = QtGui.QLabel(getattr(sample,field).info['verbose_name'])
 			self.fields[field]['label'].setWordWrap(True)
-			self.fields[field]['label'].setFixedWidth(120)
+			self.fields[field]['label'].setMinimumWidth(120)
 			self.fields[field]['value'] = QtGui.QLabel()
 			self.fields[field]['value'].setMinimumWidth(50)
 			self.fields[field]['value'].setAlignment(QtCore.Qt.AlignRight)
@@ -356,10 +356,8 @@ class ResultsWidget(QtGui.QTabWidget):
 			if self.results_model.df.columns[c] not in results_fields:
 				self.results_table.hideColumn(c)
 		self.results_table.resizeColumnsToContents()
-		# stats_df.columns = [getattr(sample,field).info['verbose_name'] for field in self.stats.df.columns]
-		self.plot.setData(self.results_model.df.copy(deep=True))
-		self.tsne.setData(self.results_model.df.copy(deep=True))
-
+		self.plot.setModel(self.results_model)
+		self.tsne.setModel(self.results_model)
 
 if __name__ == '__main__':
 	dal.init_db(config['development'])
