@@ -3,7 +3,7 @@ import numpy as np
 import scipy as sc
 import cv2, sys, time, json, copy, subprocess, os
 from skimage import transform
-from PyQt5 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore, QtWidgets
 import pyqtgraph as pg
 
 tic = time.time()
@@ -124,7 +124,7 @@ class GSAImage:
 	def exportImage(self):
 		if len(self.modifications) > 0:
 			if self.mode == 'local':
-				name = QtGui.QFileDialog.getSaveFileName()[0]
+				name = QtWidgets.QFileDialog.getSaveFileName(None, "Export Image", '', "All Files (*);;Images (*.png)")[0]
 				if name != '':
 					cv2.imwrite(name,self.modifications[-1].image())
 			elif self.mode == 'nanohub':
@@ -610,7 +610,7 @@ class Erosion(Modification):
 		return d
 
 	@classmethod
-	def from_dict(self,d,img_item):
+	def from_dict(cls,d,img_item):
 		obj = super(Erosion,cls).from_dict(d,img_item)
 		obj.size = d['size']
 		obj.wSizeSlider.setSliderPosition(d['size'])
@@ -1255,7 +1255,7 @@ class HoughTransform(Modification):
 
 	@classmethod
 	def from_dict(cls,d,img_item):
-		obj = super(HoughTransform,obj).from_dict(d,img_item)
+		obj = super(HoughTransform,cls).from_dict(d,img_item)
 		obj.wMinAngleSlider.setSliderPosition(str(d['hough_line_peaks']['min_angle']))
 		obj.wMinDistSlider.setSliderPosition(str(d['hough_line_peaks']['min_distance']))
 		obj.wThreshSlider.setSliderPosition(str(d['hough_line_peaks']['threshold']))
@@ -1305,7 +1305,7 @@ class HoughTransform(Modification):
 			angle_idx = np.nonzero(a == self.angles)[0]
 			dist_idx = np.nonzero(d == self.distances)[0]
 			cv2.circle(self.bgr_hough,center=(angle_idx,dist_idx),radius=5,color=(0,0,255),thickness=-1)
-		
+
 		self.bgr_img = self.mod_in.image()
 		self.bgr_img = cv2.cvtColor(self.bgr_img,cv2.COLOR_GRAY2BGR)
 
@@ -1357,7 +1357,7 @@ class DomainCenters(Modification):
 
 	@classmethod
 	def from_dict(cls,d,img_item):
-		obj = super(DomainCenters,obj).from_dict(d,img_item)
+		obj = super(DomainCenters,cls).from_dict(d,img_item)
 		for pos in obj.properties['centers']:
 			obj.wImg.drawCircle(pos)
 		obj.update_image()
@@ -1399,7 +1399,7 @@ class DrawScale(Modification):
 		self.wScale = QtGui.QLabel('1')
 		self.wScale.setFixedWidth(60)
 
-		self.wLengthEdit = QtGui.QLineEdit(str(self.scale))
+		self.wLengthEdit = QtGui.QLineEdit(str(self.properties))
 		self.wLengthEdit.setFixedWidth(60)
 		self.wLengthEdit.setValidator(QtGui.QDoubleValidator())
 		x,y = self.mod_in.image().shape
