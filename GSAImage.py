@@ -3,7 +3,7 @@ import numpy as np
 import scipy as sc
 import cv2, sys, time, json, copy, subprocess, os
 from skimage import transform
-from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5 import QtGui, QtCore
 import pyqtgraph as pg
 
 tic = time.time()
@@ -124,7 +124,7 @@ class GSAImage:
 	def exportImage(self):
 		if len(self.modifications) > 0:
 			if self.mode == 'local':
-				name = QtWidgets.QFileDialog.getSaveFileName(None, "Export Image", '', "All Files (*);;Images (*.png)")[0]
+				name = QtGui.QFileDialog.getSaveFileName()[0]
 				if name != '':
 					cv2.imwrite(name,self.modifications[-1].image())
 			elif self.mode == 'nanohub':
@@ -236,10 +236,10 @@ class GSAImage:
 
 	def selectMod(self,index):
 		if index >= 0:
-			try:
-			    self.modifications[index].update_view()
-			except:
-				pass
+			# try:
+			self.modifications[index].update_view()
+			# except:
+				# pass
 			self.wDetail.setCurrentIndex(index)
 		elif self.wModList.count() > 0:
 			self.wModList.setCurrentRow(self.wModList.count()-1)
@@ -356,70 +356,68 @@ class Modification:
 		return cls(mod_in,img_item,d['properties'])
 
 class InitialImage(Modification):
-  def name(self):
-    return 'Initial Image'
+	def name(self):
+		return 'Initial Image'
+	def to_dict(self):
+		d = super(InitialImage,self).to_dict()
+		d['img_out'] = self.img_out.tolist()
+		return d
 
-  def to_dict(self):
-    d = super(InitialImage, self).to_dict()
-    d['img_out'] = self.img_out.tolist()
-    return d
-
-  @classmethod
-  def from_dict(cls, d, img_item):
-    obj = super(InitialImage, cls).from_dict(d, img_item)
-    obj.set_image(np.asarray(d['img_out']))
-    return obj
-
+	@classmethod
+	def from_dict(cls,d,img_item):
+		obj = super(InitialImage,cls).from_dict(d,img_item)
+		obj.set_image(np.asarray(d['img_out']))
+		return obj
 
 class ColorMask(Modification):
-  def __init__(self, mod_in, img_item, properties={}):
-    super(ColorMask, self).__init__(mod_in, img_item, properties)
-    self.img_mask = None
-    self.img_hist = self.img_item.getHistogram()
+	def __init__(self,mod_in,img_item,properties={}):
+		super(ColorMask,self).__init__(mod_in,img_item,properties)
+		self.img_mask = None
+		self.img_hist = self.img_item.getHistogram()
 
-    self.wHistPlot = None
-    self.lrItem = None
+		self.wHistPlot = None
+		self.lrItem = None
 
-    self.wHistPlot = pg.PlotWidget()
-    self.wHistPlot.plot(*self.img_hist)
-    self.wHistPlot.setXRange(0, 255)
-    self.wHistPlot.hideAxis('left')
+		self.wHistPlot = pg.PlotWidget()
+		self.wHistPlot.plot(*self.img_hist)
+		self.wHistPlot.setXRange(0,255)
+		self.wHistPlot.hideAxis('left')
+		
+		self.lrItem = pg.LinearRegionItem((0,255),bounds=(0,255))
+		self.lrItem.sigRegionChanged.connect(self.update_view)
+		self.lrItem.sigRegionChangeFinished.connect(self.update_view)
+		
+		self.wHistPlot.addItem(self.lrItem)
+		self.wHistPlot.setMouseEnabled(False,False)
+		self.wHistPlot.setMaximumHeight(100)
 
-    self.lrItem = pg.LinearRegionItem((0, 255), bounds=(0, 255))
-    self.lrItem.sigRegionChanged.connect(self.update_view)
-    self.lrItem.sigRegionChangeFinished.connect(self.update_view)
+	def to_dict(self):
+		d = super(ColorMask,self).to_dict()
+		d['img_mask'] = self.img_mask.tolist()
+		d['LinearRegionItem'] = {'region':self.lrItem.getRegion()}
+		return d
 
-    self.wHistPlot.addItem(self.lrItem)
-    self.wHistPlot.setMouseEnabled(False, False)
-    self.wHistPlot.setMaximumHeight(100)
+	@classmethod
+	def from_dict(cls,d,img_item):
+		obj = super(ColorMask,cls).from_dict(d,img_item)
+		obj.img_mask = np.asarray(d['img_mask'])
+		obj.lrItem.setRegion(d['LinearRegionItem']['region'])
+		obj.update_image()
+		obj.widget().hide()
+		return obj
+	
+	def widget(self):
+		return self.wHistPlot
 
-  def to_dict(self):
-    d = super(ColorMask, self).to_dict()
-    d['img_mask'] = self.img_mask.tolist()
-    d['LinearRegionItem'] = {'region': self.lrItem.getRegion()}
-    return d
+	def update_image(self):
+		minVal, maxVal = self.lrItem.getRegion()
+		img = self.mod_in.image()
+		self.img_mask = np.zeros_like(img)
+		self.img_mask[np.logical_and(img>minVal,img<maxVal)] = 1
+		self.img_out = img*self.img_mask+(1-self.img_mask)*255
 
-  @classmethod
-  def from_dict(cls, d, img_item):
-    obj = super(ColorMask, cls).from_dict(d, img_item)
-    obj.img_mask = np.asarray(d['img_mask'])
-    obj.lrItem.setRegion(d['LinearRegionItem']['region'])
-    obj.update_image()
-    obj.widget().hide()
-    return obj
-
-  def widget(self):
-    return self.wHistPlot
-
-  def update_image(self):
-    minVal, maxVal = self.lrItem.getRegion()
-    img = self.mod_in.image()
-    self.img_mask = np.zeros_like(img)
-    self.img_mask[np.logical_and(img > minVal, img < maxVal)] = 1
-    self.img_out = img * self.img_mask + (1 - self.img_mask) * 255
-
-  def name(self):
-    return 'Color Mask'
+	def name(self):
+		return 'Color Mask'    
 
 class CannyEdgeDetection(Modification):
 	def __init__(self,mod_in,img_item,properties={}):
@@ -610,7 +608,7 @@ class Erosion(Modification):
 		return d
 
 	@classmethod
-	def from_dict(cls,d,img_item):
+	def from_dict(self,d,img_item):
 		obj = super(Erosion,cls).from_dict(d,img_item)
 		obj.size = d['size']
 		obj.wSizeSlider.setSliderPosition(d['size'])
@@ -1255,7 +1253,7 @@ class HoughTransform(Modification):
 
 	@classmethod
 	def from_dict(cls,d,img_item):
-		obj = super(HoughTransform,cls).from_dict(d,img_item)
+		obj = super(HoughTransform,obj).from_dict(d,img_item)
 		obj.wMinAngleSlider.setSliderPosition(str(d['hough_line_peaks']['min_angle']))
 		obj.wMinDistSlider.setSliderPosition(str(d['hough_line_peaks']['min_distance']))
 		obj.wThreshSlider.setSliderPosition(str(d['hough_line_peaks']['threshold']))
@@ -1305,7 +1303,7 @@ class HoughTransform(Modification):
 			angle_idx = np.nonzero(a == self.angles)[0]
 			dist_idx = np.nonzero(d == self.distances)[0]
 			cv2.circle(self.bgr_hough,center=(angle_idx,dist_idx),radius=5,color=(0,0,255),thickness=-1)
-
+		
 		self.bgr_img = self.mod_in.image()
 		self.bgr_img = cv2.cvtColor(self.bgr_img,cv2.COLOR_GRAY2BGR)
 
@@ -1357,7 +1355,7 @@ class DomainCenters(Modification):
 
 	@classmethod
 	def from_dict(cls,d,img_item):
-		obj = super(DomainCenters,cls).from_dict(d,img_item)
+		obj = super(DomainCenters,obj).from_dict(d,img_item)
 		for pos in obj.properties['centers']:
 			obj.wImg.drawCircle(pos)
 		obj.update_image()
@@ -1399,7 +1397,7 @@ class DrawScale(Modification):
 		self.wScale = QtGui.QLabel('1')
 		self.wScale.setFixedWidth(60)
 
-		self.wLengthEdit = QtGui.QLineEdit(str(self.properties))
+		self.wLengthEdit = QtGui.QLineEdit(str(self.scale))
 		self.wLengthEdit.setFixedWidth(60)
 		self.wLengthEdit.setValidator(QtGui.QDoubleValidator())
 		x,y = self.mod_in.image().shape
