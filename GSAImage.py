@@ -3,7 +3,7 @@ import numpy as np
 import scipy as sc
 import cv2, sys, time, json, copy, subprocess, os
 from skimage import transform
-from PyQt5 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore, QtWidgets
 import pyqtgraph as pg
 
 tic = time.time()
@@ -29,7 +29,7 @@ class GSAImage:
 			if 'TempGSA' not in os.listdir(os.getcwd()):
 				os.mkdir('TempGSA')
 			self.tempdir = os.path.join(os.getcwd(),'TempGSA')
-			os.chdir(self.tempdir)    
+			os.chdir(self.tempdir)
 
 		self.mod_dict = {
 		'Color Mask': ColorMask,
@@ -46,11 +46,11 @@ class GSAImage:
 		'Hough Transform': HoughTransform,
 		'Erase': Erase,
 		'Sobel Filter': SobelFilter
-		}    
-		
+		}
+
 		self.wComboBox = pg.ComboBox()
 		for item in sorted(list(self.mod_dict)):
-			self.wComboBox.addItem(item)  
+			self.wComboBox.addItem(item)
 
 		self.wOpenFileBtn = QtGui.QPushButton('Import Image')
 		self.wOpenFileBtn.clicked.connect(self.importImage)
@@ -69,11 +69,11 @@ class GSAImage:
 
 		self.wImportState = QtGui.QPushButton('Import State')
 		self.wImportState.clicked.connect(self.importState)
-		
+
 		self.wModList = QtGui.QListWidget()
 		self.wModList.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
 		self.wModList.currentRowChanged.connect(self.selectMod)
-		
+
 		self.wMain = QtGui.QWidget()
 		self.wMain.setFixedWidth(250)
 		self.mainLayout = QtGui.QGridLayout()
@@ -89,19 +89,19 @@ class GSAImage:
 
 		self.wImgBox = pg.GraphicsLayoutWidget()
 		self.wImgBox_VB = self.wImgBox.addViewBox(row=1,col=1)
-		self.wImgItem = pg.ImageItem() 
+		self.wImgItem = pg.ImageItem()
 		self.wImgBox_VB.addItem(self.wImgItem)
 		self.wImgBox_VB.setAspectLocked(True)
 		# self.wImgBox.setFixedWidth(400)
 
 		self.wDetail = QtGui.QStackedWidget()
 		# self.wDetail.setFixedWidth(400)
-		
+
 		self.layout = QtGui.QGridLayout()
 		self.layout.addWidget(self.wMain,0,0)
 		self.layout.addWidget(self.wImgBox,0,1)
 		self.layout.addWidget(self.wDetail,0,2)
-		
+
 		self.w = QtGui.QWidget()
 		# self.w.setFixedHeight(600)
 		self.w.setLayout(self.layout)
@@ -120,11 +120,11 @@ class GSAImage:
 		obj.layout.setColumnStretch(1,3)
 		obj.updateAll()
 		return obj.w
-	
+
 	def exportImage(self):
 		if len(self.modifications) > 0:
 			if self.mode == 'local':
-				name = QtGui.QFileDialog.getSaveFileName()[0]
+				name = QtWidgets.QFileDialog.getSaveFileName(None, "Export Image", '', "All Files (*);;Images (*.png)")[0]
 				if name != '':
 					cv2.imwrite(name,self.modifications[-1].image())
 			elif self.mode == 'nanohub':
@@ -195,7 +195,7 @@ class GSAImage:
 				img_fname = img_file_path.split('/')[-1]
 				img_data = cv2.imread(img_file_path)
 				img_data = cv2.cvtColor(img_data, cv2.COLOR_RGB2GRAY)
-			
+
 				mod = InitialImage(img_item=self.wImgItem)
 				mod.set_image(img_data)
 				self.addMod(mod)
@@ -211,7 +211,7 @@ class GSAImage:
 				img_data = cv2.cvtColor(img_data, cv2.COLOR_RGB2GRAY)
 
 				os.remove(img_file_path)
-			
+
 				mod = InitialImage(img_item=self.wImgItem)
 				mod.set_image(img_data)
 				self.addMod(mod)
@@ -268,7 +268,7 @@ class GSAImage:
 		self.wModList.addItem("%d %s"%(self.wModList.count(),mod.name()))
 		if self.wModList.count() > 0:
 			self.wModList.setCurrentRow(self.wModList.count()-1)
-	
+
 	def widget(self):
 		return self.w
 
@@ -286,7 +286,7 @@ class Modification:
 			self.img_out = None
 
 	def widget(self):
-		return QtGui.QWidget()  
+		return QtGui.QWidget()
 	def image(self):
 		return self.img_out.copy()
 	def name(self):
@@ -344,7 +344,7 @@ class Modification:
 			d['mod_in'] = None
 		d['properties'] = self.properties
 		return d
-	
+
 	@classmethod
 	def from_dict(cls,d,img_item):
 		if d['mod_in'] != None:
@@ -382,11 +382,11 @@ class ColorMask(Modification):
 		self.wHistPlot.plot(*self.img_hist)
 		self.wHistPlot.setXRange(0,255)
 		self.wHistPlot.hideAxis('left')
-		
+
 		self.lrItem = pg.LinearRegionItem((0,255),bounds=(0,255))
 		self.lrItem.sigRegionChanged.connect(self.update_view)
 		self.lrItem.sigRegionChangeFinished.connect(self.update_view)
-		
+
 		self.wHistPlot.addItem(self.lrItem)
 		self.wHistPlot.setMouseEnabled(False,False)
 		self.wHistPlot.setMaximumHeight(100)
@@ -405,7 +405,7 @@ class ColorMask(Modification):
 		obj.update_image()
 		obj.widget().hide()
 		return obj
-	
+
 	def widget(self):
 		return self.wHistPlot
 
@@ -417,12 +417,12 @@ class ColorMask(Modification):
 		self.img_out = img*self.img_mask+(1-self.img_mask)*255
 
 	def name(self):
-		return 'Color Mask'    
+		return 'Color Mask'
 
 class CannyEdgeDetection(Modification):
 	def __init__(self,mod_in,img_item,properties={}):
 		super(CannyEdgeDetection,self).__init__(mod_in,img_item,properties)
-		
+
 		self.low_thresh = int(max(self.mod_in.image().flatten())*.1)
 		self.high_thresh = int(max(self.mod_in.image().flatten())*.4)
 		self.gauss_size = 5
@@ -504,7 +504,7 @@ class CannyEdgeDetection(Modification):
 		self.low_thresh = int(self.wLowEdit.text())
 		self.high_thresh = int(self.wHighEdit.text())
 
-		self.wLowSlider.setSliderPosition(self.low_thresh)    
+		self.wLowSlider.setSliderPosition(self.low_thresh)
 		self.wHighSlider.setSliderPosition(self.high_thresh)
 
 		self.update_view()
@@ -521,7 +521,7 @@ class CannyEdgeDetection(Modification):
 	def update_image(self):
 		self.img_out = cv2.GaussianBlur(self.mod_in.image(),(self.gauss_size,self.gauss_size),0)
 		self.img_out = 255-cv2.Canny(self.img_out,self.low_thresh,self.high_thresh,L2gradient=True)
-	
+
 	def widget(self):
 		return self.wToolBox
 
@@ -608,7 +608,7 @@ class Erosion(Modification):
 		return d
 
 	@classmethod
-	def from_dict(self,d,img_item):
+	def from_dict(cls,d,img_item):
 		obj = super(Erosion,cls).from_dict(d,img_item)
 		obj.size = d['size']
 		obj.wSizeSlider.setSliderPosition(d['size'])
@@ -693,7 +693,7 @@ class FindContours(Modification):
 
 		self.contour_dict = {}
 		self.contour_area_max = 1
-		
+
 		self.wContourList = QtGui.QListWidget()
 		self.wContourList.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
 		for i,cnt in enumerate(self.contours):
@@ -713,10 +713,10 @@ class FindContours(Modification):
 		self.wLowEdit.returnPressed.connect(self.update_tol)
 		self.wHighEdit.returnPressed.connect(self.update_tol)
 		self.wThreshSlider.valueChanged.connect(self.update_tol)
-		
+
 		if len(self.contour_dict.keys())>0:
 			self.wContourList.setCurrentItem(self.contour_dict['0 Contour']['list_item'])
-		
+
 		self.wLayout.addWidget(self.wContourList,0,0,2,1)
 		self.wLayout.addWidget(QtGui.QLabel('Polygon Tolerance:'),3,0)
 		self.wLayout.addWidget(self.wTolEdit,3,1)
@@ -796,7 +796,7 @@ class Blur(Modification):
 		self.wLayout.layout.setAlignment(QtCore.Qt.AlignTop)
 		self.wGaussEdit = QtGui.QLineEdit(str(self.gauss_size))
 		self.wGaussEdit.setFixedWidth(100)
-		self.wGaussEdit.setValidator(QtGui.QIntValidator(3,51)) 
+		self.wGaussEdit.setValidator(QtGui.QIntValidator(3,51))
 
 		self.wLayout.addWidget(QtGui.QLabel('Gaussian Size:'),0,0)
 		self.wLayout.addWidget(self.wGaussEdit,0,1)
@@ -909,7 +909,7 @@ class FilterPattern(Modification):
 		self.wRemove.clicked.connect(self.removeLayer)
 		self.wFilterList.itemSelectionChanged.connect(self.selectLayer)
 		self.wErase.clicked.connect(self.addErase)
-	
+
 	def to_dict(self):
 		d = super(FilterPattern,self).to_dict()
 		d['layer_list'] = []
@@ -1052,7 +1052,7 @@ class FilterPattern(Modification):
 			if self._item != None:
 				if self._item['layer'] == 'filter':
 					roi = self._item['roi']
-					
+
 					roi_size = 2*int(self.wSizeSlider.value())
 					if roi_size != roi.size()[0]:
 						roi.setSize([roi_size,roi_size])
@@ -1063,7 +1063,7 @@ class FilterPattern(Modification):
 					x,y = region.shape
 					padded_image = cv2.copyMakeBorder(self.mod_in.image(),int(y/2-1),int(y/2),int(x/2-1),int(x/2),cv2.BORDER_REFLECT_101)
 					res = cv2.matchTemplate(padded_image,region,self.method_dict[self._item['mode']])
-					
+
 					if 'NORMED' in self._item['mode']:
 						maxVal = 1
 					else:
@@ -1093,7 +1093,7 @@ class FilterPattern(Modification):
 				self.properties['mask_total'] = self.mask_total.tolist()
 		except Exception as e:
 			print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(e).__name__, e)
-				
+
 	def update_view(self):
 		self.update_image()
 		if 'masked_area_um2' in self.properties.keys():
@@ -1196,7 +1196,7 @@ class HoughTransform(Modification):
 		self.wMinAngleSlider.setMinimum(5)
 		self.wMinAngleSlider.setMaximum(180)
 		self.wMinAngleSlider.setSliderPosition(self.min_angle)
-		
+
 		self.wMinDistSlider = QtGui.QSlider(QtCore.Qt.Horizontal)
 		self.wMinDistSlider.setMinimum(5)
 		self.wMinDistSlider.setMaximum(200)
@@ -1211,7 +1211,7 @@ class HoughTransform(Modification):
 		self.wLengthSlider.setMinimum(10)
 		self.wLengthSlider.setMaximum(200)
 		self.wLengthSlider.setSliderPosition(self.line_length)
-		
+
 		self.wGapSlider = QtGui.QSlider(QtCore.Qt.Horizontal)
 		self.wGapSlider.setMinimum(5)
 		self.wGapSlider.setMaximum(100)
@@ -1271,7 +1271,7 @@ class HoughTransform(Modification):
 		self.min_dist = int(self.wMinDistSlider.value())
 		self.line_length = int(self.wLengthSlider.value())
 		self.line_gap = int(self.wGapSlider.value())
-		
+
 		accum, angles, dists = transform.hough_line_peaks(
 			self.hspace,
 			self.angles,
@@ -1285,7 +1285,7 @@ class HoughTransform(Modification):
 		#   for j,a2 in enumerate(angles):
 		#     if i < j:
 		#       angle_diffs.append(abs(a1-a2)*180)
-		
+
 		y,x = np.histogram(np.array(angles)*180,bins=np.linspace(0,180,180))
 		self.wHistPlot.clear()
 		self.wHistPlot.plot(x,y,stepMode=True,fillLevel=0,brush=(0,0,255,150))
@@ -1303,7 +1303,7 @@ class HoughTransform(Modification):
 			angle_idx = np.nonzero(a == self.angles)[0]
 			dist_idx = np.nonzero(d == self.distances)[0]
 			cv2.circle(self.bgr_hough,center=(angle_idx,dist_idx),radius=5,color=(0,0,255),thickness=-1)
-		
+
 		self.bgr_img = self.mod_in.image()
 		self.bgr_img = cv2.cvtColor(self.bgr_img,cv2.COLOR_GRAY2BGR)
 
@@ -1461,7 +1461,7 @@ class Erase(Modification):
 		self.wImgROI.setImage(self.img_out,levels=(0,255))
 		self.wImgBox_VB.addItem(self.wImgROI)
 		self.wImgBox_VB.setAspectLocked(True)
-		
+
 		self.wSizeSlider = QtGui.QSlider(QtCore.Qt.Horizontal)
 		self.wSizeSlider.setMinimum(1)
 		self.wSizeSlider.setMaximum(100)
@@ -1470,7 +1470,7 @@ class Erase(Modification):
 		kern = (np.ones((self.eraser_size,self.eraser_size))*255).astype(np.uint8)
 		self.wImgROI.setDrawKernel(kern, mask=None, center=(int(self.eraser_size/2),int(self.eraser_size/2)), mode='set')
 		self.wSizeSlider.valueChanged.connect(self.update_view)
-	 
+
 		self.wLayout.addWidget(QtGui.QLabel('Eraser Size:'),0,0)
 		self.wLayout.addWidget(self.wSizeSlider,0,1)
 		self.wLayout.addWidget(self.wImgBox,1,0,4,4)
@@ -1637,7 +1637,7 @@ class ImageItemCenters(pg.ImageItem):
 		self.start_img = img.copy()
 		kern = (np.ones((2,2))*255).astype(np.uint8)
 		self.setDrawKernel(kern, mask=None, center=(int(1),int(1)), mode='set')
-	
+
 	def drawAt(self,pos,ev=None):
 		pos = [int(pos.x()), int(pos.y())]
 		self.drawCircle(pos)
@@ -1656,7 +1656,7 @@ class ImageItemCenters(pg.ImageItem):
 		self.image[mask] = 255
 
 	def removeCenter(self):
-		if len(self.mod.properties['centers']) > 0: 
+		if len(self.mod.properties['centers']) > 0:
 			del self.mod.properties['centers'][-1]
 			self.image = self.start_img.copy()
 			for pos in self.mod.properties['centers']:
@@ -1686,7 +1686,7 @@ class ImageItemMask(pg.ImageItem):
 				nx,ny = self.mod.hover_mask.shape
 				a, b = int(pos.x()), int(pos.y())
 				cv2.circle(self.mod.hover_mask,(b,a),self.mod.eraser_size,1,3)
-				
+
 		slow_update(self.mod.update_view())
 
 if __name__ == '__main__':
@@ -1696,7 +1696,7 @@ if __name__ == '__main__':
 		mode = 'local'
 	if mode not in ['nanohub','local']:
 		mode = 'local'
-	app = QtGui.QApplication([])      
+	app = QtGui.QApplication([])
 	img_analyzer = GSAImage(mode=mode)
 	img_analyzer.run()
 	sys.exit(app.exec_())
