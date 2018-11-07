@@ -151,7 +151,10 @@ class TSNEPlot(QtGui.QWidget):
 				else:
 					for val in values:
 						if ~pd.isnull(val):
-							index  = int((val-minVal)/(maxVal-minVal)*100)
+							if maxVal == minVal:
+								index = 50
+							else:
+								index  = int((val-minVal)/(maxVal-minVal)*100)
 							brushes.append(pg.mkBrush(pg.intColor(index=index,values=100)))
 						else:
 							brushes.append(pg.mkBrush(0.2))
@@ -198,41 +201,6 @@ class TSNEPlot(QtGui.QWidget):
 
 		self.select_feature.activated[str].connect(self.setBrushes)
 
-	def setModel(self,model):
-		self.model = model
-		self.select_feature.clear()
-		self.select_feature.addItem('No Coloring')
-		self.select_feature.addItems(list(self.model.df.columns))
-
-	def setBrushes(self,feature):
-		if feature in self.model.df.columns:
-			brushes = []
-			if is_numeric_dtype(self.model.df[feature]):
-				values = self.model.df[feature][self.nonnull_indexes]
-				maxVal = max(values)
-				minVal = min(values)
-				for val in values:
-					if ~pd.isnull(val):
-						index  = int((val-minVal)/(maxVal-minVal)*100)
-						brushes.append(pg.mkBrush(pg.intColor(index=index,values=100)))
-					else:
-						brushes.append(pg.mkBrush(0.2))
-			else:
-				values = self.model.df[feature].unique()
-				for v,val in enumerate(values):
-					if ~pd.isnull(val):
-						index = int(v/len(values)*100)
-						brushes.append(pg.mkBrush(pg.intColor(index=index,values=100)))
-					else:
-						brushes.append(pg.mkBrush(0.2))
-			self.tsne_plot.setBrush(brushes)
-
-	def run(self,features):
-		self.features = features
-		self.tsne = TSNE(random_state=self.random_seed)
-		self.nonnull_indexes = ~self.model.df[self.features].isnull().any(1)
-		self.tsne.fit(self.model.df[self.features][self.nonnull_indexes])
-		self.tsne_plot.setData(x=self.tsne.embedding_[:,0],y=self.tsne.embedding_[:,1])
 class FeatureSelectionItem(QtGui.QWidget):
 	def __init__(self,parent=None):
 		super(FeatureSelectionItem,self).__init__(parent=parent)
