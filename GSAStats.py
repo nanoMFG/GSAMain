@@ -185,22 +185,6 @@ class TSNEPlot(QtGui.QWidget):
 		self.tsne_plot.setData(x=self.tsne.embedding_[:,0],y=self.tsne.embedding_[:,1])
 		self.resetBounds()
 
-		self.select_feature = QtGui.QComboBox()
-
-		self.run_button = QtGui.QPushButton('Run t-SNE')
-		self.back_button = QtGui.QPushButton('<<< Feature Selection')
-		self.save_button = QtGui.QPushButton('')
-		self.save_button.setIcon(self.style().standardIcon(QtGui.QStyle.SP_FileDialogStart))
-		self.save_button.setMaximumWidth(50)
-
-		self.layout.addWidget(self.select_feature,0,0,1,2)
-		self.layout.addWidget(self.plot_widget,1,0,1,2)
-		self.layout.addWidget(self.run_button,2,1)
-		self.layout.addWidget(self.back_button,2,0)
-		self.layout.addWidget(self.save_button,3,0)
-
-		self.select_feature.activated[str].connect(self.setBrushes)
-
 class FeatureSelectionItem(QtGui.QWidget):
 	def __init__(self,parent=None):
 		super(FeatureSelectionItem,self).__init__(parent=parent)
