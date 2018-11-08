@@ -1,8 +1,9 @@
 
 DESTDIR = ../bin
 INSTALL = install -D --mode 0444
-SRCS := models.py GSADashboard.py tst/GSARaman.py
-
+SRCS := GSADashboard.py GSAImage.py GSAQuery.py GSARaman.py \
+        GSARecipe.py GSAStats.py GSASubmit.py models.py \
+		gresq/citrine_data.py gresq/config.py gresq/csv2db.py gresq/database.py 
 
 OBJS := $(patsubst %.py,%.pyc,${SRCS})
 
@@ -20,7 +21,7 @@ PHONY: install $(addprefix install_,$(OBJS))
 
 clean: ${OBJS}
 	${RM} $^ \
-	${RM} $(DESTDIR)/$<
+	${RM} $(addprefix ${DESTDIR}/,$^)
 
 distclean: clean
 
