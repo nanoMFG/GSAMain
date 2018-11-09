@@ -48,9 +48,17 @@ class PlotWidget(QtGui.QWidget):
 		y = self.yaxisbox.currentText()
 		scatter_data = self.model.df.loc[:,[x,y]].dropna()
 		if x != y:
-			self.scatter_plot.setData(x=scatter_data[x],y=scatter_data[y])
+			self.scatter_plot.setData(
+				x=scatter_data[x],
+				y=scatter_data[y],
+				data=list(range(len(scatter_data[x])))
+				)
 		else:
-			self.scatter_plot.setData(x=scatter_data.iloc[:,0],y=scatter_data.iloc[:,0])
+			self.scatter_plot.setData(
+				x=scatter_data.iloc[:,0],
+				y=scatter_data.iloc[:,0],
+				data=list(range(len(scatter_data[x])))
+				)
 		
 		xbounds = self.scatter_plot.dataBounds(ax=0)
 		if None not in xbounds:
@@ -105,10 +113,13 @@ class TSNEPlot(QtGui.QWidget):
 		
 		self.random_seed_edit = QtGui.QLineEdit(str(self.random_seed))
 		self.random_seed_edit.setValidator(QtGui.QIntValidator(1,99999))
+		self.random_seed_edit.setMaximumWidth(75)
 		self.perplexity_edit = QtGui.QLineEdit(str(self.perplexity))
 		self.perplexity_edit.setValidator(QtGui.QIntValidator(1,50))
+		self.perplexity_edit.setMaximumWidth(75)
 		self.lr_edit = QtGui.QLineEdit(str(self.lr))
 		self.lr_edit.setValidator(QtGui.QDoubleValidator(10,1000,3))
+		self.lr_edit.setMaximumWidth(75)
 
 		self.select_feature = QtGui.QComboBox()
 
@@ -116,7 +127,6 @@ class TSNEPlot(QtGui.QWidget):
 		self.back_button = QtGui.QPushButton('<<< Feature Selection')
 		self.save_button = QtGui.QPushButton('Export Image')
 		self.save_button.setIcon(self.style().standardIcon(QtGui.QStyle.SP_FileDialogStart))
-		# self.save_button.setMaximumWidth(50)
 
 		self.layout.addWidget(QtGui.QLabel('Perplexity'),0,0,1,1)
 		self.layout.addWidget(self.perplexity_edit,0,1,1,1)
@@ -124,11 +134,11 @@ class TSNEPlot(QtGui.QWidget):
 		self.layout.addWidget(self.random_seed_edit,1,1,1,1)
 		self.layout.addWidget(QtGui.QLabel('Learning Rate'),2,0,1,1)
 		self.layout.addWidget(self.lr_edit,2,1,1,1)
-		self.layout.addWidget(self.run_button,3,1,1,1)
-		self.layout.addWidget(self.plot_widget,4,0,4,2)
-		self.layout.addWidget(self.select_feature,8,0,1,2)
 		self.layout.addWidget(self.save_button,3,0,1,1)
-		self.layout.addWidget(self.back_button,9,0,1,2)
+		self.layout.addWidget(self.run_button,3,1,1,2)
+		self.layout.addWidget(self.plot_widget,4,0,4,3)
+		self.layout.addWidget(self.select_feature,8,0,1,3)
+		self.layout.addWidget(self.back_button,9,0,1,3)
 
 		self.select_feature.activated[str].connect(self.setBrushes)
 
@@ -144,26 +154,26 @@ class TSNEPlot(QtGui.QWidget):
 			brushes = []
 			if is_numeric_dtype(self.model.df[feature]):
 				values = self.model.df[feature][self.nonnull_indexes]
-				maxVal = max(values)
-				minVal = min(values)
+				maxVal = max(values.dropna())
+				minVal = min(values.dropna())
 				if pd.isnull(minVal) or pd.isnull(maxVal):
 					brushes = [pg.mkBrush(0.2)]*len(values)
 				else:
 					for val in values:
-						if ~pd.isnull(val):
+						if not np.isnan(val):
 							if maxVal == minVal:
 								index = 50
 							else:
 								index  = int((val-minVal)/(maxVal-minVal)*100)
-							brushes.append(pg.mkBrush(pg.intColor(index=index,values=100)))
+							brushes.append(pg.mkBrush(pg.intColor(index=index,values=100),hues=1))
 						else:
 							brushes.append(pg.mkBrush(0.2))
 			else:
 				values = list(self.model.df[feature][self.nonnull_indexes].unique())
 				for v,val in enumerate(self.model.df[feature][self.nonnull_indexes]):
-					if ~pd.isnull(val):
+					if not np.isnan(val):
 						index = int(values.index(val)/len(values)*100)
-						brushes.append(pg.mkBrush(pg.intColor(index=index,values=100)))
+						brushes.append(pg.mkBrush(pg.intColor(index=index,values=100,hues=1)))
 					else:
 						brushes.append(pg.mkBrush(0.2))
 			self.tsne_plot.setBrush(brushes)
@@ -182,7 +192,11 @@ class TSNEPlot(QtGui.QWidget):
 		self.nonnull_indexes = ~self.model.df[self.features].isnull().any(1)
 		self.tsne.fit(self.model.df[self.features][self.nonnull_indexes])
 		self.tsne_plot.clear()
-		self.tsne_plot.setData(x=self.tsne.embedding_[:,0],y=self.tsne.embedding_[:,1])
+		self.tsne_plot.setData(
+			x=self.tsne.embedding_[:,0],
+			y=self.tsne.embedding_[:,1],
+			data=list(range(len(self.tsne.embedding_[:,1])))
+			)
 		self.resetBounds()
 
 class FeatureSelectionItem(QtGui.QWidget):
@@ -215,14 +229,16 @@ class FeatureSelectionItem(QtGui.QWidget):
 		itemsets_label.setFont(label_font)
 		manual_label = QtGui.QLabel('Manual Feature Selection')
 		manual_label.setFont(label_font)
+		min_support_label = QtGui.QLabel('Minimum Support')
+		min_support_label.setAlignment(QtCore.Qt.AlignRight)
 
 		self.layout.addWidget(itemsets_label,0,0)
-		self.layout.addWidget(QtGui.QLabel('Minimum Support'),1,0)
-		self.layout.addWidget(self.min_support_edit,1,1)
-		self.layout.addWidget(self.itemsets_view,2,0,1,2)
+		self.layout.addWidget(min_support_label,1,1,1,1)
+		self.layout.addWidget(self.min_support_edit,1,2,1,1)
+		self.layout.addWidget(self.itemsets_view,2,0,1,3)
 		self.layout.addWidget(manual_label,3,0)
-		self.layout.addWidget(self.feature_list,4,0,1,2)
-		self.layout.addWidget(self.go_button,5,0,1,2)
+		self.layout.addWidget(self.feature_list,4,0,1,3)
+		self.layout.addWidget(self.go_button,5,0,1,3)
 
 	def setModel(self,model):
 		self.model = model

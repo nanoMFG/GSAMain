@@ -2,6 +2,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.hybrid import hybrid_property
 from contextlib import contextmanager
 from . config import Config
 import ast
@@ -61,8 +62,8 @@ class sample(Base):
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
     material_name = Column(String(32),info={'verbose_name':'Material Name'})
     formula = Column(String(32),info={'verbose_name':'Formula'})
-    identifier = Column(String(32),info={'verbose_name':'Identifier'})
-    reference = Column(String(32),info={'verbose_name':'Reference'})
+    identifier = Column(String(32),info={'verbose_name':'Identifier'}) # delete
+    reference = Column(String(32),info={'verbose_name':'Reference'}) # change to doi
 
     # CONDITION ALL parameters:
     catalyst = Column(String(64),info={'verbose_name':'Catalyst'})
@@ -97,6 +98,7 @@ class sample(Base):
     length = Column(Float,info={'verbose_name':'Length'})
 
     preparation_steps = relationship("preparation_step")
+
 
 class preparation_step(Base):
     __tablename__ = 'preparation_steps'
