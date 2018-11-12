@@ -1,29 +1,48 @@
 
+COMPILE = ./py3_compilefiles
 DESTDIR = ../bin
 INSTALL = install -D --mode 0444
-SRCS := GSADashboard.py GSAImage.py GSAQuery.py GSARaman.py \
-        GSARecipe.py GSAStats.py GSASubmit.py models.py \
-		gresq/citrine_data.py gresq/config.py gresq/csv2db.py gresq/database.py 
+SUBDIRS := gresq
 
-OBJS := $(patsubst %.py,%.pyc,${SRCS})
+# Edit the CYPYTHON_SUFFIX to match python version
+# Add src files to SRCS as needed
+CPYTHON_SUFFIX = cpython-36
+SRCS := GSARaman.py GSADashboard.py GSAImage.py GSAQuery.py \
+        GSARecipe.py GSAStats.py GSASubmit.py models.py
 
-%.pyc: %.py
-	py_compilefiles $<
+# Generate a list of objects based on python mangling rules
+#TMP := $(patsubst %,%__pycache__/,$(dir ${SRCS}))
+#OBJ := $(patsubst %.py,%.${CPYTHON_SUFFIX}.pyc,$(notdir ${SRCS}))
+#OBJS:= $(join ${TMP}, ${OBJ})
+OBJS:= $(patsubst %.py,__pycache__/%.${CPYTHON_SUFFIX}.pyc,${SRCS})
 
-all: ${OBJS}
+#.PHONY: print_vars
+all: ${OBJS} ${SUBDIRS}
 
-install: $(addprefix install_,$(OBJS))
+$(SUBDIRS):
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+#print_vars:
+#	for x in ${OBJS}; do \
+#	    echo $$x ; \
+#	done
+
+__pycache__/%.${CPYTHON_SUFFIX}.pyc: %.py
+	${COMPILE} $<
+
+#gresq/__pycache__/%.${CPYTHON_SUFFIX}.pyc: gresq/%.py
+#	${COMPILE} $<
+
+
+install: $(addprefix install_,$(OBJS)) ${SUBDIRS}
 
 $(addprefix install_,$(OBJS)): install_%: %
-	${INSTALL} $< $(DESTDIR)/$<
-
-PHONY: install $(addprefix install_,$(OBJS))
+	${INSTALL} $< $(DESTDIR)/$(patsubst __pycache__/%,%,$<)
 
 clean: ${OBJS}
-	${RM} $^ \
-	${RM} $(addprefix ${DESTDIR}/,$^)
+	${RM} $^
 
 distclean: clean
 
-.PHONY: all clean distclean
+.PHONY: install all clean distclean ${SUBDIRS}
 
