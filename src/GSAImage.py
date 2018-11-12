@@ -154,10 +154,6 @@ class GSAImage:
 				return
 
 	def importState(self):
-<<<<<<< HEAD
-		
-=======
->>>>>>> cb7e5a299528294e153fbfc607c024d6375658e2
 		if self.mode == 'local':
 			try:
 				file_path = QtGui.QFileDialog.getOpenFileName()
@@ -188,11 +184,6 @@ class GSAImage:
 		self.updateAll()
 
 	def importImage(self):
-<<<<<<< HEAD
-		
-=======
-
->>>>>>> cb7e5a299528294e153fbfc607c024d6375658e2
 		if self.mode == 'local':
 			try:
 				img_file_path = QtGui.QFileDialog.getOpenFileName()
@@ -255,8 +246,8 @@ class GSAImage:
 
 	def clear(self):
 		self.wImgItem.clear()
-		self.modifications = []
 		self.wModList.clear()
+		self.modifications = []
 
 	def removeMod(self):
 		if len(self.modifications) > 0:
