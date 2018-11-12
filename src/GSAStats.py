@@ -8,13 +8,14 @@ from PyQt5 import QtGui, QtCore
 from gresq.database import sample, preparation_step, dal, Base
 from models import ItemsetsTableModel, ResultsTableModel
 
+label_font = QtGui.QFont("Helvetica", 16, QtGui.QFont.Bold) 
+
 class PlotWidget(QtGui.QWidget):
 	def __init__(self,parent=None):
 		super(PlotWidget,self).__init__(parent=parent)
 		self.layout = QtGui.QGridLayout(self)
 		self.layout.setAlignment(QtCore.Qt.AlignTop)
 		self.model = ResultsTableModel()
-
 
 		self.xaxisbox = QtGui.QComboBox()
 		self.yaxisbox = QtGui.QComboBox()
@@ -40,11 +41,12 @@ class PlotWidget(QtGui.QWidget):
 			if is_numeric_dtype(self.model.df[c]):
 				self.xaxisbox.addItem(c)
 				self.yaxisbox.addItem(c)
+		self.scatter_plot.clear()
 
 	def updatePlot(self):
 		x = self.xaxisbox.currentText()
 		y = self.yaxisbox.currentText()
-		scatter_data = self.df.loc[:,[x,y]].dropna()
+		scatter_data = self.model.df.loc[:,[x,y]].dropna()
 		if x != y:
 			self.scatter_plot.setData(x=scatter_data[x],y=scatter_data[y])
 		else:
@@ -92,6 +94,9 @@ class TSNEPlot(QtGui.QWidget):
 		self.layout.setAlignment(QtCore.Qt.AlignTop)
 
 		self.random_seed = np.random.randint(1,99999)
+		self.perplexity = 30
+		self.lr = 200.
+
 		self.plot_widget = pg.PlotWidget()
 		self.tsne_plot = pg.ScatterPlotItem(symbol="o", size=10, pen=pg.mkPen(0.2),brush=pg.mkBrush(0.7),antialias=True)
 		self.plot_widget.hideAxis('left')
@@ -100,20 +105,30 @@ class TSNEPlot(QtGui.QWidget):
 		
 		self.random_seed_edit = QtGui.QLineEdit(str(self.random_seed))
 		self.random_seed_edit.setValidator(QtGui.QIntValidator(1,99999))
+		self.perplexity_edit = QtGui.QLineEdit(str(self.perplexity))
+		self.perplexity_edit.setValidator(QtGui.QIntValidator(1,50))
+		self.lr_edit = QtGui.QLineEdit(str(self.lr))
+		self.lr_edit.setValidator(QtGui.QDoubleValidator(10,1000,3))
 
 		self.select_feature = QtGui.QComboBox()
 
 		self.run_button = QtGui.QPushButton('Run t-SNE')
 		self.back_button = QtGui.QPushButton('<<< Feature Selection')
-		self.save_button = QtGui.QPushButton('')
+		self.save_button = QtGui.QPushButton('Export Image')
 		self.save_button.setIcon(self.style().standardIcon(QtGui.QStyle.SP_FileDialogStart))
-		self.save_button.setMaximumWidth(50)
+		# self.save_button.setMaximumWidth(50)
 
-		self.layout.addWidget(self.select_feature,0,0,1,2)
-		self.layout.addWidget(self.plot_widget,1,0,1,2)
-		self.layout.addWidget(self.run_button,2,1)
-		self.layout.addWidget(self.back_button,2,0)
-		self.layout.addWidget(self.save_button,3,0)
+		self.layout.addWidget(QtGui.QLabel('Perplexity'),0,0,1,1)
+		self.layout.addWidget(self.perplexity_edit,0,1,1,1)
+		self.layout.addWidget(QtGui.QLabel('Random Seed'),1,0,1,1)
+		self.layout.addWidget(self.random_seed_edit,1,1,1,1)
+		self.layout.addWidget(QtGui.QLabel('Learning Rate'),2,0,1,1)
+		self.layout.addWidget(self.lr_edit,2,1,1,1)
+		self.layout.addWidget(self.run_button,3,1,1,1)
+		self.layout.addWidget(self.plot_widget,4,0,4,2)
+		self.layout.addWidget(self.select_feature,8,0,1,2)
+		self.layout.addWidget(self.save_button,3,0,1,1)
+		self.layout.addWidget(self.back_button,9,0,1,2)
 
 		self.select_feature.activated[str].connect(self.setBrushes)
 
@@ -122,6 +137,7 @@ class TSNEPlot(QtGui.QWidget):
 		self.select_feature.clear()
 		self.select_feature.addItem('No Coloring')
 		self.select_feature.addItems(list(self.model.df.columns))
+		self.tsne_plot.clear()
 
 	def setBrushes(self,feature):
 		if feature in self.model.df.columns:
@@ -130,28 +146,44 @@ class TSNEPlot(QtGui.QWidget):
 				values = self.model.df[feature][self.nonnull_indexes]
 				maxVal = max(values)
 				minVal = min(values)
-				for val in values:
-					if ~pd.isnull(val):
-						index  = int((val-minVal)/(maxVal-minVal)*100)
-						brushes.append(pg.mkBrush(pg.intColor(index=index,values=100)))
-					else:
-						brushes.append(pg.mkBrush(0.2))
+				if pd.isnull(minVal) or pd.isnull(maxVal):
+					brushes = [pg.mkBrush(0.2)]*len(values)
+				else:
+					for val in values:
+						if ~pd.isnull(val):
+							if maxVal == minVal:
+								index = 50
+							else:
+								index  = int((val-minVal)/(maxVal-minVal)*100)
+							brushes.append(pg.mkBrush(pg.intColor(index=index,values=100)))
+						else:
+							brushes.append(pg.mkBrush(0.2))
 			else:
-				values = self.model.df[feature].unique()
-				for v,val in enumerate(values):
+				values = list(self.model.df[feature][self.nonnull_indexes].unique())
+				for v,val in enumerate(self.model.df[feature][self.nonnull_indexes]):
 					if ~pd.isnull(val):
-						index = int(v/len(values)*100)
+						index = int(values.index(val)/len(values)*100)
 						brushes.append(pg.mkBrush(pg.intColor(index=index,values=100)))
 					else:
 						brushes.append(pg.mkBrush(0.2))
 			self.tsne_plot.setBrush(brushes)
+
+	def resetBounds(self):
+		xbounds = self.tsne_plot.dataBounds(ax=0)
+		if None not in xbounds:
+			self.plot_widget.setXRange(*xbounds)
+		ybounds = self.tsne_plot.dataBounds(ax=1)
+		if None not in ybounds:
+			self.plot_widget.setYRange(*ybounds)
 
 	def run(self,features):
 		self.features = features
 		self.tsne = TSNE(random_state=self.random_seed)
 		self.nonnull_indexes = ~self.model.df[self.features].isnull().any(1)
 		self.tsne.fit(self.model.df[self.features][self.nonnull_indexes])
+		self.tsne_plot.clear()
 		self.tsne_plot.setData(x=self.tsne.embedding_[:,0],y=self.tsne.embedding_[:,1])
+		self.resetBounds()
 
 class FeatureSelectionItem(QtGui.QWidget):
 	def __init__(self,parent=None):
@@ -179,13 +211,18 @@ class FeatureSelectionItem(QtGui.QWidget):
 
 		self.go_button = QtGui.QPushButton('Go to Plot >>>')
 
-		self.layout.addWidget(QtGui.QLabel('Minimum Support'),0,0)
-		self.layout.addWidget(self.min_support_edit,1,0)
-		self.layout.addWidget(self.itemsets_view,2,0)
-		self.layout.addWidget(QtGui.QLabel('Manual Feature Selection'),3,0)
-		self.layout.addWidget(self.feature_list,4,0)
-		
-		self.layout.addWidget(self.go_button,11,0,1,1)
+		itemsets_label = QtGui.QLabel('Frequent Feature Sets')
+		itemsets_label.setFont(label_font)
+		manual_label = QtGui.QLabel('Manual Feature Selection')
+		manual_label.setFont(label_font)
+
+		self.layout.addWidget(itemsets_label,0,0)
+		self.layout.addWidget(QtGui.QLabel('Minimum Support'),1,0)
+		self.layout.addWidget(self.min_support_edit,1,1)
+		self.layout.addWidget(self.itemsets_view,2,0,1,2)
+		self.layout.addWidget(manual_label,3,0)
+		self.layout.addWidget(self.feature_list,4,0,1,2)
+		self.layout.addWidget(self.go_button,5,0,1,2)
 
 	def setModel(self,model):
 		self.model = model

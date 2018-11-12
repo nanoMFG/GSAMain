@@ -46,7 +46,8 @@ class ItemsetsTableModel(QtCore.QAbstractTableModel):
 		self.frequent_itemsets.columns = ['Support','Feature Set']
 		self.frequent_itemsets['# Features'] = self.frequent_itemsets['Feature Set'].apply(lambda x: len(x))
 		self.frequent_itemsets['Feature Set'] = self.frequent_itemsets['Feature Set'].apply(lambda x: tuple(x))
-		self.frequent_itemsets.sort_values(by='# Features',ascending=False)
+		self.frequent_itemsets['Support'] = self.frequent_itemsets['Support'].apply(lambda x: round(x,4))
+		self.frequent_itemsets.sort_values(by='# Features',ascending=False,inplace=True)
 		self.frequent_itemsets = self.frequent_itemsets[['Support','# Features','Feature Set']]
 		self.endResetModel()
 
@@ -79,7 +80,7 @@ class ResultsTableModel(QtCore.QAbstractTableModel):
 
 	def headerData(self,section,orientation,role=QtCore.Qt.DisplayRole):
 		if role == QtCore.Qt.DisplayRole and orientation == QtCore.Qt.Horizontal:
-			return getattr(sample,self.df.columns[section]).info['verbose_name']
+			return self.df.columns[section]
 		return QtCore.QAbstractTableModel.headerData(self,section,orientation,role)
 
 	def sort(self,column,order=QtCore.Qt.AscendingOrder):
