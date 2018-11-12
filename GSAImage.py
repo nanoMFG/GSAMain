@@ -1173,6 +1173,10 @@ class HoughTransform(Modification):
 		self.line_length = 50
 		self.line_gap = 10
 		self.hspace,self.angles,self.distances = transform.hough_line(self.inv_img)
+		self.bgr_img = cv2.cvtColor(self.img_out,cv2.COLOR_GRAY2BGR)
+		self.bgr_hough = 255-np.round(self.hspace/np.max(self.hspace)*255).astype(np.uint8)
+		self.bgr_hough = cv2.cvtColor(self.bgr_hough,cv2.COLOR_GRAY2BGR)
+
 
 		self.properties['hough_transform'] = {
 			'angles': self.angles,
@@ -1230,11 +1234,13 @@ class HoughTransform(Modification):
 		self.wLayout.addWidget(self.wGapSlider,6,1)
 		self.wLayout.addWidget(self.wHistPlot,7,0,2,2)
 
-		self.wThreshSlider.valueChanged.connect(self.update_view)
-		self.wMinAngleSlider.valueChanged.connect(self.update_view)
-		self.wMinDistSlider.valueChanged.connect(self.update_view)
-		self.wLengthSlider.valueChanged.connect(self.update_view)
-		self.wGapSlider.valueChanged.connect(self.update_view)
+		self.wThreshSlider.valueChanged.connect(self.update_image)
+		self.wMinAngleSlider.valueChanged.connect(self.update_image)
+		self.wMinDistSlider.valueChanged.connect(self.update_image)
+		self.wLengthSlider.valueChanged.connect(self.update_image)
+		self.wGapSlider.valueChanged.connect(self.update_image)
+
+		self.update_view()
 
 	def to_dict(self):
 		d = super(HoughTransform,self).to_dict()
@@ -1308,11 +1314,15 @@ class HoughTransform(Modification):
 		self.bgr_img = cv2.cvtColor(self.bgr_img,cv2.COLOR_GRAY2BGR)
 
 		for p1,p2 in lines:
-			cv2.line(bgr_img,p1,p2,color=(0,0,255),thickness=2)
+			cv2.line(self.bgr_img,p1,p2,color=(0,0,255),thickness=2)
+
+
+		self.update_view()
 
 	def update_view(self):
 		self.wHough.setImage(self.bgr_hough)
 		self.img_item.setImage(self.bgr_img)
+
 
 		return self.properties
 
@@ -1381,6 +1391,8 @@ class DomainCenters(Modification):
 class DrawScale(Modification):
 	def __init__(self,mod_in,img_item,properties={}):
 		super(DrawScale,self).__init__(mod_in,img_item,properties)
+		self.properties['scale'] = 1
+
 		self.wLayout = pg.LayoutWidget()
 		self.wLayout.layout.setAlignment(QtCore.Qt.AlignTop)
 
@@ -1397,7 +1409,7 @@ class DrawScale(Modification):
 		self.wScale = QtGui.QLabel('1')
 		self.wScale.setFixedWidth(60)
 
-		self.wLengthEdit = QtGui.QLineEdit(str(self.scale))
+		self.wLengthEdit = QtGui.QLineEdit(str(self.properties['scale']))
 		self.wLengthEdit.setFixedWidth(60)
 		self.wLengthEdit.setValidator(QtGui.QDoubleValidator())
 		x,y = self.mod_in.image().shape
@@ -1437,7 +1449,7 @@ class DrawScale(Modification):
 		self.properties['num_pixels'] = len(self.roi.getArrayRegion(self.mod_in.image(),self.img_item))
 		self.wPixels.setNum(self.properties['num_pixels'])
 		self.properties['scale_length_um'] = float(self.wLengthEdit.text())
-		if self.num_pixels != 0:
+		if self.properties['num_pixels'] != 0:
 			self.properties['scale'] = self.properties['scale_length_um'] / self.properties['num_pixels']
 		self.wScale.setText(str(self.properties['scale']))
 
