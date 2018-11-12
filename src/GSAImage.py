@@ -154,7 +154,7 @@ class GSAImage:
 				return
 
 	def importState(self):
-		self.clear()
+		
 		if self.mode == 'local':
 			try:
 				file_path = QtGui.QFileDialog.getOpenFileName()
@@ -162,6 +162,7 @@ class GSAImage:
 					file_path = file_path[0]
 				else:
 					return
+				self.clear()
 				with open(file_path,'r') as f:
 					state = json.load(f)
 			except Exception as e:
@@ -184,7 +185,7 @@ class GSAImage:
 		self.updateAll()
 
 	def importImage(self):
-		self.clear()
+		
 		if self.mode == 'local':
 			try:
 				img_file_path = QtGui.QFileDialog.getOpenFileName()
@@ -192,6 +193,7 @@ class GSAImage:
 					img_file_path = img_file_path[0]
 				else:
 					return
+				self.clear()
 				img_fname = img_file_path.split('/')[-1]
 				img_data = cv2.imread(img_file_path)
 				img_data = cv2.cvtColor(img_data, cv2.COLOR_RGB2GRAY)
