@@ -211,6 +211,7 @@ class GSAImage:
 				img_data = cv2.cvtColor(img_data, cv2.COLOR_RGB2GRAY)
 
 				os.remove(img_file_path)
+				self.clear()
 
 				mod = InitialImage(img_item=self.wImgItem)
 				mod.set_image(img_data)
@@ -227,8 +228,8 @@ class GSAImage:
 			self.clear()
 		else:
 			self.wModList.clear()
-			for i in range(self.wDetail.count()):
-				self.wDetail.removeWidget(self.wDetail.widget(i))
+			while self.wDetail.count() > 0:
+				self.wDetail.removeWidget(self.wDetail.widget(0))
 			for i,mod in enumerate(self.modifications):
 				self.wModList.addItem("%d %s"%(i,mod.name()))
 				self.wDetail.addWidget(mod.widget())
@@ -248,6 +249,8 @@ class GSAImage:
 		self.wImgItem.clear()
 		self.wModList.clear()
 		self.modifications = []
+		while self.wDetail.count() > 0:
+			self.wDetail.removeWidget(self.wDetail.widget(0))
 
 	def removeMod(self):
 		if len(self.modifications) > 0:
