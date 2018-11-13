@@ -99,6 +99,50 @@ class sample(Base):
 
     preparation_steps = relationship("preparation_step")
 
+    def json_encodable(self):
+        return {
+            "material_name": self.material_name,
+            "formula": self.formula,
+            "identifier": self.identifier,
+
+            "catalyst": self.catalyst,
+            "tube_diameter": self.tube_diameter,
+            "cross_sectional_area": self.cross_sectional_area,
+            "tube_length": self.tube_length,
+            "base_pressure": self.base_pressure,
+
+            "average_thickness_of_growth": self.average_thickness_of_growth,
+            "standard_deviation_of_growth": self.standard_deviation_of_growth,
+            "number_of_layers": self.number_of_layers,
+            "growth_coverage": self.growth_coverage,
+            "domain_size": self.domain_size,
+            "geometry": self.geometry,
+            "silicon_peak_shift": self.silicon_peak_shift,
+            "silicon_peak_amplitude": self.silicon_peak_amplitude,
+            "silicon_fwhm": self.silicon_fwhm,
+            "d_peak_shift": self.d_peak_shift,
+            "d_peak_amplitude": self.d_peak_amplitude,
+            "d_fwhm": self.d_fwhm,
+            "g_peak_shift": self.g_peak_shift,
+            "g_peak_amplitude": self.g_peak_amplitude,
+            "g_fwhm": self.g_fwhm,
+            "g_prime_peak_shift": self.g_prime_peak_shift,
+            "g_prime_peak_amplitude": self.g_prime_peak_amplitude,
+            "g_prime_fwhm": self.g_prime_fwhm,
+            "lorenztians_under_g_prime_peak": self.lorenztians_under_g_prime_peak,
+            "sample_surface_area": self.sample_surface_area,
+            "thickness": self.thickness,
+            "diameter": self.diameter,
+            "length": self.length,
+            "annealing_steps": sorted([s.json_encodable() for s in
+                                self.annealing_steps], key= lambda s: s["timestamp"]),
+            "growing_steps": sorted([s.json_encodable() for s in
+                                self.growing_steps], key= lambda s: s["timestamp"]),
+            "cooling_steps": sorted([s.json_encodable() for s in
+                                self.cooling_steps], key= lambda s: s["timestamp"])
+        }
+
+
 
 class preparation_step(Base):
     __tablename__ = 'preparation_steps'
@@ -118,6 +162,25 @@ class preparation_step(Base):
 
     #sample = relationship("sample", back_populates="preparation_steps")
 
+    def json_encodable(self):
+        rslt = {
+            "timestamp": self.timestamp,
+            "furnace_temperature": self.furnace_temperature,
+            "furnace_pressure": self.furnace_pressure,
+            "sample_location": self.sample_location,
+            "helium_flow_rate": self.helium_flow_rate,
+            "hydrogen_flow_rate": self.hydrogen_flow_rate,
+            "carbon_source": self.carbon_source,
+            "carbon_source_flow_rate": self.carbon_source_flow_rate,
+            "argon_flow_rate": self.argon_flow_rate,
+        }
+
+        if self.name == "Cooling":
+            rslt["cooling_rate"] = self.cooling_rate
+
+        return rslt
+
+
 class image(Base):
     __tablename__ = 'images'
     sample_id = Column(Integer,ForeignKey(sample.id),primary_key=True)
@@ -126,3 +189,17 @@ class image(Base):
     location = Column(String(256))
     size = Column(Integer)
     hash = Column(String(128))
+
+
+from json import JSONEncoder
+
+
+class GresqEncoder(JSONEncoder):
+    def default(self, o):
+        if hasattr(o, 'json_encodable'):
+            return o.json_encodable()
+        else:
+            raise TypeError(
+                'Object of type %s with value of %s is not JSON serializable' % (
+                    type(o), repr(o)))
+
