@@ -135,11 +135,11 @@ class sample(Base):
             "diameter": self.diameter,
             "length": self.length,
             "annealing_steps": sorted([s.json_encodable() for s in
-                                self.annealing_steps], key= lambda s: s["timestamp"]),
+                                self.annealing_steps if s.timestamp] , key= lambda s: s["timestamp"]),
             "growing_steps": sorted([s.json_encodable() for s in
-                                self.growing_steps], key= lambda s: s["timestamp"]),
+                                self.growing_steps if s.timestamp], key= lambda s: s["timestamp"]),
             "cooling_steps": sorted([s.json_encodable() for s in
-                                self.cooling_steps], key= lambda s: s["timestamp"])
+                                self.cooling_steps if s.timestamp], key= lambda s: s["timestamp"])
         }
 
 
