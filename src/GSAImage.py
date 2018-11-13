@@ -154,7 +154,6 @@ class GSAImage:
 				return
 
 	def importState(self):
-		self.clear()
 		if self.mode == 'local':
 			try:
 				file_path = QtGui.QFileDialog.getOpenFileName()
@@ -162,6 +161,7 @@ class GSAImage:
 					file_path = file_path[0]
 				else:
 					return
+				self.clear()
 				with open(file_path,'r') as f:
 					state = json.load(f)
 			except Exception as e:
@@ -184,7 +184,6 @@ class GSAImage:
 		self.updateAll()
 
 	def importImage(self):
-		self.clear()
 		if self.mode == 'local':
 			try:
 				img_file_path = QtGui.QFileDialog.getOpenFileName()
@@ -192,6 +191,7 @@ class GSAImage:
 					img_file_path = img_file_path[0]
 				else:
 					return
+				self.clear()
 				img_fname = img_file_path.split('/')[-1]
 				img_data = cv2.imread(img_file_path)
 				img_data = cv2.cvtColor(img_data, cv2.COLOR_RGB2GRAY)
@@ -236,18 +236,18 @@ class GSAImage:
 
 	def selectMod(self,index):
 		if index >= 0:
-			try:
-				self.modifications[index].update_view()
-			except:
-				pass
+			# try:
+			self.modifications[index].update_view()
+			# except:
+				# pass
 			self.wDetail.setCurrentIndex(index)
 		elif self.wModList.count() > 0:
 			self.wModList.setCurrentRow(self.wModList.count()-1)
 
 	def clear(self):
 		self.wImgItem.clear()
-		self.modifications = []
 		self.wModList.clear()
+		self.modifications = []
 
 	def removeMod(self):
 		if len(self.modifications) > 0:
@@ -1395,7 +1395,7 @@ class DrawScale(Modification):
 
 		self.wLayout = pg.LayoutWidget()
 		self.wLayout.layout.setAlignment(QtCore.Qt.AlignTop)
-		self.properties['scale'] = 1
+
 		self.wImgBox = pg.GraphicsLayoutWidget()
 		self.wImgBox_VB = self.wImgBox.addViewBox(row=1,col=1)
 		self.wImgROI = pg.ImageItem()

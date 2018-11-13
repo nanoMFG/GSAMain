@@ -116,6 +116,7 @@ class GSAQuery(QtGui.QWidget):
 
 		self.preview = PreviewWidget()
 		self.results.results_table.activated.connect(lambda x: self.preview.select(self.results.results_model,x))
+		# self.results.plot.scatter_plot.sigClicked.connect(lambda x: self.preview.select(self.results.results_model,x[0]))
 
 		self.addFilterBtn = QtGui.QPushButton('Add Filter')
 		self.addFilterBtn.clicked.connect(lambda: self.addFilter(self.filter_fields.currentWidget()))
