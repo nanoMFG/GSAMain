@@ -4,10 +4,11 @@ import pyqtgraph as pg
 import pandas as pd
 import numpy as np
 from scipy.optimize import curve_fit
+from scipy.interpolate import griddata
 from multiprocessing import Pool
-
-pg.setConfigOption('background','w')
-pg.setConfigOption('foreground','k')
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 
 filelist=[]
 layer1=[{'a':3.00007920e-01,'w':3.73588869e+01,'b':1.58577373e+03},{'a':1.00000000e+00,'w':3.25172389e+01,'b':2.68203383e+03}]
@@ -194,7 +195,7 @@ class SingleSpect(QtWidgets.QWidget):
         Gp_test=self.Single_Lorentz(x,test_params[1]['a'],test_params[1]['w'],test_params[1]['b'])
         y_test=G_test+Gp_test
 
-        self.fit_plot=pg.plot(x,y_fit,pen='k')
+        self.fit_plot=pg.plot(x,y_fit,pen='w')
         self.fit_plot.setRange(yRange=[0,1])
         self.fit_plot.setLabel('left','I<sub>norm</sub>[arb]')
         self.fit_plot.setLabel('bottom',u'\u03c9'+'[cm<sup>-1</sup>]')
@@ -234,7 +235,7 @@ class SingleSpect(QtWidgets.QWidget):
         for i in y:
             y_norm.append((i-np.min(y))/(np.max(y)-np.min(y)))
 
-        self.spect_plot=pg.plot(x,y_norm,pen='k')
+        self.spect_plot=pg.plot(x,y_norm,pen='w')
         self.spect_plot.setFixedSize(400,500)
         self.spect_plot.setLabel('left','I<sub>norm</sub>[arb]')
         self.spect_plot.setLabel('bottom',u'\u03c9'+'[cm<sup>-1</sup>]')
@@ -282,7 +283,7 @@ class MapFit(QtWidgets.QWidget):
 
         self.freqs=np.array(data.columns.values[2:],dtype=float)
         
-        self.pos=np.array(data.iloc[:,0:2],)
+        self.pos=np.array(data.iloc[:,0:2])
         self.I_data=np.array(data.iloc[:,2:])
 
         self.I_norm=[]
@@ -296,14 +297,45 @@ class MapFit(QtWidgets.QWidget):
 
     def mapLoop(self,data):
         self.prepareData(data)
+        
         self.completed=0
         length=len(self.data_list)
 
         pool=Pool(processes=None)
         for i in pool.imap_unordered(fitting, self.data_list):
-            self.completed+=(1/length)*100
+            app.processEvents()
+            self.completed+=(1/length)*100+1
             raman.statusBar.setValue(self.completed)
             self.param_dict.update(i)
+
+        self.mapSpecPlot(self.param_dict)
+
+    def mapSpecPlot(self,data_dict):
+        keys=data_dict.keys()
+        self.data_array=np.append(np.array(keys[0]),[data_dict[keys[0]][0]['w']])
+        self.data_array=np.array([self.data_array])
+        #length=len(keys)
+        #for i in range(1,length):
+        #    new_entry=np.append(np.array(keys[i]),[data_dict[keys[i]][0]['w']])
+        #    new_entry=np.array([new_entry])
+        #    self.data_array=np.append(self.data_array,new_entry,axis=0)
+
+        #xi=np.linspace(min(self.data_array[:,0]),max(self.data_array[:,0]))
+        #yi=np.linspace(min(self.data_array[:,1]),max(self.data_array[:,1]))
+        #X,Y=np.meshgrid(xi,yi)
+        #Z=griddata(self.data_array[:,0:2],self.data_array[:,2],(X,Y),method='nearest')
+
+        print self.data_array
+        #C=plt.contourf(X,Y,Z)
+        #figure=Figure()
+        #axes=figure.gca()
+        #axes.set_title('title')
+        #axes.plot(C)
+        #canvas=FigureCanvas(figure)
+        #self.mapPlot.addTab(canvas)
+
+
+        
 
 def Single_Lorentz(x,a,w,b):
     return a*(((w/2)**2)/(((x-b)**2)+((w/2)**2)))
