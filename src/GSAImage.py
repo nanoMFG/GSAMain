@@ -124,7 +124,7 @@ class GSAImage:
 	def exportImage(self):
 		if len(self.modifications) > 0:
 			if self.mode == 'local':
-				name = QtWidgets.QFileDialog.getSaveFileName(None, "Export Image", '', "All Files (*);;Images (*.png)")[0]
+				name = QtWidgets.QFileDialog.getSaveFileName(None, "Export Image", '', "All Files (*);;PNG File (*.png);;JPEG File (*.jpg)")[0]
 				if name != '':
 					cv2.imwrite(name,self.modifications[-1].image())
 			elif self.mode == 'nanohub':
@@ -253,7 +253,7 @@ class GSAImage:
 			self.wDetail.removeWidget(self.wDetail.widget(0))
 
 	def removeMod(self):
-		if len(self.modifications) > 0:
+		if len(self.modifications) > 1:
 			self.wDetail.removeWidget(self.modifications[-1].widget())
 			del[self.modifications[-1]]
 			self.wModList.takeItem(self.wModList.count()-1)
