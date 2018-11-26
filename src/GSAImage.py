@@ -196,7 +196,7 @@ class GSAImage:
 				img_data = cv2.imread(img_file_path)
 				img_data = cv2.cvtColor(img_data, cv2.COLOR_RGB2GRAY)
 
-				mod = InitialImage(img_item=self.wImgItem)
+				mod = InitialImage(img_item=self.wImgItem,properties={'mode':self.mode})
 				mod.set_image(img_data)
 				self.addMod(mod)
 				self.w.setWindowTitle(img_fname)
@@ -211,8 +211,9 @@ class GSAImage:
 				img_data = cv2.cvtColor(img_data, cv2.COLOR_RGB2GRAY)
 
 				os.remove(img_file_path)
+				self.clear()
 
-				mod = InitialImage(img_item=self.wImgItem)
+				mod = InitialImage(img_item=self.wImgItem,properties={'mode':self.mode})
 				mod.set_image(img_data)
 				self.addMod(mod)
 				self.w.setWindowTitle(img_fname)
@@ -227,8 +228,8 @@ class GSAImage:
 			self.clear()
 		else:
 			self.wModList.clear()
-			for i in range(self.wDetail.count()):
-				self.wDetail.removeWidget(self.wDetail.widget(i))
+			while self.wDetail.count() > 0:
+				self.wDetail.removeWidget(self.wDetail.widget(0))
 			for i,mod in enumerate(self.modifications):
 				self.wModList.addItem("%d %s"%(i,mod.name()))
 				self.wDetail.addWidget(mod.widget())
@@ -248,6 +249,8 @@ class GSAImage:
 		self.wImgItem.clear()
 		self.wModList.clear()
 		self.modifications = []
+		while self.wDetail.count() > 0:
+			self.wDetail.removeWidget(self.wDetail.widget(0))
 
 	def removeMod(self):
 		if len(self.modifications) > 0:
@@ -260,7 +263,7 @@ class GSAImage:
 	def addMod(self,mod=None):
 		if mod == None:
 			if len(self.modifications) > 0:
-				mod = self.mod_dict[self.wComboBox.value()](self.modifications[-1],self.wImgItem)
+				mod = self.mod_dict[self.wComboBox.value()](self.modifications[-1],self.wImgItem,properties={'mode':self.mode})
 			else:
 				return
 		self.modifications.append(mod)
@@ -848,6 +851,7 @@ class FilterPattern(Modification):
 		self.wAdd = QtGui.QPushButton('Add Filter')
 		self.wRemove = QtGui.QPushButton('Remove Layer')
 		self.wErase = QtGui.QPushButton('Add Erase')
+		self.wExportMask = QtGui.QPushButton('Export Mask')
 
 		self.wImgBox = pg.GraphicsLayoutWidget()
 		self.wImgBox_VB = self.wImgBox.addViewBox(row=1,col=1)
@@ -901,6 +905,7 @@ class FilterPattern(Modification):
 		self.wLayout.addWidget(self.wAdd,5,3)
 		self.wLayout.addWidget(self.wRemove,8,3)
 		self.wLayout.addWidget(self.wErase,6,3)
+		self.wLayout.addWidget(self.wExportMask,7,3)
 
 		self.wThreshSlider.valueChanged.connect(self.update_view)
 		self.wComboBox.currentIndexChanged.connect(self.update_view)
@@ -909,6 +914,7 @@ class FilterPattern(Modification):
 		self.wRemove.clicked.connect(self.removeLayer)
 		self.wFilterList.itemSelectionChanged.connect(self.selectLayer)
 		self.wErase.clicked.connect(self.addErase)
+		self.wExportMask.clicked.connect(self.exportMask)
 
 	def to_dict(self):
 		d = super(FilterPattern,self).to_dict()
@@ -1039,6 +1045,22 @@ class FilterPattern(Modification):
 			self._item = None
 
 		self.update_view()
+
+	def exportMask(self):
+		if len(self.layer_list) > 0:
+			if self.properties['mode'] == 'local':
+				name = QtWidgets.QFileDialog.getSaveFileName(None, "Export Image", '', "All Files (*);;Images (*.png)")[0]
+				if name != '':
+					with open(name,'w') as f:
+						json.dump(self.mask_total.tolist(),f)
+			elif self.properties['mode'] == 'nanohub':
+				name = 'temp_%s.json'%int(time.time())
+				with open(name,'w') as f:
+					json.dump(self.mask_total.tolist(),f)
+				subprocess.check_output('exportfile %s'%name,shell=True)
+				# os.remove(name)
+			else:
+				return	
 
 	def update_image(self):
 		back_properties = self.back_properties()
