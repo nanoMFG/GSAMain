@@ -1,5 +1,6 @@
 
-COMPILE = ./py3_compilefiles
+#COMPILE = ./py3_compilefiles
+COMPILE = . /etc/environ.sh; use -e -r anaconda3-5.1; python -m compileall
 DESTDIR = ../bin
 DATADIR = ../data
 DATADESTDIR = ../bin/data
@@ -37,10 +38,12 @@ install: $(addprefix install_,${OBJS}) ${SUBDIRS} ${DATAOBJS}
 
 $(addprefix install_,$(OBJS)): install_%: %
 	${INSTALL} $< $(DESTDIR)/$<
+
 clean: ${SUBDIRS}
 	rm -rf *.pyc __pycache__
 
 distclean: clean
 	rm -rf ${DESTDIR}/*.pyc
+	rm -rf ${DATADESTDIR}
 
 .PHONY: install all clean distclean ${SUBDIRS}
