@@ -2,23 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="146d26d4-3cbf-47b9-b9b1-77bb4ded5717" name="Default Changelist" comment="Fixed Export Image and fixed inputs to several class functions">
-      <change afterPath="$PROJECT_DIR$/BinaryMask.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Blur.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CannyEdgeDetection.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ColorMask.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Crop.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Dilation.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/DomainCenters.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/DrawScale.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Erase.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Erosion.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/FilterPattern.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/FindContours.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/HoughTransform.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/InitialImage.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Modification.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SobelFilter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GSAImage.py" beforeDir="false" afterPath="$PROJECT_DIR$/GSAImage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GSAImage.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GSAImage.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -30,49 +15,47 @@
     <session id="-75545443">
       <usages-collector id="statistics.lifecycle.project">
         <counts>
-          <entry key="project.closed" value="1" />
+          <entry key="project.closed" value="3" />
           <entry key="project.open.time.1" value="1" />
-          <entry key="project.opened" value="1" />
+          <entry key="project.open.time.14" value="1" />
+          <entry key="project.open.time.16" value="1" />
+          <entry key="project.opened" value="3" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.open">
         <counts>
-          <entry key="py" value="39" />
+          <entry key="py" value="40" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.open">
         <counts>
-          <entry key="Python" value="39" />
+          <entry key="Python" value="40" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
-          <entry key="py" value="2218" />
+          <entry key="py" value="2229" />
           <entry key="txt" value="118" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
           <entry key="PLAIN_TEXT" value="118" />
-          <entry key="Python" value="2218" />
+          <entry key="Python" value="2229" />
         </counts>
       </usages-collector>
     </session>
   </component>
   <component name="FileEditorManager">
-    <leaf>
+    <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
       <file pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/GSAImage.py">
+        <entry file="file://$PROJECT_DIR$/src/GSAImage.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="183">
-              <caret line="126" column="62" selection-start-line="126" selection-start-column="62" selection-end-line="126" selection-end-column="62" />
+            <state relative-caret-position="17">
+              <caret line="456" column="53" lean-forward="true" selection-start-line="456" selection-start-column="53" selection-end-line="456" selection-end-column="53" />
               <folding>
                 <element signature="e#0#31#0" expanded="true" />
-                <element signature="e#44086#46385#0" />
-                <element signature="e#46597#48551#0" />
-                <element signature="e#48587#52900#0" />
-                <element signature="e#52941#53866#0" />
-                <element signature="e#53904#54624#0" />
+                <element signature="e#431#7958#0" />
               </folding>
             </state>
           </provider>
@@ -112,6 +95,8 @@
       <find>updateImage</find>
       <find>setImage</find>
       <find>exportImage</find>
+      <find>eraser</find>
+      <find>img_out</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -138,10 +123,11 @@
         <option value="$PROJECT_DIR$/SobelFilter.py" />
         <option value="$PROJECT_DIR$/ImageItemCenters.py" />
         <option value="$PROJECT_DIR$/GSAImage.py" />
+        <option value="$PROJECT_DIR$/src/GSAImage.py" />
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds" extendedState="7">
+  <component name="ProjectFrameBounds" extendedState="6">
     <option name="x" value="85" />
     <option name="y" value="25" />
     <option name="width" value="1750" />
@@ -160,6 +146,11 @@
               <item name="GSAMain2" type="b2602c69:ProjectViewProjectNode" />
               <item name="GSAMain2" type="462c0819:PsiDirectoryNode" />
             </path>
+            <path>
+              <item name="GSAMain2" type="b2602c69:ProjectViewProjectNode" />
+              <item name="GSAMain2" type="462c0819:PsiDirectoryNode" />
+              <item name="src" type="462c0819:PsiDirectoryNode" />
+            </path>
           </expand>
           <select />
         </subPane>
@@ -168,7 +159,7 @@
   </component>
   <component name="PropertiesComponent">
     <property name="last_opened_file_path" value="$PROJECT_DIR$/../GSAMain-QA" />
-    <property name="settings.editor.selected.configurable" value="configurable.group.language" />
+    <property name="settings.editor.selected.configurable" value="preferences.lookFeel" />
   </component>
   <component name="RunDashboard">
     <option name="ruleStates">
@@ -239,22 +230,22 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="-7" y="-7" width="1550" height="838" extended-state="7" />
+    <frame x="-7" y="-7" width="1550" height="838" extended-state="6" />
     <layout>
-      <window_info id="Favorites" side_tool="true" />
       <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.24983476" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
-      <window_info active="true" anchor="bottom" id="Version Control" visible="true" weight="0.3286119" />
-      <window_info anchor="bottom" id="Python Console" weight="0.3286119" />
-      <window_info anchor="bottom" id="Terminal" weight="0.3286119" />
-      <window_info anchor="bottom" id="Event Log" side_tool="true" />
+      <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info anchor="bottom" id="Run" order="2" weight="0.33002833" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.32907802" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
+      <window_info anchor="bottom" id="Version Control" order="7" weight="0.32907802" />
+      <window_info anchor="bottom" id="Terminal" order="8" weight="0.3286119" />
+      <window_info anchor="bottom" id="Event Log" order="9" side_tool="true" />
+      <window_info anchor="bottom" id="Python Console" order="10" weight="0.3286119" />
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
@@ -269,165 +260,31 @@
     <option name="LAST_COMMIT_MESSAGE" value="Fixed Export Image and fixed inputs to several class functions" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/InitialImage.py">
+    <entry file="file://$PROJECT_DIR$/InitialImage.py" />
+    <entry file="file://$PROJECT_DIR$/Modification.py" />
+    <entry file="file://$PROJECT_DIR$/Dilation.py" />
+    <entry file="file://$PROJECT_DIR$/Erosion.py" />
+    <entry file="file://$PROJECT_DIR$/FindContours.py" />
+    <entry file="file://$PROJECT_DIR$/FilterPattern.py" />
+    <entry file="file://$PROJECT_DIR$/Crop.py" />
+    <entry file="file://$PROJECT_DIR$/HoughTransform.py" />
+    <entry file="file://$PROJECT_DIR$/DomainCenters.py" />
+    <entry file="file://$PROJECT_DIR$/DrawScale.py" />
+    <entry file="file://$PROJECT_DIR$/Erase.py" />
+    <entry file="file://$PROJECT_DIR$/SobelFilter.py" />
+    <entry file="file://$PROJECT_DIR$/ImageItemCenters.py" />
+    <entry file="file://$PROJECT_DIR$/BinaryMask.py" />
+    <entry file="file://$PROJECT_DIR$/Blur.py" />
+    <entry file="file://$PROJECT_DIR$/CannyEdgeDetection.py" />
+    <entry file="file://$PROJECT_DIR$/ColorMask.py" />
+    <entry file="file://$PROJECT_DIR$/GSAImage.py" />
+    <entry file="file://$PROJECT_DIR$/src/GSAImage.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="17">
-          <caret line="1" column="18" selection-start-line="1" selection-start-column="18" selection-end-line="1" selection-end-column="18" />
-          <folding>
-            <element signature="e#0#19#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/Modification.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="51">
-          <caret line="3" selection-start-line="3" selection-end-line="3" />
+          <caret line="456" column="53" lean-forward="true" selection-start-line="456" selection-start-column="53" selection-end-line="456" selection-end-column="53" />
           <folding>
             <element signature="e#0#31#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/Dilation.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="132">
-          <caret line="34" column="21" selection-start-line="34" selection-start-column="18" selection-end-line="34" selection-end-column="21" />
-          <folding>
-            <element signature="e#0#10#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/Erosion.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-699">
-          <caret column="10" selection-start-column="10" selection-end-column="10" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/FindContours.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-1923">
-          <caret line="3" column="22" selection-start-line="3" selection-start-column="22" selection-end-line="3" selection-end-column="22" />
-          <folding>
-            <element signature="e#0#10#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/FilterPattern.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="17">
-          <caret line="93" column="4" lean-forward="true" selection-start-line="93" selection-start-column="4" selection-end-line="93" selection-end-column="4" />
-          <folding>
-            <element signature="e#0#10#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/Crop.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="17">
-          <caret line="1" column="18" selection-start-line="1" selection-start-column="18" selection-end-line="1" selection-end-column="18" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/HoughTransform.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="389">
-          <caret line="168" lean-forward="true" selection-start-line="168" selection-end-line="168" />
-          <folding>
-            <element signature="e#0#10#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/DomainCenters.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="389">
-          <caret line="60" lean-forward="true" selection-start-line="60" selection-end-line="60" />
-          <folding>
-            <element signature="e#0#23#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/DrawScale.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="34">
-          <caret line="2" column="22" selection-start-line="2" selection-start-column="22" selection-end-line="2" selection-end-column="22" />
-          <folding>
-            <element signature="e#0#19#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/Erase.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="34">
-          <caret line="2" column="31" lean-forward="true" selection-start-line="2" selection-start-column="31" selection-end-line="2" selection-end-column="31" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/SobelFilter.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="85">
-          <caret line="5" column="18" selection-start-line="5" selection-start-column="18" selection-end-line="5" selection-end-column="18" />
-          <folding>
-            <element signature="e#0#10#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/ImageItemCenters.py">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/BinaryMask.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="17">
-          <caret line="1" selection-start-line="1" selection-end-line="1" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/Blur.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state>
-          <caret column="10" selection-start-column="10" selection-end-column="10" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/CannyEdgeDetection.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="51">
-          <caret line="3" column="22" selection-start-line="3" selection-start-column="22" selection-end-line="3" selection-end-column="22" />
-          <folding>
-            <element signature="e#0#10#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/ColorMask.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="51">
-          <caret line="3" selection-start-line="3" selection-end-line="3" />
-          <folding>
-            <element signature="e#0#19#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/GSAImage.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="183">
-          <caret line="126" column="62" selection-start-line="126" selection-start-column="62" selection-end-line="126" selection-end-column="62" />
-          <folding>
-            <element signature="e#0#31#0" expanded="true" />
-            <element signature="e#44086#46385#0" />
-            <element signature="e#46597#48551#0" />
-            <element signature="e#48587#52900#0" />
-            <element signature="e#52941#53866#0" />
-            <element signature="e#53904#54624#0" />
+            <element signature="e#431#7958#0" />
           </folding>
         </state>
       </provider>
