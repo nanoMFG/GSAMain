@@ -1,6 +1,6 @@
 
 COMPILE = ../py3_compilefiles
-DESTDIR = ../..//bin/gresq
+DESTDIR = ../../bin/gresq
 INSTALL = install -D --mode 0444
 
 # Edit the CYPYTHON_SUFFIX to match python version
@@ -9,25 +9,27 @@ CPYTHON_SUFFIX = cpython-36
 SRCS := __init__.py app.py citrine_data.py config.py csv2db.py database.py
 
 # Generate a list of objects based on python mangling rules
-OBJS:= $(patsubst %.py,__pycache__/%.${CPYTHON_SUFFIX}.pyc,${SRCS})
+#OBJS:= $(patsubst %.py,__pycache__/%.${CPYTHON_SUFFIX}.pyc,${SRCS})
+OBJS:= $(patsubst %.py,%.pyc,${SRCS})
 
 all: ${OBJS}
 
 __pycache__/%.${CPYTHON_SUFFIX}.pyc: %.py
 	${COMPILE} $<
 
+%.pyc: __pycache__/%.${CPYTHON_SUFFIX}.pyc
+	cp $< $@
 
-install: $(addprefix install_,$(OBJS))
+install: $(addprefix install_,${OBJS})
 
 $(addprefix install_,$(OBJS)): install_%: %
-	${INSTALL} $< $(DESTDIR)/$(patsubst __pycache__/%,%,$<)
+	${INSTALL} $< $(DESTDIR)/$<
 
-PHONY: install $(addprefix install_,$(OBJS))
-
-clean: ${OBJS}
-	${RM} $^
+clean:
+	rm -rf *.pyc __pycache__
 
 distclean: clean
+	rm -rf ${DESTDIR}/*.pyc
 
 .PHONY: all clean distclean
 
