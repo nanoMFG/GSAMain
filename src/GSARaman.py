@@ -19,6 +19,8 @@ layer5=[{'a':9.67793017e-01,'w':2.80824430e+01,'b':1.62490732e+03},{'a':4.300421
 graphene=[{'a':9.98426340e-01,'w':2.83949973e+01,'b':1.63840546e+03},{'a':4.22730948e-01,'w':7.98338055e+01,'b':2.76274546e+03}]
 cdat={'monolayer':layer1,'bilayer':layer2,'trilayer':layer3,'four layers':layer4,'five layers':layer5,'graphene':graphene}
 
+w=[]
+
 class GSARaman(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(GSARaman,self).__init__(parent=parent)
@@ -282,18 +284,20 @@ class MapFit(QtWidgets.QWidget):
         rows=data.shape[0]
 
         self.freqs=np.array(data.columns.values[2:],dtype=float)
+        global w
+        w = self.freqs
         
         self.pos=np.array(data.iloc[:,0:2])
         self.I_data=np.array(data.iloc[:,2:])
 
-        self.I_norm=[]
-        for i in self.I_data:
-            self.I_norm.append((i-np.min(self.I_data))/(np.max(self.I_data)-np.min(self.I_data)))
-        self.I_norm=np.array(self.I_norm,dtype=float)
+        #self.I_norm=[]
+        #for i in self.I_data:
+        #    self.I_norm.append((i-np.min(self.I_data))/(np.max(self.I_data)-np.min(self.I_data)))
+        #self.I_norm=np.array(self.I_norm,dtype=float)
 
         self.data_list=[]
         for i in range(rows):
-            self.data_list.append((tuple(self.pos[i]),self.freqs,self.I_norm[i]))
+            self.data_list.append((tuple(self.pos[i]),self.I_data[i]))
 
     def mapLoop(self,data):
         self.prepareData(data)
@@ -312,25 +316,26 @@ class MapFit(QtWidgets.QWidget):
 
     def mapSpecPlot(self,data_dict):
         keys=data_dict.keys()
-        self.data_array=np.append(np.array(keys[0]),[data_dict[keys[0]][0]['w']])
+        self.data_array=np.append(np.array(keys[0]),[data_dict[keys[0]][0]['a']])
         self.data_array=np.array([self.data_array])
-        #length=len(keys)
-        #for i in range(1,length):
-        #    new_entry=np.append(np.array(keys[i]),[data_dict[keys[i]][0]['w']])
-        #    new_entry=np.array([new_entry])
-        #    self.data_array=np.append(self.data_array,new_entry,axis=0)
+        length=len(keys)
+        for i in range(1,length):
+            new_entry=np.append(np.array(keys[i]),[data_dict[keys[i]][0]['a']])
+            new_entry=np.array([new_entry])
+            self.data_array=np.append(self.data_array,new_entry,axis=0)
 
-        #xi=np.linspace(min(self.data_array[:,0]),max(self.data_array[:,0]))
-        #yi=np.linspace(min(self.data_array[:,1]),max(self.data_array[:,1]))
-        #X,Y=np.meshgrid(xi,yi)
-        #Z=griddata(self.data_array[:,0:2],self.data_array[:,2],(X,Y),method='nearest')
+        xi=np.linspace(min(self.data_array[:,0]),max(self.data_array[:,0]))
+        yi=np.linspace(min(self.data_array[:,1]),max(self.data_array[:,1]))
+        X,Y=np.meshgrid(xi,yi)
+        Z=griddata(self.data_array[:,0:2],self.data_array[:,2],(X,Y),method='nearest')
 
-        print self.data_array
-        #C=plt.contourf(X,Y,Z)
+        #print self.data_array
+        C=plt.contourf(X,Y,Z)
         #figure=Figure()
         #axes=figure.gca()
         #axes.set_title('title')
         #axes.plot(C)
+        plt.show(C)
         #canvas=FigureCanvas(figure)
         #self.mapPlot.addTab(canvas)
 
@@ -360,26 +365,31 @@ def backgroundFit(x,y):
     return I
 
 def fitting(data_tuple):
+    global w
     pos=data_tuple[0]
-    x=data_tuple[1]
-    y=data_tuple[2]
+    x=w
+    y=data_tuple[1]
 
-    I=backgroundFit(x,y)
+    y_norm=[]
+    for i in y:
+            y_norm.append((i-np.min(y))/(np.max(y)-np.min(y)))
+
+    I=backgroundFit(x,y_norm)
 
     pG=[1.1*np.max(I), 50, 1581.6] #a w b
     pGp=[1.1*np.max(I), 50, 2675]
     pD=[0.1*np.max(I),15,1350]
 
     #fit G peak
-    G_param,G_cov=curve_fit(Single_Lorentz,x,y,bounds=([0.3*np.max(I),33,1400],[1.5*np.max(I),60,2000]),p0=pG)
+    G_param,G_cov=curve_fit(Single_Lorentz,x,y_norm,bounds=([0.3*np.max(I),33,1400],[1.5*np.max(I),60,2000]),p0=pG)
     G_fit=Single_Lorentz(x,G_param[0],G_param[1],G_param[2])
 
     #fit G' peak
-    Gp_param,Gp_cov=curve_fit(Single_Lorentz,x,y,bounds=([0.3*np.max(I),32,2000],[1.5*np.max(I),60,3000]),p0=pGp)
+    Gp_param,Gp_cov=curve_fit(Single_Lorentz,x,y_norm,bounds=([0.3*np.max(I),32,2000],[1.5*np.max(I),60,3000]),p0=pGp)
     Gp_fit=Single_Lorentz(x,Gp_param[0],Gp_param[1],Gp_param[2])
 
     #fit D peak
-    D_param,D_cov=curve_fit(Single_Lorentz,x,y,bounds=([0,10,1300],[np.max(I),50,1400]),p0=pD)
+    D_param,D_cov=curve_fit(Single_Lorentz,x,y_norm,bounds=([0,10,1300],[np.max(I),50,1400]),p0=pD)
     D_fit=Single_Lorentz(x,D_param[0],D_param[1],D_param[2])
 
     Gdict={'a':G_param[0],'w':G_param[1],'b':G_param[2]}
