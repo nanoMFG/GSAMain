@@ -104,6 +104,10 @@ class sample(Base):
             "material_name": self.material_name,
             "formula": self.formula,
             "identifier": self.identifier,
+            "group": self.group,
+            "sample_id": self.sample_id,
+            "experiment_date": self.experiment_date,
+            "contributor": self.contributor,
 
             "catalyst": self.catalyst,
             "tube_diameter": self.tube_diameter,
