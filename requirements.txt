@@ -1,3 +1,5 @@
 pandas==0.23.4
 sqlalchemy==1.2.13
 boxsdk==2.0.0
+mdf_connect_client==0.1.1
+mdf_forge

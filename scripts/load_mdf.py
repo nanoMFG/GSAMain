@@ -1,10 +1,12 @@
 import json
 import os
 import zipfile
+from datetime import datetime
 
 import pandas as pd
 from boxsdk import DevelopmentClient
 from boxsdk.object.folder import Folder
+from mdf_connect_client import MDFConnectClient
 
 from src.gresq.database import preparation_step, sample, GresqEncoder
 
@@ -24,6 +26,8 @@ DESCRIPTION:
     It then generates a JSON file that represents the recipe and bundles it into
     the same output folder. This folder is then zipped up into an archive, 
     uploaded to a public staging folder in Box and a download URL is generated
+    
+    Finally, creates an MDF submission based on data from the CSV File record.
     
 """
 
@@ -74,6 +78,9 @@ def zipdir(path, ziph):
                        arcname=os.path.join(os.path.relpath(root, path), file))
 
 
+# Get a handle to MDF Client Connect
+mdfcc = MDFConnectClient(test=True)
+
 # This will prompt for a developer Token from Box
 # See https://developer.box.com/docs/authenticate-with-developer-token
 client = DevelopmentClient()
@@ -82,13 +89,6 @@ client = DevelopmentClient()
 mdf_folder = client.folder("50410951565").get()
 
 staging_folder = client.folder("59557678760").get()
-
-# download_folder(client, "/tmp/mdf", mdf_folder)
-#
-# zipf = zipfile.ZipFile('/tmp/mdf.zip', 'w', zipfile.ZIP_DEFLATED)
-# zipdir('/tmp/mdf', zipf)
-# zipf.close()
-
 
 filepath = "../data"
 var_map = pd.read_csv(os.path.join(filepath, 'varmap2.csv')).to_dict()
@@ -173,5 +173,29 @@ for i in range(data.shape[0]):
         zipf.close()
 
         box_file = staging_folder.upload(zip_path, s.sample_id + ".zip")
-        print("Box file " + str(
-            box_file.get_shared_link_download_url(access='open')))
+
+        experiment_date = datetime.strptime(s.experiment_date, "%Y-%m-%d")
+
+        mdfcc.create_dc_block(title="Graphene Synthesis Sample "+s.identifier,
+                              authors=[s.contributor],
+                              affiliations=[s.group],
+                              publication_year=experiment_date.year
+                              )
+        mdfcc.add_data(box_file.get_shared_link_download_url(access='open'))
+        mdfcc.set_custom_block(
+            {
+                "material_name": s.material_name,
+                "catalyst": s.catalyst,
+                "tube_length": s.tube_length,
+                "sample_surface_area": s.sample_surface_area,
+                "thickness": s.thickness
+            }
+        )
+
+        mdfcc.set_source_name(s.sample_id)
+
+        mdf_source_id = mdfcc.submit_dataset()
+        print("Submitted to MDF -----> "+str(mdf_source_id))
+
+        print(str(mdfcc.check_status()))
+        mdfcc.reset_submission()
