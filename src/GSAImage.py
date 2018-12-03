@@ -1049,7 +1049,7 @@ class FilterPattern(Modification):
 	def exportMask(self):
 		if len(self.layer_list) > 0:
 			if self.properties['mode'] == 'local':
-				name = QtWidgets.QFileDialog.getSaveFileName(None, "Export Image", '', "All Files (*);;Images (*.png)")[0]
+				name = QtWidgets.QFileDialog.getSaveFileName(None, "Export Mask", '', "All Files (*);;Images (*.json)")[0]
 				if name != '':
 					with open(name,'w') as f:
 						json.dump(self.mask_total.tolist(),f)
