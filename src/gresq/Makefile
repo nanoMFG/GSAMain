@@ -1,5 +1,6 @@
 
-COMPILE = ../py3_compilefiles
+#COMPILE = ../py3_compilefiles
+COMPILE = . /etc/environ.sh; use -e -r anaconda3-5.1; python -m compileall
 DESTDIR = ../../bin/gresq
 INSTALL = install -D --mode 0444
 
@@ -30,6 +31,7 @@ clean:
 
 distclean: clean
 	rm -rf ${DESTDIR}/*.pyc
+	rm -rf ${DESTDIR}
 
 .PHONY: all clean distclean
 

@@ -4,10 +4,11 @@ import pyqtgraph as pg
 import pandas as pd
 import numpy as np
 from scipy.optimize import curve_fit
+from scipy.interpolate import griddata
 from multiprocessing import Pool
-
-pg.setConfigOption('background','w')
-pg.setConfigOption('foreground','k')
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 
 filelist=[]
 layer1=[{'a':3.00007920e-01,'w':3.73588869e+01,'b':1.58577373e+03},{'a':1.00000000e+00,'w':3.25172389e+01,'b':2.68203383e+03}]
@@ -17,6 +18,8 @@ layer4=[{'a':1.01520762e+00,'w':2.79110458e+01,'b':1.61188139e+03},{'a':5.186578
 layer5=[{'a':9.67793017e-01,'w':2.80824430e+01,'b':1.62490732e+03},{'a':4.30042148e-01,'w':6.41600512e+01,'b':2.75285511e+03}]
 graphene=[{'a':9.98426340e-01,'w':2.83949973e+01,'b':1.63840546e+03},{'a':4.22730948e-01,'w':7.98338055e+01,'b':2.76274546e+03}]
 cdat={'monolayer':layer1,'bilayer':layer2,'trilayer':layer3,'four layers':layer4,'five layers':layer5,'graphene':graphene}
+
+w=[]
 
 class GSARaman(QtWidgets.QWidget):
     def __init__(self, parent=None):
@@ -194,7 +197,7 @@ class SingleSpect(QtWidgets.QWidget):
         Gp_test=self.Single_Lorentz(x,test_params[1]['a'],test_params[1]['w'],test_params[1]['b'])
         y_test=G_test+Gp_test
 
-        self.fit_plot=pg.plot(x,y_fit,pen='k')
+        self.fit_plot=pg.plot(x,y_fit,pen='w')
         self.fit_plot.setRange(yRange=[0,1])
         self.fit_plot.setLabel('left','I<sub>norm</sub>[arb]')
         self.fit_plot.setLabel('bottom',u'\u03c9'+'[cm<sup>-1</sup>]')
@@ -234,7 +237,7 @@ class SingleSpect(QtWidgets.QWidget):
         for i in y:
             y_norm.append((i-np.min(y))/(np.max(y)-np.min(y)))
 
-        self.spect_plot=pg.plot(x,y_norm,pen='k')
+        self.spect_plot=pg.plot(x,y_norm,pen='w')
         self.spect_plot.setFixedSize(400,500)
         self.spect_plot.setLabel('left','I<sub>norm</sub>[arb]')
         self.spect_plot.setLabel('bottom',u'\u03c9'+'[cm<sup>-1</sup>]')
@@ -281,29 +284,63 @@ class MapFit(QtWidgets.QWidget):
         rows=data.shape[0]
 
         self.freqs=np.array(data.columns.values[2:],dtype=float)
+        global w
+        w = self.freqs
         
-        self.pos=np.array(data.iloc[:,0:2],)
+        self.pos=np.array(data.iloc[:,0:2])
         self.I_data=np.array(data.iloc[:,2:])
 
-        self.I_norm=[]
-        for i in self.I_data:
-            self.I_norm.append((i-np.min(self.I_data))/(np.max(self.I_data)-np.min(self.I_data)))
-        self.I_norm=np.array(self.I_norm,dtype=float)
+        #self.I_norm=[]
+        #for i in self.I_data:
+        #    self.I_norm.append((i-np.min(self.I_data))/(np.max(self.I_data)-np.min(self.I_data)))
+        #self.I_norm=np.array(self.I_norm,dtype=float)
 
         self.data_list=[]
         for i in range(rows):
-            self.data_list.append((tuple(self.pos[i]),self.freqs,self.I_norm[i]))
+            self.data_list.append((tuple(self.pos[i]),self.I_data[i]))
 
     def mapLoop(self,data):
         self.prepareData(data)
+        
         self.completed=0
         length=len(self.data_list)
 
         pool=Pool(processes=None)
         for i in pool.imap_unordered(fitting, self.data_list):
-            self.completed+=(1/length)*100
+            app.processEvents()
+            self.completed+=(1/length)*100+1
             raman.statusBar.setValue(self.completed)
             self.param_dict.update(i)
+
+        self.mapSpecPlot(self.param_dict)
+
+    def mapSpecPlot(self,data_dict):
+        keys=data_dict.keys()
+        self.data_array=np.append(np.array(keys[0]),[data_dict[keys[0]][0]['a']])
+        self.data_array=np.array([self.data_array])
+        length=len(keys)
+        for i in range(1,length):
+            new_entry=np.append(np.array(keys[i]),[data_dict[keys[i]][0]['a']])
+            new_entry=np.array([new_entry])
+            self.data_array=np.append(self.data_array,new_entry,axis=0)
+
+        xi=np.linspace(min(self.data_array[:,0]),max(self.data_array[:,0]))
+        yi=np.linspace(min(self.data_array[:,1]),max(self.data_array[:,1]))
+        X,Y=np.meshgrid(xi,yi)
+        Z=griddata(self.data_array[:,0:2],self.data_array[:,2],(X,Y),method='nearest')
+
+        #print self.data_array
+        C=plt.contourf(X,Y,Z)
+        #figure=Figure()
+        #axes=figure.gca()
+        #axes.set_title('title')
+        #axes.plot(C)
+        plt.show(C)
+        #canvas=FigureCanvas(figure)
+        #self.mapPlot.addTab(canvas)
+
+
+        
 
 def Single_Lorentz(x,a,w,b):
     return a*(((w/2)**2)/(((x-b)**2)+((w/2)**2)))
@@ -328,26 +365,31 @@ def backgroundFit(x,y):
     return I
 
 def fitting(data_tuple):
+    global w
     pos=data_tuple[0]
-    x=data_tuple[1]
-    y=data_tuple[2]
+    x=w
+    y=data_tuple[1]
 
-    I=backgroundFit(x,y)
+    y_norm=[]
+    for i in y:
+            y_norm.append((i-np.min(y))/(np.max(y)-np.min(y)))
+
+    I=backgroundFit(x,y_norm)
 
     pG=[1.1*np.max(I), 50, 1581.6] #a w b
     pGp=[1.1*np.max(I), 50, 2675]
     pD=[0.1*np.max(I),15,1350]
 
     #fit G peak
-    G_param,G_cov=curve_fit(Single_Lorentz,x,y,bounds=([0.3*np.max(I),33,1400],[1.5*np.max(I),60,2000]),p0=pG)
+    G_param,G_cov=curve_fit(Single_Lorentz,x,y_norm,bounds=([0.3*np.max(I),33,1400],[1.5*np.max(I),60,2000]),p0=pG)
     G_fit=Single_Lorentz(x,G_param[0],G_param[1],G_param[2])
 
     #fit G' peak
-    Gp_param,Gp_cov=curve_fit(Single_Lorentz,x,y,bounds=([0.3*np.max(I),32,2000],[1.5*np.max(I),60,3000]),p0=pGp)
+    Gp_param,Gp_cov=curve_fit(Single_Lorentz,x,y_norm,bounds=([0.3*np.max(I),32,2000],[1.5*np.max(I),60,3000]),p0=pGp)
     Gp_fit=Single_Lorentz(x,Gp_param[0],Gp_param[1],Gp_param[2])
 
     #fit D peak
-    D_param,D_cov=curve_fit(Single_Lorentz,x,y,bounds=([0,10,1300],[np.max(I),50,1400]),p0=pD)
+    D_param,D_cov=curve_fit(Single_Lorentz,x,y_norm,bounds=([0,10,1300],[np.max(I),50,1400]),p0=pD)
     D_fit=Single_Lorentz(x,D_param[0],D_param[1],D_param[2])
 
     Gdict={'a':G_param[0],'w':G_param[1],'b':G_param[2]}

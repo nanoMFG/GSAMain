@@ -139,7 +139,7 @@ class GSAImage:
 		if len(self.modifications) > 0:
 			if self.mode == 'local':
 				d = self.modifications[-1].to_dict()
-				name = QtGui.QFileDialog.getSaveFileName()[0]
+				name = QtWidgets.QFileDialog.getSaveFileName(None, "Export Image", '', "All Files (*);;JSON File (*.json)")[0]
 				if name != '':
 					with open(name,'w') as f:
 						json.dump(d,f)
@@ -1049,7 +1049,7 @@ class FilterPattern(Modification):
 	def exportMask(self):
 		if len(self.layer_list) > 0:
 			if self.properties['mode'] == 'local':
-				name = QtWidgets.QFileDialog.getSaveFileName(None, "Export Image", '', "All Files (*);;Images (*.png)")[0]
+				name = QtWidgets.QFileDialog.getSaveFileName(None, "Export Mask", '', "All Files (*);;Images (*.json)")[0]
 				if name != '':
 					with open(name,'w') as f:
 						json.dump(self.mask_total.tolist(),f)
@@ -1060,7 +1060,7 @@ class FilterPattern(Modification):
 				subprocess.check_output('exportfile %s'%name,shell=True)
 				# os.remove(name)
 			else:
-				return	
+				return
 
 	def update_image(self):
 		back_properties = self.back_properties()
