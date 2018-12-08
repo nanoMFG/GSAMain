@@ -19,6 +19,13 @@ def slow_update(func, pause=0.3):
 			pass
 	return wrapper
 
+def check_extension(file_name, extensions):
+	for extension in extensions:
+		if len(file_name) > len(extension):
+			if file_name[len(file_name) - len(extension): len(file_name)] == extension:
+				return True
+	return False
+
 class GSAImage:
 	def __init__(self,mode='local'):
 		self.mode = mode
@@ -125,7 +132,7 @@ class GSAImage:
 		if len(self.modifications) > 0:
 			if self.mode == 'local':
 				name = QtWidgets.QFileDialog.getSaveFileName(None, "Export Image", '', "All Files (*);;PNG File (*.png);;JPEG File (*.jpg)")[0]
-				if name != '':
+				if name != '' and check_extension(name, [".png", ".jpg"]):
 					cv2.imwrite(name,self.modifications[-1].image())
 			elif self.mode == 'nanohub':
 				name = 'temp_%s.png'%int(time.time())
@@ -140,7 +147,7 @@ class GSAImage:
 			if self.mode == 'local':
 				d = self.modifications[-1].to_dict()
 				name = QtWidgets.QFileDialog.getSaveFileName(None, "Export Image", '', "All Files (*);;JSON File (*.json)")[0]
-				if name != '':
+				if name != '' and check_extension(name, [".json"]):
 					with open(name,'w') as f:
 						json.dump(d,f)
 			elif self.mode == 'nanohub':
@@ -1049,8 +1056,8 @@ class FilterPattern(Modification):
 	def exportMask(self):
 		if len(self.layer_list) > 0:
 			if self.properties['mode'] == 'local':
-				name = QtWidgets.QFileDialog.getSaveFileName(None, "Export Mask", '', "All Files (*);;Images (*.json)")[0]
-				if name != '':
+				name = QtWidgets.QFileDialog.getSaveFileName(None, "Export Mask", '', "All Files (*);;JSON Files (*.json)")[0]
+				if name != '' and check_extension(name, [".json"]):
 					with open(name,'w') as f:
 						json.dump(self.mask_total.tolist(),f)
 			elif self.properties['mode'] == 'nanohub':
