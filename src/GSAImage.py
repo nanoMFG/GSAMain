@@ -858,6 +858,7 @@ class FilterPattern(Modification):
 		self.wAdd = QtGui.QPushButton('Add Filter')
 		self.wRemove = QtGui.QPushButton('Remove Layer')
 		self.wErase = QtGui.QPushButton('Add Erase')
+		self.wCustom = QtGui.QPushButton('Add Custom Filter')
 		self.wExportMask = QtGui.QPushButton('Export Mask')
 
 		self.wImgBox = pg.GraphicsLayoutWidget()
@@ -909,10 +910,11 @@ class FilterPattern(Modification):
 		self.wLayout.addWidget(self.wFilterScaleLabel,4,1)
 		self.wLayout.addWidget(self.wImgBox,9,0,4,4)
 		self.wLayout.addWidget(self.wFilterList,5,0,4,3)
-		self.wLayout.addWidget(self.wAdd,5,3)
-		self.wLayout.addWidget(self.wRemove,8,3)
-		self.wLayout.addWidget(self.wErase,6,3)
-		self.wLayout.addWidget(self.wExportMask,7,3)
+		self.wLayout.addWidget(self.wAdd,4,3)
+		self.wLayout.addWidget(self.wRemove,7,3)
+		self.wLayout.addWidget(self.wErase,5,3)
+		self.wLayout.addWidget(self.wExportMask,6,3)
+		self.wLayout.addWidget(self.wCustom, 8, 3)
 
 		self.wThreshSlider.valueChanged.connect(self.update_view)
 		self.wComboBox.currentIndexChanged.connect(self.update_view)
@@ -922,6 +924,7 @@ class FilterPattern(Modification):
 		self.wFilterList.itemSelectionChanged.connect(self.selectLayer)
 		self.wErase.clicked.connect(self.addErase)
 		self.wExportMask.clicked.connect(self.exportMask)
+		self.wCustom.clicked.connect(self.addCustomFilter)
 
 	def to_dict(self):
 		d = super(FilterPattern,self).to_dict()
@@ -934,6 +937,10 @@ class FilterPattern(Modification):
 					'layer': 'filter',
 					'mode': layer['mode']
 					}
+			elif layer['layer'] == 'custom':
+				temp = {
+					'layer': 'custom',
+				}
 			else:
 				temp = {
 					'layer': 'erase',
@@ -957,6 +964,9 @@ class FilterPattern(Modification):
 				obj.wComboBox.setValue(layer['mode'])
 			elif layer['layer'] == 'erase':
 				obj.addErase()
+				temp = obj.layer_list[-1]
+			elif layer['layer'] == 'custom':
+				obj.addCustomFilter()
 				temp = obj.layer_list[-1]
 			temp['mask'] = np.array(layer['mask'])
 
@@ -986,6 +996,32 @@ class FilterPattern(Modification):
 				nx,ny = self._item['mask'].shape
 
 				x,y = np.ogrid[-a:nx-a, -b:ny-b]
+				mask = x*x + y*y <= radius**2
+				self._item['mask'][mask] = True
+				slow_update(self.update_view())
+
+	def addCustomFilter(self):
+		custom_dict = {
+				'layer': 'custom',
+				# Should 'mask' should be different from 'erase'?
+				'mask': np.zeros_like(self.mod_in.image(),dtype=bool)
+			}
+		self.layer_list.append(custom_dict)
+		self.wFilterList.addItem('Custom Filter %d'%self.wFilterList.count())
+		self.wFilterList.setCurrentRow(self.wFilterList.count()-1)
+		self.selectLayer()
+
+	def customFilter(self, pos, radius = 5):
+		selection = self.wFilterList.selectedItems()
+		if self._item['layer'] == 'custom' and len(selection) > 0:
+			selection = selection[0]
+			row = self.wFilterList.row(selection)
+			if row == self.wFilterList.count() - 1:
+				pos = [int(pos.x()), int (pos.y())]
+				a, b = pos[0], pos[1]
+				nx, ny = self._item['mask'].shape
+
+				x, y = np.ogrid[-a:nx-a, -b:ny-b]
 				mask = x*x + y*y <= radius**2
 				self._item['mask'][mask] = True
 				slow_update(self.update_view())
@@ -1106,7 +1142,7 @@ class FilterPattern(Modification):
 				selection = selection[0]
 				row = self.wFilterList.row(selection)
 				for layer in self.layer_list[:row+1]:
-					if layer['layer'] == 'filter':
+					if layer['layer'] == 'filter' or layer['layer'] == 'custom':
 						self.mask_total[layer['mask']] = True
 					elif layer['layer'] == 'erase':
 						self.mask_total[layer['mask']] = False
@@ -1288,7 +1324,7 @@ class HoughTransform(Modification):
 
 	@classmethod
 	def from_dict(cls,d,img_item):
-		obj = super(HoughTransform,obj).from_dict(d,img_item)
+		obj = super(HoughTransform,cls).from_dict(d,img_item)
 		obj.wMinAngleSlider.setSliderPosition(str(d['hough_line_peaks']['min_angle']))
 		obj.wMinDistSlider.setSliderPosition(str(d['hough_line_peaks']['min_distance']))
 		obj.wThreshSlider.setSliderPosition(str(d['hough_line_peaks']['threshold']))
@@ -1394,7 +1430,7 @@ class DomainCenters(Modification):
 
 	@classmethod
 	def from_dict(cls,d,img_item):
-		obj = super(DomainCenters,obj).from_dict(d,img_item)
+		obj = super(DomainCenters, cls).from_dict(d,img_item)
 		for pos in obj.properties['centers']:
 			obj.wImg.drawCircle(pos)
 		obj.update_image()
@@ -1716,7 +1752,12 @@ class ImageItemMask(pg.ImageItem):
 		self.setDrawKernel(kern, mask=None, center=(int(1),int(1)), mode='set')
 
 	def drawAt(self,pos,ev=None):
-		self.mod.erase(pos,radius=self.mod.eraser_size)
+		if self.mod._item != None:
+			if self.mod._item['layer'] == 'erase':
+				self.mod.erase(pos, radius=self.mod.eraser_size)
+			elif self.mod._item['layer'] == 'custom':
+				self.mod.customFilter(pos, radius = self.mod.eraser_size)
+
 
 	def hoverEvent(self,ev):
 		super(ImageItemMask,self).hoverEvent(ev)
