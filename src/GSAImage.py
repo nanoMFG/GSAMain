@@ -1153,6 +1153,8 @@ class FilterPattern(Modification):
 				self.roi_img[self.mask_total,:] = [0,0,255]
 				if self._item['layer']=='erase':
 					self.roi_img[self.hover_mask.astype(bool),:] = [0,255,0]
+				elif self._item['layer'] == 'custom':
+					self.roi_img[self.hover_mask.astype(bool), :] = [0, 255, 0]
 
 				self.properties['masked_area_um2'] = float(np.sum(self.mask_total)*self.scale**2)
 				self.properties['mask_total'] = self.mask_total.tolist()
@@ -1763,7 +1765,7 @@ class ImageItemMask(pg.ImageItem):
 		super(ImageItemMask,self).hoverEvent(ev)
 		self.mod.hover_mask = np.zeros_like(self.mod.hover_mask,dtype=np.uint8)
 		if self.mod._item != None and not ev.isExit():
-			if self.mod._item['layer']=='erase':
+			if self.mod._item['layer']=='erase' or self.mod._item['layer'] == 'custom':
 				pos = ev.pos()
 				nx,ny = self.mod.hover_mask.shape
 				a, b = int(pos.x()), int(pos.y())
