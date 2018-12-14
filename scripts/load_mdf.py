@@ -78,8 +78,39 @@ def zipdir(path, ziph):
                        arcname=os.path.join(os.path.relpath(root, path), file))
 
 
+def max_temp(sample):
+    """
+    Find the maximum furnace temperature across all of the steps
+    :param sample:
+    :return: The max temperature or zero if there are no listed steps
+    """
+    step_temps = list(
+        filter(None, list(map(lambda step: step.furnace_temperature,
+                              sample.annealing_steps)) + \
+               list(map(lambda step: step.furnace_temperature,
+                        sample.growing_steps)) + \
+               list(map(lambda step: step.furnace_temperature,
+                        sample.cooling_steps))))
+
+    if(len(step_temps)):
+        return max(step_temps)
+    else:
+        return 0
+
+
+def carbon_source(sample):
+    if sample.growing_steps:
+        list_of_sources = list(filter(None, list(map(lambda step: step.carbon_source, sample.growing_steps))))
+        if len(list_of_sources):
+            return list_of_sources[0]
+        else:
+            return ""
+        return list(filter(None, list(map(lambda step: step.carbon_source, sample.growing_steps))))[0]
+    else:
+        return ""
+
 # Get a handle to MDF Client Connect
-mdfcc = MDFConnectClient(test=True)
+mdfcc = MDFConnectClient(test=True, service_instance="dev")
 
 # This will prompt for a developer Token from Box
 # See https://developer.box.com/docs/authenticate-with-developer-token
@@ -127,7 +158,7 @@ for i in range(data.shape[0]):
 
     # Growing
     s.growing_steps = []
-    for step, j in enumerate(range(109, 188, 13)):
+    for step, j in enumerate(range(109, 187, 13)):
         prep = preparation_step()
         prep.name = "Growing"
         prep.sample_id = s.id
@@ -141,10 +172,10 @@ for i in range(data.shape[0]):
 
     # Cooling
     s.cooling_steps = []
-    for step, j in enumerate(range(190, 268, 13)):
+    for step, j in enumerate(range(190, 266, 13)):
         prep = preparation_step()
         prep.name = "Cooling"
-        prep.cooling_rate = data.iloc[i, 190]
+        prep.cooling_rate = data.iloc[i, 189]
         prep.sample_id = s.id
         prep.step = step
         for p in range(13):
@@ -160,7 +191,10 @@ for i in range(data.shape[0]):
         json.dump(s, outfile, cls=GresqEncoder)
 
     if s.experiment_date:
-        print("----->" + s.sample_id)
+        print("----->" + s.identifier)
+        print(max_temp(s))
+        print(carbon_source(s))
+
         sample_folder = client.search().query(s.sample_id, type="folder").next()
         download_path = os.path.join("..", "output", s.sample_id)
         download_folder(client, download_path, sample_folder)
@@ -182,20 +216,28 @@ for i in range(data.shape[0]):
                               publication_year=experiment_date.year
                               )
         mdfcc.add_data(box_file.get_shared_link_download_url(access='open'))
-        mdfcc.set_custom_block(
-            {
-                "material_name": s.material_name,
-                "catalyst": s.catalyst,
-                "tube_length": s.tube_length,
-                "sample_surface_area": s.sample_surface_area,
-                "thickness": s.thickness
-            }
-        )
-
+        mdfcc.add_service("globus_publish")
         mdfcc.set_source_name(s.sample_id)
 
-        mdf_source_id = mdfcc.submit_dataset()
+        submission = mdfcc.get_submission()
+
+        submission["projects"] = {}
+        submission["projects"]["nanomfg"] = {
+            "catalyst": s.catalyst,
+            "max_temperature": max_temp(s),
+            "carbon_source": carbon_source(s),
+            "base_pressure": s.base_pressure,
+            "sample_surface_area": s.sample_surface_area,
+            "sample_thickness": s.thickness,
+            "orientation": "",
+            "grain_size": ""
+        }
+
+
+
+        mdf_source_id = mdfcc.submit_dataset(submission=submission)
         print("Submitted to MDF -----> "+str(mdf_source_id))
 
-        print(str(mdfcc.check_status()))
+        # print(str(mdfcc.check_status()))
         mdfcc.reset_submission()
+
