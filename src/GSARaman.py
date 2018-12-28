@@ -4,7 +4,8 @@ import pyqtgraph as pg
 import pandas as pd
 import numpy as np
 from scipy.optimize import curve_fit
-from scipy.interpolate import griddata
+from scipy.sparse import vstack
+from PIL import Image
 from multiprocessing import Pool
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -109,6 +110,7 @@ class GSARaman(QtWidgets.QWidget):
             self.displayWidget.setCurrentWidget(self.widget)
 
             self.widget.mapLoop(self.data)
+            self.fitbut.setEnabled(False)
 
 
 class SingleSpect(QtWidgets.QWidget):
@@ -267,12 +269,22 @@ class MapFit(QtWidgets.QWidget):
         self.pickParam.addItem("D Peak")
         self.pickParam.setEnabled(False)
 
-        self.mapPlot=QtWidgets.QTabWidget()
-        self.mapPlot.setFixedSize(400,500)
+        self.GTab=QtWidgets.QTabWidget()
+        self.GTab.setFixedSize(400,500)
+        self.GpTab=QtWidgets.QTabWidget()
+        self.GpTab.setFixedSize(400,500)
+        self.DTab=QtWidgets.QTabWidget()
+        self.DTab.setFixedSize(400,500)
+
+        self.mapPlot=QtWidgets.QStackedWidget()
+        self.mapPlot.addWidget(self.GTab)
+        self.mapPlot.addWidget(self.GpTab)
+        self.mapPlot.addWidget(self.DTab)
+        self.mapPlot.setCurrentWidget(self.GTab)
+
 
         self.spectPlots=QtWidgets.QTabWidget()
         self.spectPlots.setFixedSize(400,500)
-        self.layout.addWidget(self.spectPlots,)
 
         self.layout.addWidget(self.pickParam,0,0)
         self.layout.addWidget(self.mapPlot,1,0)
@@ -316,28 +328,50 @@ class MapFit(QtWidgets.QWidget):
 
     def mapSpecPlot(self,data_dict):
         keys=data_dict.keys()
-        self.data_array=np.append(np.array(keys[0]),[data_dict[keys[0]][0]['a']])
-        self.data_array=np.array([self.data_array])
+        #self.data_array=np.append(np.array(keys[0]),[data_dict[keys[0]][0]['a']])
+        #self.data_array=np.array([self.data_array])
         length=len(keys)
-        for i in range(1,length):
-            new_entry=np.append(np.array(keys[i]),[data_dict[keys[i]][0]['a']])
-            new_entry=np.array([new_entry])
-            self.data_array=np.append(self.data_array,new_entry,axis=0)
+        x=np.array([])
+        y=np.array([])
+        for i in range(length):
+            x=np.append(x,keys[i][0])
+            y=np.append(y,keys[i][1])
+            #new_entry=np.append(np.array(keys[i]),[data_dict[keys[i]][0]['a']])
+            #new_entry=np.array([new_entry])
+            #self.data_array=np.append(self.data_array,new_entry,axis=0)
 
-        xi=np.linspace(min(self.data_array[:,0]),max(self.data_array[:,0]))
-        yi=np.linspace(min(self.data_array[:,1]),max(self.data_array[:,1]))
-        X,Y=np.meshgrid(xi,yi)
-        Z=griddata(self.data_array[:,0:2],self.data_array[:,2],(X,Y),method='nearest')
+        x_vals=np.unique(x)
+        y_vals=np.unique(y)
+        z=np.array([])
+        for i in y:
+            new_row=np.array([])
+            for j in x:
+                new_row=np.append(new_row,[data_dict[(j,i)][0]['a']])
+            z=vstack([z,new_row])
+        img=z.toarray()
+        #xi=np.linspace(min(self.data_array[:,0]),max(self.data_array[:,0]))
+        #xi=np.linspace(min(x),max(x))
+        #yi=np.linspace(min(self.data_array[:,1]),max(self.data_array[:,1]))
+        #yi=np.linspace(min(y),max(y))
+        #X,Y=np.meshgrid(xi,yi)
+        #Z=griddata((x,y),z,(X,Y),method='nearest')
 
         #print self.data_array
-        C=plt.contourf(X,Y,Z)
+        #C=plt.contourf(X,Y,Z)
+        #plt.colorbar(C)
+        #plt.set_cmap('inferno')
         #figure=Figure()
         #axes=figure.gca()
         #axes.set_title('title')
         #axes.plot(C)
-        plt.show(C)
-        #canvas=FigureCanvas(figure)
-        #self.mapPlot.addTab(canvas)
+        pxmp=QtGui.QPixmap()
+        pxmp.loadFromData(img)
+        canvas=QtWidgets.QLabel()
+        canvas.setPixmap(pxmp)
+        canvas.setFixedSize(400,500)
+        canvas.show()
+
+        self.layout.addWidget(canvas,1,2)
 
 
         
