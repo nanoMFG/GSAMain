@@ -10,6 +10,7 @@ from multiprocessing import Pool
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
+import qimage2ndarray
 
 filelist=[]
 layer1=[{'a':3.00007920e-01,'w':3.73588869e+01,'b':1.58577373e+03},{'a':1.00000000e+00,'w':3.25172389e+01,'b':2.68203383e+03}]
@@ -349,6 +350,7 @@ class MapFit(QtWidgets.QWidget):
                 new_row=np.append(new_row,[data_dict[(j,i)][0]['a']])
             z=vstack([z,new_row])
         img=z.toarray()
+        img2=np.uint8(img*255)
         #xi=np.linspace(min(self.data_array[:,0]),max(self.data_array[:,0]))
         #xi=np.linspace(min(x),max(x))
         #yi=np.linspace(min(self.data_array[:,1]),max(self.data_array[:,1]))
@@ -364,14 +366,12 @@ class MapFit(QtWidgets.QWidget):
         #axes=figure.gca()
         #axes.set_title('title')
         #axes.plot(C)
-        pxmp=QtGui.QPixmap()
-        pxmp.loadFromData(img)
+        pxmp=qimage2ndarray.array2qimage(img2)
+        pxmp2=QtGui.QPixmap(pxmp)
         canvas=QtWidgets.QLabel()
-        canvas.setPixmap(pxmp)
-        canvas.setFixedSize(400,500)
-        canvas.show()
+        canvas.setPixmap(pxmp2)
 
-        self.layout.addWidget(canvas,1,2)
+        self.GTab.addTab(canvas,'image')
 
 
         
