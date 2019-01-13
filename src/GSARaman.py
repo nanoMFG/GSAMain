@@ -5,7 +5,8 @@ import pandas as pd
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.sparse import vstack
-from PIL import Image
+from scipy.misc import toimage
+from PIL.ImageQt import ImageQt
 from multiprocessing import Pool
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -350,7 +351,9 @@ class MapFit(QtWidgets.QWidget):
                 new_row=np.append(new_row,[data_dict[(j,i)][0]['a']])
             z=vstack([z,new_row])
         img=z.toarray()
-        img2=np.uint8(img*255)
+        img2=np.stack((np.array(img),)*3,-1)
+        img2=img2*255
+
         #xi=np.linspace(min(self.data_array[:,0]),max(self.data_array[:,0]))
         #xi=np.linspace(min(x),max(x))
         #yi=np.linspace(min(self.data_array[:,1]),max(self.data_array[:,1]))
@@ -366,10 +369,14 @@ class MapFit(QtWidgets.QWidget):
         #axes=figure.gca()
         #axes.set_title('title')
         #axes.plot(C)
-        pxmp=qimage2ndarray.array2qimage(img2)
-        pxmp2=QtGui.QPixmap(pxmp)
+
+        pxmp=toimage(img2,high=255,low=0,mode='RGB')
+        pxmp1=ImageQt(pxmp)
+        #pxmp=qimage2ndarray.array2qimage(img2)
+        pxmp2=QtGui.QPixmap.fromImage(pxmp1)
         canvas=QtWidgets.QLabel()
         canvas.setPixmap(pxmp2)
+        #print img2.shape
 
         self.GTab.addTab(canvas,'image')
 
