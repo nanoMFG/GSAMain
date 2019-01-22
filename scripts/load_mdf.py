@@ -216,7 +216,10 @@ for i in range(data.shape[0]):
                               publication_year=experiment_date.year
                               )
         mdfcc.add_data(box_file.get_shared_link_download_url(access='open'))
-        mdfcc.add_service("globus_publish")
+
+        # Don't publish specific recipes. Later on, we will bundle datasets and
+        # and publish an omnibus dataset
+        # mdfcc.add_service("globus_publish")
         mdfcc.set_source_name(s.sample_id)
 
         submission = mdfcc.get_submission()
