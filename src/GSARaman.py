@@ -6,6 +6,7 @@ import numpy as np
 from scipy.optimize import curve_fit
 from scipy.sparse import vstack
 from scipy.misc import toimage
+from scipy.interpolate import griddata
 from PIL.ImageQt import ImageQt
 from multiprocessing import Pool
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -269,7 +270,8 @@ class MapFit(QtWidgets.QWidget):
         self.pickParam.addItem("G Peak")
         self.pickParam.addItem("G' Peak")
         self.pickParam.addItem("D Peak")
-        self.pickParam.setEnabled(False)
+        self.pickParam.activated.connect(self.changeParam)
+        self.paramnum=0
 
         self.GTab=QtWidgets.QTabWidget()
         self.GTab.setFixedSize(400,500)
@@ -293,6 +295,13 @@ class MapFit(QtWidgets.QWidget):
         self.layout.addWidget(self.spectPlots,1,1)
 
         self.param_dict={}
+
+        self.fig1=plt.figure()
+        self.canvas1=FigureCanvas(self.fig1)
+        self.fig2=plt.figure()
+        self.canvas2=FigureCanvas(self.fig2)
+        self.fig3=plt.figure()
+        self.canvas3=FigureCanvas(self.fig3)
     
     def prepareData(self,data):
         rows=data.shape[0]
@@ -330,55 +339,107 @@ class MapFit(QtWidgets.QWidget):
 
     def mapSpecPlot(self,data_dict):
         keys=data_dict.keys()
-        #self.data_array=np.append(np.array(keys[0]),[data_dict[keys[0]][0]['a']])
-        #self.data_array=np.array([self.data_array])
+        num=self.paramnum
+        self.data_array_a=np.append(np.array(keys[0]),[data_dict[keys[0]][num]['a']])
+        self.data_array_a=np.array([self.data_array_a])
         length=len(keys)
-        x=np.array([])
-        y=np.array([])
+        #x=np.array([])
+        #y=np.array([])
         for i in range(length):
-            x=np.append(x,keys[i][0])
-            y=np.append(y,keys[i][1])
-            #new_entry=np.append(np.array(keys[i]),[data_dict[keys[i]][0]['a']])
-            #new_entry=np.array([new_entry])
-            #self.data_array=np.append(self.data_array,new_entry,axis=0)
+            #x=np.append(x,keys[i][0])
+            #y=np.append(y,keys[i][1])
+            new_entry=np.append(np.array(keys[i]),[data_dict[keys[i]][num]['a']])
+            new_entry=np.array([new_entry])
+            self.data_array_a=np.append(self.data_array_a,new_entry,axis=0)
+        z_a=self.data_array_a[:,2]
+        x_a=self.data_array_a[:,0]
+        y_a=self.data_array_a[:,1]
 
-        x_vals=np.unique(x)
-        y_vals=np.unique(y)
-        z=np.array([])
-        for i in y:
-            new_row=np.array([])
-            for j in x:
-                new_row=np.append(new_row,[data_dict[(j,i)][0]['a']])
-            z=vstack([z,new_row])
-        img=z.toarray()
-        img2=np.stack((np.array(img),)*3,-1)
-        img2=img2*255
+        #x_vals=np.unique(x)
+        #y_vals=np.unique(y)
+        #z=np.array([])
+        #for i in y:
+        #    new_row=np.array([])
+        #    for j in x:
+        #        new_row=np.append(new_row,[data_dict[(j,i)][0]['a']])
+        #    z=vstack([z,new_row])
+        #img=z.toarray()
+        #img2=np.stack((np.array(img),)*3,-1)
+        #img2=img2*255
 
-        #xi=np.linspace(min(self.data_array[:,0]),max(self.data_array[:,0]))
-        #xi=np.linspace(min(x),max(x))
-        #yi=np.linspace(min(self.data_array[:,1]),max(self.data_array[:,1]))
-        #yi=np.linspace(min(y),max(y))
-        #X,Y=np.meshgrid(xi,yi)
-        #Z=griddata((x,y),z,(X,Y),method='nearest')
+        xi_a=np.linspace(min(self.data_array_a[:,0]),max(self.data_array_a[:,0]))
+        xi_a=np.linspace(min(x_a),max(x_a))
+        yi_a=np.linspace(min(self.data_array_a[:,1]),max(self.data_array_a[:,1]))
+        yi_a=np.linspace(min(y_a),max(y_a))
+        X_a,Y_a=np.meshgrid(xi_a,yi_a)
+        Z_a=griddata((x_a,y_a),z_a,(X_a,Y_a),method='nearest')
 
         #print self.data_array
-        #C=plt.contourf(X,Y,Z)
-        #plt.colorbar(C)
-        #plt.set_cmap('inferno')
+        self.fig1.clear()
+        ax1=self.fig1.add_subplot(111)
+        C1=ax1.contourf(X_a,Y_a,Z_a)
+        plt.colorbar(C1)
+        plt.set_cmap('inferno')
+        self.canvas1.draw()
+        #plt.show()
         #figure=Figure()
         #axes=figure.gca()
         #axes.set_title('title')
         #axes.plot(C)
 
-        pxmp=toimage(img2,high=255,low=0,mode='RGB')
-        pxmp1=ImageQt(pxmp)
+        #pxmp=toimage(Z,high=1,low=0,mode='RGB')
+        #pxmp1=ImageQt(pxmp)
         #pxmp=qimage2ndarray.array2qimage(img2)
-        pxmp2=QtGui.QPixmap.fromImage(pxmp1)
-        canvas=QtWidgets.QLabel()
-        canvas.setPixmap(pxmp2)
+        #pxmp2=QtGui.QPixmap.fromImage(pxmp1)
+        #canvas=QtWidgets.QLabel()
+        #canvas.setPixmap(pxmp2)
         #print img2.shape
 
-        self.GTab.addTab(canvas,'image')
+        self.data_array_w=np.append(np.array(keys[0]),[data_dict[keys[0]][num]['w']])
+        self.data_array_w=np.array([self.data_array_w])
+        length=len(keys)
+        for i in range(length):
+            new_entry=np.append(np.array(keys[i]),[data_dict[keys[i]][num]['w']])
+            new_entry=np.array([new_entry])
+            self.data_array_w=np.append(self.data_array_w,new_entry,axis=0)
+        z_w=self.data_array_w[:,2]
+
+        Z_w=griddata((x_a,y_a),z_w,(X_a,Y_a),method='nearest')
+
+        self.fig2.clear()
+        ax2=self.fig2.add_subplot(111)
+        C2=ax2.contourf(X_a,Y_a,Z_w)
+        plt.colorbar(C2)
+        plt.set_cmap('inferno')
+        self.canvas2.draw()
+
+        self.data_array_b=np.append(np.array(keys[0]),[data_dict[keys[0]][num]['b']])
+        self.data_array_b=np.array([self.data_array_b])
+        length=len(keys)
+        for i in range(length):
+            new_entry=np.append(np.array(keys[i]),[data_dict[keys[i]][num]['b']])
+            new_entry=np.array([new_entry])
+            self.data_array_b=np.append(self.data_array_b,new_entry,axis=0)
+        z_b=self.data_array_b[:,2]
+
+        Z_b=griddata((x_a,y_a),z_b,(X_a,Y_a),method='nearest')
+
+        self.fig3.clear()
+        ax3=self.fig3.add_subplot(111)
+        C3=ax3.contourf(X_a,Y_a,Z_b)
+        plt.colorbar(C3)
+        plt.set_cmap('inferno')
+        self.canvas3.draw()
+
+        self.GTab.addTab(self.canvas1,'a')
+        self.GTab.addTab(self.canvas2,'w')
+        self.GTab.addTab(self.canvas3,'b')
+
+    def changeParam(self,index):
+        self.paramnum=index
+        self.mapSpecPlot(self.param_dict)
+
+
 
 
         
