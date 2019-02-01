@@ -273,22 +273,13 @@ class MapFit(QtWidgets.QWidget):
         self.pickParam.activated.connect(self.changeParam)
         self.paramnum=0
 
-        self.GTab=QtWidgets.QTabWidget()
-        self.GTab.setFixedSize(400,500)
-        self.GpTab=QtWidgets.QTabWidget()
-        self.GpTab.setFixedSize(400,500)
-        self.DTab=QtWidgets.QTabWidget()
-        self.DTab.setFixedSize(400,500)
-
-        self.mapPlot=QtWidgets.QStackedWidget()
-        self.mapPlot.addWidget(self.GTab)
-        self.mapPlot.addWidget(self.GpTab)
-        self.mapPlot.addWidget(self.DTab)
-        self.mapPlot.setCurrentWidget(self.GTab)
-
+        self.mapPlot=QtWidgets.QTabWidget()
+        self.mapPlot.setFixedSize(400,500)
+        self.mapPlot.currentChanged.connect(self.changeHist)
 
         self.spectPlots=QtWidgets.QTabWidget()
         self.spectPlots.setFixedSize(400,500)
+        self.hist_plotted=False
 
         self.layout.addWidget(self.pickParam,0,0)
         self.layout.addWidget(self.mapPlot,1,0)
@@ -378,7 +369,7 @@ class MapFit(QtWidgets.QWidget):
         self.fig1.clear()
         ax1=self.fig1.add_subplot(111)
         C1=ax1.contourf(X_a,Y_a,Z_a)
-        plt.colorbar(C1)
+        plt.colorbar(C1,ax=ax1)
         plt.set_cmap('inferno')
         self.canvas1.draw()
         #plt.show()
@@ -409,7 +400,7 @@ class MapFit(QtWidgets.QWidget):
         self.fig2.clear()
         ax2=self.fig2.add_subplot(111)
         C2=ax2.contourf(X_a,Y_a,Z_w)
-        plt.colorbar(C2)
+        plt.colorbar(C2,ax=ax2)
         plt.set_cmap('inferno')
         self.canvas2.draw()
 
@@ -427,22 +418,38 @@ class MapFit(QtWidgets.QWidget):
         self.fig3.clear()
         ax3=self.fig3.add_subplot(111)
         C3=ax3.contourf(X_a,Y_a,Z_b)
-        plt.colorbar(C3)
+        plt.colorbar(C3,ax=ax3)
         plt.set_cmap('inferno')
         self.canvas3.draw()
 
-        self.GTab.addTab(self.canvas1,'a')
-        self.GTab.addTab(self.canvas2,'w')
-        self.GTab.addTab(self.canvas3,'b')
+        self.histList=[z_a,z_w,z_b]
+
+        self.mapPlot.addTab(self.canvas1,u'\u03b1')
+        self.mapPlot.addTab(self.canvas2,u'\u0393')
+        self.mapPlot.addTab(self.canvas3,u'\u03c9')
 
     def changeParam(self,index):
         self.paramnum=index
+        self.mapPlot.setCurrentIndex(0)
         self.mapSpecPlot(self.param_dict)
 
+    def changeHist(self,i):
+        z=self.histList[i]
+        widths=[0.01,0.1,0.1]
 
+        hist,bin_edges=np.histogram(z,bins='auto',density=False)
+        hist_shift=np.ptp(z)/len(hist)
+        self.hist_plot=pg.plot()
+        bg1=pg.BarGraphItem(x=bin_edges[0:len(hist)-1]+hist_shift,height=hist,width=widths[i],brush='r')
+        self.hist_plot.addItem(bg1)
 
-
-        
+        if self.hist_plotted==False:
+            self.spectPlots.addTab(self.hist_plot,'histogram')
+            self.hist_plotted=True
+        else:
+            self.spectPlots.removeTab(0)
+            self.spectPlots.addTab(self.hist_plot,'histogram')
+        self.hist_plot.win.hide()
 
 def Single_Lorentz(x,a,w,b):
     return a*(((w/2)**2)/(((x-b)**2)+((w/2)**2)))
