@@ -231,8 +231,8 @@ class SingleSpect(QtWidgets.QWidget):
                 """u'\u03b1'"""="""+str(round(D_param[0],4))+"""
                 """u'\u0393'"""="""+str(round(D_param[1],4))+"""
                 """u'\u03c9'"""="""+str(round(D_param[2],4))+"""
-            Quality="""+str(round(1-(D_param[0]/G_param[0]),4))+"""
-            Best Case Match: """+self.layers+"""(Ratio of D to G)""")
+            Quality="""+str(round(1-(D_param[0]/G_param[0]),4))+"""(Ratio of D to G)
+            Best Case Match: """+self.layers)
 
         self.fitting_params.setFixedSize(300,500)
         self.layout.addWidget(self.fitting_params,2,2)
@@ -280,12 +280,18 @@ class MapFit(QtWidgets.QWidget):
         self.spectPlots=QtWidgets.QTabWidget()
         self.spectPlots.setFixedSize(400,500)
         self.hist_plotted=False
+        self.spect_plotted=False
+
+        self.fitting_params=QtWidgets.QLabel()
+        self.fitting_params.setFixedSize(300,500)
+        self.layout.addWidget(self.fitting_params,1,2)
 
         self.layout.addWidget(self.pickParam,0,0)
         self.layout.addWidget(self.mapPlot,1,0)
         self.layout.addWidget(self.spectPlots,1,1)
 
         self.param_dict={}
+        self.norm_dict={}
 
         self.fig1=plt.figure()
         self.canvas1=FigureCanvas(self.fig1)
@@ -304,11 +310,6 @@ class MapFit(QtWidgets.QWidget):
         self.pos=np.array(data.iloc[:,0:2])
         self.I_data=np.array(data.iloc[:,2:])
 
-        #self.I_norm=[]
-        #for i in self.I_data:
-        #    self.I_norm.append((i-np.min(self.I_data))/(np.max(self.I_data)-np.min(self.I_data)))
-        #self.I_norm=np.array(self.I_norm,dtype=float)
-
         self.data_list=[]
         for i in range(rows):
             self.data_list.append((tuple(self.pos[i]),self.I_data[i]))
@@ -324,7 +325,8 @@ class MapFit(QtWidgets.QWidget):
             app.processEvents()
             self.completed+=(1/length)*100+1
             raman.statusBar.setValue(self.completed)
-            self.param_dict.update(i)
+            self.param_dict.update(i[0])
+            self.norm_dict.update(i[1])
 
         self.mapSpecPlot(self.param_dict)
 
@@ -334,29 +336,14 @@ class MapFit(QtWidgets.QWidget):
         self.data_array_a=np.append(np.array(keys[0]),[data_dict[keys[0]][num]['a']])
         self.data_array_a=np.array([self.data_array_a])
         length=len(keys)
-        #x=np.array([])
-        #y=np.array([])
+
         for i in range(length):
-            #x=np.append(x,keys[i][0])
-            #y=np.append(y,keys[i][1])
             new_entry=np.append(np.array(keys[i]),[data_dict[keys[i]][num]['a']])
             new_entry=np.array([new_entry])
             self.data_array_a=np.append(self.data_array_a,new_entry,axis=0)
         z_a=self.data_array_a[:,2]
         x_a=self.data_array_a[:,0]
         y_a=self.data_array_a[:,1]
-
-        #x_vals=np.unique(x)
-        #y_vals=np.unique(y)
-        #z=np.array([])
-        #for i in y:
-        #    new_row=np.array([])
-        #    for j in x:
-        #        new_row=np.append(new_row,[data_dict[(j,i)][0]['a']])
-        #    z=vstack([z,new_row])
-        #img=z.toarray()
-        #img2=np.stack((np.array(img),)*3,-1)
-        #img2=img2*255
 
         xi_a=np.linspace(min(self.data_array_a[:,0]),max(self.data_array_a[:,0]))
         xi_a=np.linspace(min(x_a),max(x_a))
@@ -365,26 +352,13 @@ class MapFit(QtWidgets.QWidget):
         X_a,Y_a=np.meshgrid(xi_a,yi_a)
         Z_a=griddata((x_a,y_a),z_a,(X_a,Y_a),method='nearest')
 
-        #print self.data_array
         self.fig1.clear()
         ax1=self.fig1.add_subplot(111)
         C1=ax1.contourf(X_a,Y_a,Z_a)
         plt.colorbar(C1,ax=ax1)
         plt.set_cmap('inferno')
+        cid1=self.fig1.canvas.mpl_connect('button_press_event', self.onclick)
         self.canvas1.draw()
-        #plt.show()
-        #figure=Figure()
-        #axes=figure.gca()
-        #axes.set_title('title')
-        #axes.plot(C)
-
-        #pxmp=toimage(Z,high=1,low=0,mode='RGB')
-        #pxmp1=ImageQt(pxmp)
-        #pxmp=qimage2ndarray.array2qimage(img2)
-        #pxmp2=QtGui.QPixmap.fromImage(pxmp1)
-        #canvas=QtWidgets.QLabel()
-        #canvas.setPixmap(pxmp2)
-        #print img2.shape
 
         self.data_array_w=np.append(np.array(keys[0]),[data_dict[keys[0]][num]['w']])
         self.data_array_w=np.array([self.data_array_w])
@@ -402,6 +376,7 @@ class MapFit(QtWidgets.QWidget):
         C2=ax2.contourf(X_a,Y_a,Z_w)
         plt.colorbar(C2,ax=ax2)
         plt.set_cmap('inferno')
+        cid2=self.fig2.canvas.mpl_connect('button_press_event', self.onclick)
         self.canvas2.draw()
 
         self.data_array_b=np.append(np.array(keys[0]),[data_dict[keys[0]][num]['b']])
@@ -420,6 +395,7 @@ class MapFit(QtWidgets.QWidget):
         C3=ax3.contourf(X_a,Y_a,Z_b)
         plt.colorbar(C3,ax=ax3)
         plt.set_cmap('inferno')
+        cid3=self.fig3.canvas.mpl_connect('button_press_event', self.onclick)
         self.canvas3.draw()
 
         self.histList=[z_a,z_w,z_b]
@@ -427,6 +403,9 @@ class MapFit(QtWidgets.QWidget):
         self.mapPlot.addTab(self.canvas1,u'\u03b1')
         self.mapPlot.addTab(self.canvas2,u'\u0393')
         self.mapPlot.addTab(self.canvas3,u'\u03c9')
+
+    def Single_Lorentz(self, x,a,w,b):
+        return a*(((w/2)**2)/(((x-b)**2)+((w/2)**2)))
 
     def changeParam(self,index):
         self.paramnum=index
@@ -448,8 +427,114 @@ class MapFit(QtWidgets.QWidget):
             self.hist_plotted=True
         else:
             self.spectPlots.removeTab(0)
-            self.spectPlots.addTab(self.hist_plot,'histogram')
+            self.spectPlots.insertTab(0,self.hist_plot,'histogram')
+            
         self.hist_plot.win.hide()
+
+    def plotSpects(self,pos):
+        param_list=self.param_dict[pos]
+        G_fit=self.Single_Lorentz(self.freqs,param_list[0]['a'],param_list[0]['w'],param_list[0]['b'])
+        Gp_fit=self.Single_Lorentz(self.freqs,param_list[1]['a'],param_list[1]['w'],param_list[1]['b'])
+        D_fit=self.Single_Lorentz(self.freqs,param_list[2]['a'],param_list[2]['w'],param_list[2]['b'])
+        y_fit=G_fit+Gp_fit+D_fit
+
+        y_norm=self.norm_dict[pos]
+
+        layers=self.checkParams([param_list[0]['a'],param_list[0]['w'],param_list[0]['b']],[param_list[1]['a'],param_list[1]['w'],param_list[1]['b']])
+        G_test=self.Single_Lorentz(self.freqs,cdat[layers][0]['a'],cdat[layers][0]['w'],cdat[layers][0]['b'])
+        Gp_test=self.Single_Lorentz(self.freqs,cdat[layers][1]['a'],cdat[layers][1]['w'],cdat[layers][1]['b'])
+        y_test=G_test+Gp_test
+
+        self.fit_plot=pg.plot()
+        self.fit_plot.addLegend(offset=(-1,1))
+        self.fit_plot.plot(self.freqs,y_norm,pen='g',name='Raw Data')
+        self.fit_plot.plot(self.freqs,y_test,pen='b',name='Test Data')
+        self.fit_plot.plot(self.freqs,y_fit,pen='r',name='Fitted Data')
+        self.fit_plot.setLabel('left','I<sub>norm</sub>[arb]')
+        self.fit_plot.setLabel('bottom',u'\u03c9'+'[cm<sup>-1</sup>]')
+
+        if self.spect_plotted==False:
+            self.spectPlots.insertTab(1,self.fit_plot,'Spect Plot')
+            self.spectPlots.setCurrentIndex(1)
+            self.spect_plotted=True
+        else:
+            self.spectPlots.removeTab(1)
+            self.spectPlots.insertTab(1,self.fit_plot,'Spect Plot')
+            self.spectPlots.setCurrentIndex(1)
+        self.fit_plot.win.hide()
+
+        self.fitting_params.setText(
+            """Fitting Parameters:
+            G Peak:
+                """u'\u03b1'"""="""+str(round(param_list[0]['a'],4))+"""
+                """u'\u0393'"""="""+str(round(param_list[0]['w'],4))+"""
+                """u'\u03c9'"""="""+str(round(param_list[0]['b'],4))+"""
+            G' Peak:
+                """u'\u03b1'"""="""+str(round(param_list[1]['a'],4))+"""
+                """u'\u0393'"""="""+str(round(param_list[1]['w'],4))+"""
+                """u'\u03c9'"""="""+str(round(param_list[1]['b'],4))+"""
+            D Peak:
+                """u'\u03b1'"""="""+str(round(param_list[2]['a'],4))+"""
+                """u'\u0393'"""="""+str(round(param_list[2]['w'],4))+"""
+                """u'\u03c9'"""="""+str(round(param_list[2]['b'],4))+"""
+            Quality="""+str(round(1-(param_list[2]['a']/param_list[0]['a']),4))+"""(Ratio of D to G)
+            Best Case Match: """+layers)
+
+        self.fitting_params.setFixedSize(300,500)
+        self.layout.addWidget(self.fitting_params,1,2)
+
+    def checkParams(self,G_params,Gp_params):
+        diffs=[]
+
+        PGp=np.array(Gp_params)
+        PG=np.array(G_params)
+
+        layer_keys=['monolayer','bilayer','trilayer','four layers','five layers','graphene']
+
+        for key in layer_keys:
+            LGp=np.array([cdat[key][1]['a'],cdat[key][1]['w'],cdat[key][1]['b']])
+            LG=np.array([cdat[key][0]['a'],cdat[key][0]['w'],cdat[key][0]['b']])
+
+            dfGp=np.average(np.absolute(100*(PGp-LGp)/LGp),weights=[1,1,0.5])
+            dfG=np.average(np.absolute(100*(PG-LG)/LG),weights=[1,1,0.5])
+            drat=np.absolute(100*(((PG[0]/PGp[0])-(LG[0]/LGp[0]))/(LG[0]/LGp[0])))
+            df=np.average([dfGp,dfG,drat],weights=[0.5,0.5,1])
+            diffs.append(df)
+
+        diff_array=np.array(diffs)
+        idx=diffs.index(np.min(diff_array))
+        
+        return layer_keys[idx]
+
+    def onclick(self,event):
+        x=event.xdata
+        y=event.ydata
+        pos_tup=(x,y)
+
+        if None in pos_tup:
+            return
+        else:
+            keys=self.param_dict.keys()
+            length=len(keys)
+            x_list=np.array([])
+            y_list=np.array([])
+            for i in range(length):
+                x_list=np.append(x_list,keys[i][0])
+                y_list=np.append(y_list,keys[i][1])
+
+                x_list=np.unique(x_list)
+                y_list=np.unique(y_list)
+
+            x_key=self.find_nearest(x_list,x)
+            y_key=self.find_nearest(y_list,y)
+
+            self.plotSpects((x_key,y_key))
+
+
+    def find_nearest(self,array,value):
+        array=np.asarray(array)
+        idx=(np.abs(array-value)).argmin()
+        return array[idx]
 
 def Single_Lorentz(x,a,w,b):
     return a*(((w/2)**2)/(((x-b)**2)+((w/2)**2)))
@@ -505,7 +590,7 @@ def fitting(data_tuple):
     Gpdict={'a':Gp_param[0],'w':Gp_param[1],'b':Gp_param[2]}
     Ddict={'a':D_param[0],'w':D_param[1],'b':D_param[2]}
 
-    return {pos:[Gdict,Gpdict,Ddict]}
+    return [{pos:[Gdict,Gpdict,Ddict]},{pos:y_norm}]
 
 
 
