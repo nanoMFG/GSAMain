@@ -12,29 +12,26 @@ from gresq.csv2db import build_db
 from GSAQuery import GSAQuery
 from GSAImage import GSAImage
 
-class GSADashboard:
-	def __init__(self,mode='local'):
-		self.tabs = QtGui.QTabWidget()
+class GSADashboard(QtGui.QTabWidget):
+	def __init__(self,parent=None,mode='local'):
+		super(GSADashboard,self).__init__(parent=parent)
 		
 		self.query_tab = GSAQuery()
 		self.image_tab = GSAImage().widget()
 		self.submit_tab =  QtGui.QWidget()
 		self.raman_tab =  QtGui.QWidget()
 
-		self.tabs.addTab(self.query_tab,'Query')
-		self.tabs.addTab(self.image_tab,'SEM')
-		self.tabs.addTab(self.raman_tab,'Raman')
-		self.tabs.addTab(self.submit_tab,'Submit')
-
-	def run(self):
-		self.tabs.show()
+		self.addTab(self.query_tab,'Query')
+		self.addTab(self.image_tab,'SEM Analysis')
+		self.addTab(self.raman_tab,'Raman Analysis')
+		self.addTab(self.submit_tab,'Submit')
 
 if __name__ == '__main__':
 	dal.init_db(config['development'])
 	Base.metadata.drop_all(bind=dal.engine)
 	Base.metadata.create_all(bind=dal.engine)
 	with dal.session_scope() as session:
-		build_db(session,os.path.join(os.getcwd(),'data'))
+		build_db(session,os.path.join(os.pardir,'data'))
 	if len(sys.argv) > 1:
 		mode = sys.argv[1]
 	else:
@@ -43,5 +40,5 @@ if __name__ == '__main__':
 		mode = 'local'
 	app = QtGui.QApplication([])      
 	dashboard = GSADashboard(mode=mode)
-	dashboard.run()
+	dashboard.show()
 	sys.exit(app.exec_())
