@@ -66,7 +66,7 @@ class sample(Base):
         })
 
     # EXPERIMENTAL CONDITIONS:
-    catalyst = Column(String(64),info={'verbose_name':'Catalyst', 'choices':['temp']})
+    catalyst = Column(String(64),info={'verbose_name':'Catalyst', 'choices':[]})
     tube_diameter = Column(Float(precision=32),info={
         'verbose_name':'Tube Diameter',
         'std_unit':'mm',
