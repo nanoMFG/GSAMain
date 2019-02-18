@@ -13,6 +13,7 @@ from gresq.csv2db import build_db
 from gresq.forge2db import build_db
 from GSAQuery import GSAQuery
 from GSAImage import GSAImage
+from GSASubmit import GSASubmit
 
 class GSADashboard(QtGui.QTabWidget):
 	def __init__(self,parent=None,mode='local'):
@@ -20,7 +21,7 @@ class GSADashboard(QtGui.QTabWidget):
 		
 		self.query_tab = GSAQuery()
 		self.image_tab = GSAImage().widget()
-		self.submit_tab =  QtGui.QWidget()
+		self.submit_tab =  GSASubmit()
 		self.raman_tab =  QtGui.QWidget()
 
 		self.addTab(self.query_tab,'Query')

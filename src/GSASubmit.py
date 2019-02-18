@@ -158,7 +158,8 @@ class FieldsFormWidget(QtGui.QWidget):
 				self.input_widgets[field].setDuplicatesEnabled(False)
 				if 'choices' in info.keys():	
 					self.input_widgets[field].addItems(info['choices'])
-				self.input_widgets[field].addItems(session.query(mdf_forge).distinct())
+				with dal.session_scope() as session:
+					self.input_widgets[field].addItems(session.query(mdf_forge).distinct())
 				self.input_widgets[field].addItem('Other')
 
 				self.other_input[field] = QtGui.QLineEdit()
