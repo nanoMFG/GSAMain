@@ -83,6 +83,10 @@ class GSASubmit(QtGui.QTabWidget):
 			preparation_response = self.preparation.getResponse(),
 			files_response = self.file_upload.getResponse()) if x == self.indexOf(self.review) else None)
 
+		self.preparation.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.properties))
+		self.properties.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.file_upload))
+		self.file_upload.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.review))
+
 class PropertiesTab(QtGui.QWidget):
 	def __init__(self,parent=None):
 		super(PropertiesTab,self).__init__(parent=parent)
