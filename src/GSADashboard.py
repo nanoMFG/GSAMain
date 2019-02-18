@@ -9,6 +9,8 @@ from gresq.database import sample, preparation_step, dal, Base
 from sqlalchemy import String, Integer, Float, Numeric
 from gresq.config import config
 from gresq.csv2db import build_db
+from gresq.csv2db import build_db
+from gresq.forge2db import build_db
 from GSAQuery import GSAQuery
 from GSAImage import GSAImage
 
@@ -31,7 +33,7 @@ if __name__ == '__main__':
 	Base.metadata.drop_all(bind=dal.engine)
 	Base.metadata.create_all(bind=dal.engine)
 	with dal.session_scope() as session:
-		build_db(session,os.path.join(os.pardir,'data'))
+		build_db(session)
 	if len(sys.argv) > 1:
 		mode = sys.argv[1]
 	else:

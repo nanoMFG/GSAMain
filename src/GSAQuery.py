@@ -6,53 +6,28 @@ from models import ResultsTableModel
 from GSAImage import GSAImage
 from GSAStats import TSNEWidget, PlotWidget
 from gresq.csv2db import build_db
-from gresq.database import sample, preparation_step, dal, Base
+from gresq.database import sample, preparation_step, dal, Base, mdf_forge
 from sqlalchemy import String, Integer, Float, Numeric
 from gresq.config import config
 
 graphene_fields = [
-	'average_thickness_of_growth',
-	'standard_deviation_of_growth',
-	'number_of_layers',
-	'growth_coverage',
-	'domain_size',
-	'geometry', # what is this
-	'silicon_peak_shift',
-	'silicon_peak_amplitude',
-	'silicon_fwhm',
-	'd_peak_shift',
-	'd_peak_amplitude',
-	'd_fwhm',
-	'g_peak_shift',
-	'g_peak_amplitude',
-	'g_fwhm',
-	'g_prime_peak_shift',
-	'g_prime_peak_amplitude',
-	'g_prime_fwhm',
-	'lorenztians_under_g_prime_peak',
-	'sample_surface_area',
+	'grain_size',
+	'orientation'
 ]
-
 conditions_fields = [
-	'thickness',
-	'diameter',
-	'length',
+	'sample_surface_area',
+	'sample_thickness',
 	'catalyst',
-	'tube_diameter',
-	'cross_sectional_area',
-	'tube_length',
 	'base_pressure'
 ]
 
 furnace_fields = [
-    'name',
-    'furnace_temperature',
-    'furnace_pressure',
-    'carbon_source',
-    'carbon_source_flow_rate'
+    'title',
+    'max_temperature',
+    'carbon_source'
 ]
 
-results_fields = graphene_fields+conditions_fields
+results_fields = graphene_fields+conditions_fields+furnace_fields
 
 sql_validator = {
 	'int': lambda x: isinstance(x.property.columns[0].type,Integer),
@@ -79,15 +54,10 @@ class GSAQuery(QtGui.QWidget):
 		self.filter_fields.setMaximumHeight(50)
 		self.filter_fields.setSizePolicy(QtGui.QSizePolicy.Maximum,QtGui.QSizePolicy.Preferred)
 		self.filters_dict = {}
-		for field in graphene_fields+conditions_fields:
+		for field in graphene_fields+conditions_fields+furnace_fields:
 			widget = self.generate_field(field)
 			widget.setSizePolicy(QtGui.QSizePolicy.Maximum,QtGui.QSizePolicy.Preferred)
-			self.filters_dict[getattr(sample,field).info['verbose_name']] = widget
-			self.filter_fields.addWidget(widget)
-		for field in furnace_fields:
-			widget = self.generate_field(field)
-			widget.setSizePolicy(QtGui.QSizePolicy.Maximum,QtGui.QSizePolicy.Preferred)
-			self.filters_dict[getattr(preparation_step,field).info['verbose_name']] = widget
+			self.filters_dict[getattr(mdf_forge,field).info['verbose_name']] = widget
 			self.filter_fields.addWidget(widget)
 
 		self.layout = QtGui.QGridLayout(self)
@@ -145,10 +115,7 @@ class GSAQuery(QtGui.QWidget):
 		self.layout.addWidget(self.preview,1,2,8,1)
 
 	def generate_field(self,field):
-		if field in graphene_fields or field in conditions_fields:
-			cla = sample
-		elif field in furnace_fields:
-			cla = preparation_step
+		cla = mdf_forge
 		if sql_validator['int'](getattr(cla,field)) == True:
 			vf = ValueFilter(model=cla,field=field,validate=int)
 			vf.input.returnPressed.connect(lambda: self.addFilter(self.filter_fields.currentWidget()))
@@ -172,10 +139,8 @@ class GSAQuery(QtGui.QWidget):
 			'Furnace Conditions': furnace_fields,
 			'Graphene Characteristics': graphene_fields
 			}
-		if selection == 'Growth Conditions' or selection == 'Graphene Characteristics':
-			cla = sample
-		elif selection == 'Furnace Conditions':
-			cla = preparation_step
+
+		cla = mdf_forge
 		self.secondary_selection.clear()
 		self.secondary_selection.addItems([getattr(cla,v).info['verbose_name'] for v in selection_list[selection]])
 
@@ -312,7 +277,7 @@ class GrapheneWidget(QtGui.QWidget):
 		elements_per_row = 30
 		for f,field in enumerate(graphene_fields):
 			self.fields[field] = {}
-			self.fields[field]['label'] = QtGui.QLabel(getattr(sample,field).info['verbose_name'])
+			self.fields[field]['label'] = QtGui.QLabel(getattr(mdf_forge,field).info['verbose_name'])
 			self.fields[field]['label'].setWordWrap(True)
 			self.fields[field]['label'].setMinimumWidth(120)
 			self.fields[field]['value'] = QtGui.QLabel()
@@ -350,7 +315,8 @@ class ResultsWidget(QtGui.QTabWidget):
 		self.results_model = ResultsTableModel()
 		if len(filters)>0:
 			with dal.session_scope() as session:
-				q = session.query(sample).join(preparation_step,sample.preparation_steps).filter(*filters).distinct()
+				# q = session.query(sample).join(preparation_step,sample.preparation_steps).filter(*filters).distinct()
+				q = session.query(mdf_forge).filter(*filters).distinct()
 				self.results_model.read_sqlalchemy(q.statement,session)
 		self.results_table.setModel(self.results_model)
 		for c in range(self.results_model.columnCount(parent=None)):
