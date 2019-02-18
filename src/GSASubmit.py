@@ -5,7 +5,7 @@ import cv2, sys, time, json, copy, subprocess, os
 from skimage import transform
 from PyQt5 import QtGui, QtCore
 import pyqtgraph as pg
-from gresq.database2 import sample, preparation_step, dal, Base
+from gresq.database import sample, preparation_step, dal, Base, mdf_forge
 from sqlalchemy import String, Integer, Float, Numeric
 from gresq.config import config
 from gresq.csv2db import build_db
@@ -158,7 +158,7 @@ class FieldsFormWidget(QtGui.QWidget):
 				self.input_widgets[field].setDuplicatesEnabled(False)
 				if 'choices' in info.keys():	
 					self.input_widgets[field].addItems(info['choices'])
-				# self.input_widgets[field].addItems(session.query(mdf_forge).distinct())
+				self.input_widgets[field].addItems(session.query(mdf_forge).distinct())
 				self.input_widgets[field].addItem('Other')
 
 				self.other_input[field] = QtGui.QLineEdit()
