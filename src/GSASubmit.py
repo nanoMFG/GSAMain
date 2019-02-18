@@ -159,13 +159,14 @@ class FieldsFormWidget(QtGui.QWidget):
 			self.layout.addWidget(QtGui.QLabel(info['verbose_name']),row,3*col)
 			if sql_validator['str'](getattr(model,field)):
 				self.input_widgets[field] = QtGui.QComboBox()
-				self.input_widgets[field].setDuplicatesEnabled(False)
-				if 'choices' in info.keys():	
-					self.input_widgets[field].addItems(info['choices'])
+				input_set = info['choices']
 				with dal.session_scope() as session:
 					if hasattr(mdf_forge,field):
 						for v in session.query(getattr(mdf_forge,field)).distinct():
-							self.input_widgets[field].addItem(getattr(v,field))
+							if getattr(v,field) not in input_set:
+								input_set.append(getattr(v,field))
+				if 'choices' in info.keys():	
+					self.input_widgets[field].addItems(input_set)
 				self.input_widgets[field].addItem('Other')
 
 				self.other_input[field] = QtGui.QLineEdit()
