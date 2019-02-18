@@ -281,9 +281,16 @@ class FileUploadTab(QtGui.QWidget):
 class ReviewTab(QtGui.QScrollArea):
 	def __init__(self,parent=None):
 		super(ReviewTab,self).__init__(parent=parent)
+		self.properties_response = None
+		self.preparation_response = None
+		self.files_response = None
 		self.submitButton = QtGui.QPushButton('Submit')
 
 	def refresh(self,properties_response,preparation_response,files_response):
+		self.properties_response = properties_response
+		self.preparation_response = preparation_response
+		self.files_response = files_response
+
 		self.contentWidget = QtGui.QWidget()
 		self.layout = QtGui.QGridLayout(self.contentWidget)
 		self.layout.setAlignment(QtCore.Qt.AlignTop)
