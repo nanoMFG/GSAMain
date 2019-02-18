@@ -112,12 +112,14 @@ class PreparationTab(QtGui.QWidget):
 
 		self.addStepButton = QtGui.QPushButton('Add Step')
 		self.addStepButton.clicked.connect(self.addStep)
+		self.nextButton = QtGui.QPushButton('Next >>>')
 
 		self.miniLayout = QtGui.QGridLayout()
 		self.miniLayout.addWidget(self.addStepButton,0,0)
 		self.miniLayout.addWidget(self.steps_list,1,0)
 		self.layout.addLayout(self.miniLayout,0,0)
 		self.layout.addWidget(self.stackedFormWidget,0,1)
+		self.layout.addWidget(self.nextButton,1,0,1,2)
 
 	def addStep(self):
 		w = FieldsFormWidget(fields=preparation_fields,model=preparation_step)
@@ -153,8 +155,10 @@ class FieldsFormWidget(QtGui.QWidget):
 			self.layout.addWidget(QtGui.QLabel(info['verbose_name']),row,3*col)
 			if sql_validator['str'](getattr(model,field)):
 				self.input_widgets[field] = QtGui.QComboBox()
+				self.input_widgets[field].setDuplicatesEnabled(False)
 				if 'choices' in info.keys():	
 					self.input_widgets[field].addItems(info['choices'])
+				# self.input_widgets[field].addItems(session.query(mdf_forge).distinct())
 				self.input_widgets[field].addItem('Other')
 
 				self.other_input[field] = QtGui.QLineEdit()
@@ -223,10 +227,18 @@ class FileUploadTab(QtGui.QWidget):
 		self.sem_label = QtGui.QLabel('No file uploaded.')
 		self.raman_label = QtGui.QLabel('No file uploaded.')
 
+		self.nextButton = QtGui.QPushButton('Next >>>')
+		spacer = QtGui.QSpacerItem(
+			self.nextButton.sizeHint().width(),
+			self.nextButton.sizeHint().height(), 
+			vPolicy = QtGui.QSizePolicy.Expanding)
+
 		self.layout.addWidget(self.upload_sem,0,0)
 		self.layout.addWidget(self.sem_label,0,1)
 		self.layout.addWidget(self.upload_raman,1,0)
 		self.layout.addWidget(self.raman_label,1,1)
+		self.layout.addItem(spacer,2,0,1,2)
+		self.layout.addWidget(self.nextButton,3,0,1,2)
 
 		self.upload_sem.clicked.connect(self.importSEM)
 		self.upload_raman.clicked.connect(self.importRaman)
@@ -269,9 +281,16 @@ class FileUploadTab(QtGui.QWidget):
 class ReviewTab(QtGui.QScrollArea):
 	def __init__(self,parent=None):
 		super(ReviewTab,self).__init__(parent=parent)
+		self.properties_response = None
+		self.preparation_response = None
+		self.files_response = None
 		self.submitButton = QtGui.QPushButton('Submit')
 
 	def refresh(self,properties_response,preparation_response,files_response):
+		self.properties_response = properties_response
+		self.preparation_response = preparation_response
+		self.files_response = files_response
+
 		self.contentWidget = QtGui.QWidget()
 		self.layout = QtGui.QGridLayout(self.contentWidget)
 		self.layout.setAlignment(QtCore.Qt.AlignTop)
