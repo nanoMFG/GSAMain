@@ -52,8 +52,9 @@ class GSARaman(QtWidgets.QWidget):
         self.layout.addWidget(self.fitbut,0,1)
 
         self.download_but=QtWidgets.QPushButton('Download Data')
-        self.fitbut.clicked.connect(self.downloadData)
+        self.download_but.clicked.connect(self.downloadData)
         self.download_but.setFixedSize(400,30)
+        self.download_but.setEnabled(False)
         self.layout.addWidget(self.download_but,1,1)
         self.download_list=[]
 
@@ -110,17 +111,20 @@ class GSARaman(QtWidgets.QWidget):
 
             self.widget.plotSpect(x,y)
             self.fitbut.setEnabled(False)
+            self.download_but.setEnabled(True)
         else:
             self.widget=MapFit
             self.displayWidget.setCurrentWidget(self.widget)
 
             self.widget.mapLoop(self.data)
             self.fitbut.setEnabled(False)
+            self.download_but.setEnabled(True)
 
     def downloadData(self):
-        #self.errmsg.setIcon(QtWidgets.QMessageBox.Critical)
-        self.downloadMsg.setText('Please upload a .txt or .csv')
-        self.downloadMsg.exec_()
+        if self.spect_type=='single':
+            print 'hello'
+        else:
+            print 'goodbye'
 
 
 
