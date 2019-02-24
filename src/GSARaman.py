@@ -52,14 +52,16 @@ class GSARaman(QtWidgets.QWidget):
         self.layout.addWidget(self.fitbut,0,1)
 
         self.download_but=QtWidgets.QPushButton('Download Data')
-        self.download_but.setEnabled(False)
+        self.fitbut.clicked.connect(self.downloadData)
         self.download_but.setFixedSize(400,30)
         self.layout.addWidget(self.download_but,1,1)
+        self.download_list=[]
 
         self.statusBar=QtWidgets.QProgressBar()
         self.layout.addWidget(self.statusBar,0,2)
 
         self.errmsg=QtWidgets.QMessageBox()
+        self.downloadMsg=QtWidgets.QMessageBox()
 
     def openFileName(self):
         fpath=QtWidgets.QFileDialog.getOpenFileName()
@@ -114,6 +116,12 @@ class GSARaman(QtWidgets.QWidget):
 
             self.widget.mapLoop(self.data)
             self.fitbut.setEnabled(False)
+
+    def downloadData(self):
+        #self.errmsg.setIcon(QtWidgets.QMessageBox.Critical)
+        self.downloadMsg.setText('Please upload a .txt or .csv')
+        self.downloadMsg.exec_()
+
 
 
 class SingleSpect(QtWidgets.QWidget):
@@ -270,12 +278,15 @@ class MapFit(QtWidgets.QWidget):
         self.pickParam.addItem("G Peak")
         self.pickParam.addItem("G' Peak")
         self.pickParam.addItem("D Peak")
+        self.pickParam.addItem("Quality")
         self.pickParam.activated.connect(self.changeParam)
         self.paramnum=0
+        self.pickParam.setEnabled(False)
 
         self.mapPlot=QtWidgets.QTabWidget()
         self.mapPlot.setFixedSize(400,500)
         self.mapPlot.currentChanged.connect(self.changeHist)
+        self.map_plotted=False
 
         self.spectPlots=QtWidgets.QTabWidget()
         self.spectPlots.setFixedSize(400,500)
@@ -331,79 +342,146 @@ class MapFit(QtWidgets.QWidget):
         self.mapSpecPlot(self.param_dict)
 
     def mapSpecPlot(self,data_dict):
+
         keys=data_dict.keys()
         num=self.paramnum
-        self.data_array_a=np.append(np.array(keys[0]),[data_dict[keys[0]][num]['a']])
-        self.data_array_a=np.array([self.data_array_a])
-        length=len(keys)
+        print self.paramnum
 
-        for i in range(length):
-            new_entry=np.append(np.array(keys[i]),[data_dict[keys[i]][num]['a']])
-            new_entry=np.array([new_entry])
-            self.data_array_a=np.append(self.data_array_a,new_entry,axis=0)
-        z_a=self.data_array_a[:,2]
-        x_a=self.data_array_a[:,0]
-        y_a=self.data_array_a[:,1]
+        if num<=2:
+            self.data_array_a=np.append(np.array(keys[0]),[data_dict[keys[0]][num]['a']])
+            self.data_array_a=np.array([self.data_array_a])
+            length=len(keys)
 
-        xi_a=np.linspace(min(self.data_array_a[:,0]),max(self.data_array_a[:,0]))
-        xi_a=np.linspace(min(x_a),max(x_a))
-        yi_a=np.linspace(min(self.data_array_a[:,1]),max(self.data_array_a[:,1]))
-        yi_a=np.linspace(min(y_a),max(y_a))
-        X_a,Y_a=np.meshgrid(xi_a,yi_a)
-        Z_a=griddata((x_a,y_a),z_a,(X_a,Y_a),method='nearest')
+            for i in range(length):
+                new_entry=np.append(np.array(keys[i]),[data_dict[keys[i]][num]['a']])
+                new_entry=np.array([new_entry])
+                self.data_array_a=np.append(self.data_array_a,new_entry,axis=0)
+            z_a=self.data_array_a[:,2]
+            x_a=self.data_array_a[:,0]
+            y_a=self.data_array_a[:,1]
 
-        self.fig1.clear()
-        ax1=self.fig1.add_subplot(111)
-        C1=ax1.contourf(X_a,Y_a,Z_a)
-        plt.colorbar(C1,ax=ax1)
-        plt.set_cmap('inferno')
-        cid1=self.fig1.canvas.mpl_connect('button_press_event', self.onclick)
-        self.canvas1.draw()
+            xi_a=np.linspace(min(self.data_array_a[:,0]),max(self.data_array_a[:,0]))
+            xi_a=np.linspace(min(x_a),max(x_a))
+            yi_a=np.linspace(min(self.data_array_a[:,1]),max(self.data_array_a[:,1]))
+            yi_a=np.linspace(min(y_a),max(y_a))
+            X_a,Y_a=np.meshgrid(xi_a,yi_a)
+            Z_a=griddata((x_a,y_a),z_a,(X_a,Y_a),method='nearest')
 
-        self.data_array_w=np.append(np.array(keys[0]),[data_dict[keys[0]][num]['w']])
-        self.data_array_w=np.array([self.data_array_w])
-        length=len(keys)
-        for i in range(length):
-            new_entry=np.append(np.array(keys[i]),[data_dict[keys[i]][num]['w']])
-            new_entry=np.array([new_entry])
-            self.data_array_w=np.append(self.data_array_w,new_entry,axis=0)
-        z_w=self.data_array_w[:,2]
+            self.fig1.clear()
+            ax1=self.fig1.add_subplot(111)
+            C1=ax1.contourf(X_a,Y_a,Z_a)
+            plt.colorbar(C1,ax=ax1)
+            plt.set_cmap('inferno')
+            cid1=self.fig1.canvas.mpl_connect('button_press_event', self.onclick)
+            self.canvas1.draw()
+        
+            self.data_array_w=np.append(np.array(keys[0]),[data_dict[keys[0]][num]['w']])
+            self.data_array_w=np.array([self.data_array_w])
+            length=len(keys)
 
-        Z_w=griddata((x_a,y_a),z_w,(X_a,Y_a),method='nearest')
+            for i in range(length):
+                new_entry=np.append(np.array(keys[i]),[data_dict[keys[i]][num]['w']])
+                new_entry=np.array([new_entry])
+                self.data_array_w=np.append(self.data_array_w,new_entry,axis=0)
+            z_w=self.data_array_w[:,2]
 
-        self.fig2.clear()
-        ax2=self.fig2.add_subplot(111)
-        C2=ax2.contourf(X_a,Y_a,Z_w)
-        plt.colorbar(C2,ax=ax2)
-        plt.set_cmap('inferno')
-        cid2=self.fig2.canvas.mpl_connect('button_press_event', self.onclick)
-        self.canvas2.draw()
+            Z_w=griddata((x_a,y_a),z_w,(X_a,Y_a),method='nearest')
 
-        self.data_array_b=np.append(np.array(keys[0]),[data_dict[keys[0]][num]['b']])
-        self.data_array_b=np.array([self.data_array_b])
-        length=len(keys)
-        for i in range(length):
-            new_entry=np.append(np.array(keys[i]),[data_dict[keys[i]][num]['b']])
-            new_entry=np.array([new_entry])
-            self.data_array_b=np.append(self.data_array_b,new_entry,axis=0)
-        z_b=self.data_array_b[:,2]
+            self.fig2.clear()
+            ax2=self.fig2.add_subplot(111)
+            C2=ax2.contourf(X_a,Y_a,Z_w)
+            plt.colorbar(C2,ax=ax2)
+            plt.set_cmap('inferno')
+            cid2=self.fig2.canvas.mpl_connect('button_press_event', self.onclick)
+            self.canvas2.draw()
 
-        Z_b=griddata((x_a,y_a),z_b,(X_a,Y_a),method='nearest')
+            self.data_array_b=np.append(np.array(keys[0]),[data_dict[keys[0]][num]['b']])
+            self.data_array_b=np.array([self.data_array_b])
+            length=len(keys)
 
-        self.fig3.clear()
-        ax3=self.fig3.add_subplot(111)
-        C3=ax3.contourf(X_a,Y_a,Z_b)
-        plt.colorbar(C3,ax=ax3)
-        plt.set_cmap('inferno')
-        cid3=self.fig3.canvas.mpl_connect('button_press_event', self.onclick)
-        self.canvas3.draw()
+            for i in range(length):
+                new_entry=np.append(np.array(keys[i]),[data_dict[keys[i]][num]['b']])
+                new_entry=np.array([new_entry])
+                self.data_array_b=np.append(self.data_array_b,new_entry,axis=0)
+            z_b=self.data_array_b[:,2]
 
-        self.histList=[z_a,z_w,z_b]
 
-        self.mapPlot.addTab(self.canvas1,u'\u03b1')
-        self.mapPlot.addTab(self.canvas2,u'\u0393')
-        self.mapPlot.addTab(self.canvas3,u'\u03c9')
+            Z_b=griddata((x_a,y_a),z_b,(X_a,Y_a),method='nearest')
 
+            self.fig3.clear()
+            ax3=self.fig3.add_subplot(111)
+            C3=ax3.contourf(X_a,Y_a,Z_b)
+            plt.colorbar(C3,ax=ax3)
+            plt.set_cmap('inferno')
+            cid3=self.fig3.canvas.mpl_connect('button_press_event', self.onclick)
+            self.canvas3.draw()
+
+            self.histList=[z_a,z_w,z_b]
+
+            self.mapPlot.addTab(self.canvas1,u'\u03b1')
+            self.mapPlot.addTab(self.canvas2,u'\u0393')
+            self.mapPlot.addTab(self.canvas3,u'\u03c9')
+
+        else:
+            data_array_d=np.append(np.array(keys[0]),[data_dict[keys[0]][2]['a']])
+            data_array_d=np.array([data_array_d])
+            data_array_g=np.append(np.array(keys[0]),[data_dict[keys[0]][0]['a']])
+            data_array_g=np.array([data_array_g])
+            data_array_gp=np.append(np.array(keys[0]),[data_dict[keys[0]][1]['a']])
+            data_array_gp=np.array([data_array_gp])
+            length=len(keys)
+
+            for i in range(length):
+                new_entry1=np.append(np.array(keys[i]),[data_dict[keys[i]][2]['a']])
+                new_entry1=np.array([new_entry1])
+                new_entry2=np.append(np.array(keys[i]),[data_dict[keys[i]][0]['a']])
+                new_entry2=np.array([new_entry2])
+                new_entry3=np.append(np.array(keys[i]),[data_dict[keys[i]][1]['a']])
+                new_entry3=np.array([new_entry3])
+
+                data_array_d=np.append(data_array_d,new_entry1,axis=0)
+                data_array_g=np.append(data_array_g,new_entry2,axis=0)
+                data_array_gp=np.append(data_array_gp,new_entry3,axis=0)
+
+            z_1=np.ones(data_array_d[:,2].shape)-np.divide(data_array_d[:,2],data_array_g[:,2])
+            z_2=np.divide(data_array_g[:,2],data_array_gp[:,2])
+
+            x_a=data_array_d[:,0]
+            y_a=data_array_d[:,1]
+
+            xi_a=np.linspace(min(self.data_array_a[:,0]),max(self.data_array_a[:,0]))
+            xi_a=np.linspace(min(x_a),max(x_a))
+            yi_a=np.linspace(min(self.data_array_a[:,1]),max(self.data_array_a[:,1]))
+            yi_a=np.linspace(min(y_a),max(y_a))
+            X_a,Y_a=np.meshgrid(xi_a,yi_a)
+            Z_1=griddata((x_a,y_a),z_1,(X_a,Y_a),method='nearest')
+            Z_2=griddata((x_a,y_a),z_2,(X_a,Y_a),method='nearest')
+
+            self.fig1.clear()
+            ax1=self.fig1.add_subplot(111)
+            C1=ax1.contourf(X_a,Y_a,Z_1)
+            plt.colorbar(C1,ax=ax1)
+            plt.set_cmap('inferno')
+            cid1=self.fig1.canvas.mpl_connect('button_press_event', self.onclick)
+            self.canvas1.draw()
+
+            self.mapPlot.addTab(self.canvas1,'D:G')
+
+            self.fig2.clear()
+            ax2=self.fig2.add_subplot(111)
+            C2=ax2.contourf(X_a,Y_a,Z_2)
+            plt.colorbar(C2,ax=ax2)
+            plt.set_cmap('inferno')
+            cid2=self.fig2.canvas.mpl_connect('button_press_event', self.onclick)
+            self.canvas2.draw()
+
+            self.mapPlot.addTab(self.canvas2,"G:G'")
+            
+            self.mapPlot.removeTab(0)
+
+        self.pickParam.setEnabled(True)
+
+            
     def Single_Lorentz(self, x,a,w,b):
         return a*(((w/2)**2)/(((x-b)**2)+((w/2)**2)))
 
