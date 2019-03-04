@@ -13,6 +13,9 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import qimage2ndarray
+import tempfile
+import shutil
+import os
 
 filelist=[]
 layer1=[{'a':3.00007920e-01,'w':3.73588869e+01,'b':1.58577373e+03},{'a':1.00000000e+00,'w':3.25172389e+01,'b':2.68203383e+03}]
@@ -79,6 +82,8 @@ class GSARaman(QtWidgets.QWidget):
         else:
             del filelist[-1]
 
+        self.f_list=filelist
+
     def checkFileType(self):
         for flnm in filelist:
             if flnm[0][-3:]=='csv':
@@ -102,6 +107,7 @@ class GSARaman(QtWidgets.QWidget):
 
     def doFitting(self):
         self.checkFileType()
+        self.make_temp_dir()
         if self.spect_type=='single':
             self.widget=SingleSpect
             self.displayWidget.setCurrentWidget(self.widget)
@@ -120,11 +126,18 @@ class GSARaman(QtWidgets.QWidget):
             self.fitbut.setEnabled(False)
             self.download_but.setEnabled(True)
 
+    def make_temp_dir(self):
+        self.dirpath = tempfile.mkdtemp()
+
+    def save_files(self, filelist):
+        for flnm in filelist:
+            shutil.copy2(flnm[0],self.dirpath)
+
     def downloadData(self):
-        if self.spect_type=='single':
-            print 'hello'
-        else:
-            print 'goodbye'
+        self.save_files(self.f_list)
+        print os.listdir(self.dirpath)
+        shutil.rmtree(self.dirpath)
+        print 'did it'
 
 
 
@@ -270,6 +283,7 @@ class SingleSpect(QtWidgets.QWidget):
 
         self.layout.addWidget(self.TabWidget,2,1)
         self.layout.addWidget(self.spect_plot,2,0)
+
 
 class MapFit(QtWidgets.QWidget):
     def __init__(self, parent=None):
