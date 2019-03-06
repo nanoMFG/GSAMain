@@ -1,6 +1,7 @@
 from __future__ import division
 from PyQt5 import QtGui, QtCore, QtWidgets
 import pyqtgraph as pg
+import pyqtgraph.exporters
 import pandas as pd
 import numpy as np
 from scipy.optimize import curve_fit
@@ -16,6 +17,8 @@ import qimage2ndarray
 import tempfile
 import shutil
 import os
+import zipfile
+from zipfile import ZipFile
 
 filelist=[]
 layer1=[{'a':3.00007920e-01,'w':3.73588869e+01,'b':1.58577373e+03},{'a':1.00000000e+00,'w':3.25172389e+01,'b':2.68203383e+03}]
@@ -134,12 +137,24 @@ class GSARaman(QtWidgets.QWidget):
             shutil.copy2(flnm[0],self.dirpath)
 
     def downloadData(self):
+        print self.dirpath
         self.save_files(self.f_list)
         print os.listdir(self.dirpath)
         shutil.rmtree(self.dirpath)
         print 'did it'
 
+    def get_all_file_paths(self,directory):
+        file_paths=[]
+        for root,directories,files in os.walk(directory):
+            for filename in files:
+                filepath=os.path.join(root,filename)
+        return file_paths
 
+    def zip_files(self,directory):
+        file_paths=self.get_all_file_paths(directory)
+        with ZipFile('data.zip','w') as zip:
+            for file in file_paths:
+                zip.write(file,compress_type=zipfile.ZIP_DEFLATED)
 
 class SingleSpect(QtWidgets.QWidget):
     def __init__(self, parent=None):
@@ -232,6 +247,10 @@ class SingleSpect(QtWidgets.QWidget):
         self.fit_plot.setLabel('left','I<sub>norm</sub>[arb]')
         self.fit_plot.setLabel('bottom',u'\u03c9'+'[cm<sup>-1</sup>]')
         self.fit_plot.win.hide()
+        # exporter1=pg.exporters.ImageExporter(self.fit_plot.plotItem)
+        # exporter1.params.param('width').setValue(1024, blockSignal=exporter1.widthChanged)
+        # exporter1.params.param('height').setValue(860, blockSignal=exporter1.heightChanged)
+        # exporter1.export(raman.dirpath+'/fitplot.png')
 
         self.overlay_plot=pg.plot()
         self.overlay_plot.addLegend(offset=(-1,1))
@@ -241,6 +260,10 @@ class SingleSpect(QtWidgets.QWidget):
         self.overlay_plot.setLabel('left','I<sub>norm</sub>[arb]')
         self.overlay_plot.setLabel('bottom',u'\u03c9'+'[cm<sup>-1</sup>]')
         self.overlay_plot.win.hide()
+        exporter2=pg.exporters.ImageExporter(self.fit_plot.plotItem)
+        exporter2.params.param('width').setValue(1024, blockSignal=exporter2.widthChanged)
+        exporter2.params.param('height').setValue(860, blockSignal=exporter2.heightChanged)
+        exporter2.export(raman.dirpath+'/overlayplot.png')
 
         self.fitting_params=QtWidgets.QLabel(
             """Fitting Parameters:
