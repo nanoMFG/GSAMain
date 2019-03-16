@@ -89,48 +89,50 @@ class GSARaman(QtWidgets.QWidget):
 
         self.f_list=filelist
 
-    def checkFileType(self):
-        for flnm in filelist:
-            if flnm[0][-3:]=='csv':
-                self.data=pd.read_csv(flnm[0])
-            else:
-                self.data=pd.read_table(flnm[0])
+    def checkFileType(self, flnm):
+        #for flnm in filelist:
+        if flnm[0][-3:]=='csv':
+            self.data=pd.read_csv(flnm[0])
+        else:
+            self.data=pd.read_table(flnm[0])
 
-            cols=self.data.shape[1]
-            rows=self.data.shape[0]
-            if cols == 1:
-                self.data=pd.DataFrame(self.data.iloc[0:rows/2,0],self.data.iloc[rows/2:rows,0])
-                self.spect_type='single'
-            elif cols == 2:
-                self.spect_type='single'
-                if type(self.data.iloc[0,0]) is str:
-                    self.data=self.data.iloc[1:rows,:]
-                else:
-                    self.data=self.data
+        cols=self.data.shape[1]
+        rows=self.data.shape[0]
+        if cols == 1:
+            self.data=pd.DataFrame(self.data.iloc[0:rows/2,0],self.data.iloc[rows/2:rows,0])
+            self.spect_type='single'
+        elif cols == 2:
+            self.spect_type='single'
+            if type(self.data.iloc[0,0]) is str:
+                self.data=self.data.iloc[1:rows,:]
             else:
-                self.spect_type='map'
+                self.data=self.data
+        else:
+            self.spect_type='map'
 
     def doFitting(self):
-        self.checkFileType()
         if not self.pathmade:
-            self.make_temp_dir()
-        if self.spect_type=='single':
-            self.widget=SingleSpect
-            self.displayWidget.setCurrentWidget(self.widget)
+                self.make_temp_dir()
 
-            x=np.array(self.data.iloc[:,0])
-            y=np.array(self.data.iloc[:,1])
+        for flnm in filelist:
+            self.checkFileType(flnm)
+            if self.spect_type=='single':
+                self.widget=SingleSpect
+                self.displayWidget.setCurrentWidget(self.widget)
 
-            self.widget.plotSpect(x,y)
-            self.fitbut.setEnabled(False)
-            self.download_but.setEnabled(True)
-        else:
-            self.widget=MapFit
-            self.displayWidget.setCurrentWidget(self.widget)
+                x=np.array(self.data.iloc[:,0])
+                y=np.array(self.data.iloc[:,1])
 
-            self.widget.mapLoop(self.data)
-            self.fitbut.setEnabled(False)
-            self.download_but.setEnabled(True)
+                self.widget.plotSpect(x,y)
+                self.fitbut.setEnabled(False)
+                self.download_but.setEnabled(True)
+            else:
+                self.widget=MapFit
+                self.displayWidget.setCurrentWidget(self.widget)
+
+                self.widget.mapLoop(self.data)
+                self.fitbut.setEnabled(False)
+                self.download_but.setEnabled(True)
 
     def make_temp_dir(self):
         self.dirpath = tempfile.mkdtemp()
@@ -144,7 +146,9 @@ class GSARaman(QtWidgets.QWidget):
         print self.dirpath
         self.save_files(self.f_list)
         print os.listdir(self.dirpath)
+        self.zip_files(self.dirpath)
         shutil.rmtree(self.dirpath)
+        self.pathmade=False
         print 'did it'
 
     def get_all_file_paths(self,directory):
@@ -385,6 +389,7 @@ class MapFit(QtWidgets.QWidget):
             self.norm_dict.update(i[1])
 
         self.mapSpecPlot(self.param_dict)
+        self.make_plots(self.param_dict.keys())
 
     def mapSpecPlot(self,data_dict):
 
