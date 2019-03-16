@@ -70,6 +70,8 @@ class GSARaman(QtWidgets.QWidget):
         self.errmsg=QtWidgets.QMessageBox()
         self.downloadMsg=QtWidgets.QMessageBox()
 
+        self.pathmade=False
+
     def openFileName(self):
         fpath=QtWidgets.QFileDialog.getOpenFileName()
         filelist.append(fpath)
@@ -110,7 +112,8 @@ class GSARaman(QtWidgets.QWidget):
 
     def doFitting(self):
         self.checkFileType()
-        self.make_temp_dir()
+        if not self.pathmade:
+            self.make_temp_dir()
         if self.spect_type=='single':
             self.widget=SingleSpect
             self.displayWidget.setCurrentWidget(self.widget)
@@ -131,6 +134,7 @@ class GSARaman(QtWidgets.QWidget):
 
     def make_temp_dir(self):
         self.dirpath = tempfile.mkdtemp()
+        self.pathmade=True
 
     def save_files(self, filelist):
         for flnm in filelist:
@@ -649,6 +653,33 @@ class MapFit(QtWidgets.QWidget):
 
             self.plotSpects((x_key,y_key))
 
+    def make_plots(self,keys):
+        for i in keys:
+            param_list=self.param_dict[i]
+            G_fit=self.Single_Lorentz(self.freqs,param_list[0]['a'],param_list[0]['w'],param_list[0]['b'])
+            Gp_fit=self.Single_Lorentz(self.freqs,param_list[1]['a'],param_list[1]['w'],param_list[1]['b'])
+            D_fit=self.Single_Lorentz(self.freqs,param_list[2]['a'],param_list[2]['w'],param_list[2]['b'])
+            y_fit=G_fit+Gp_fit+D_fit
+
+            y_norm=self.norm_dict[pos]
+
+            layers=self.checkParams([param_list[0]['a'],param_list[0]['w'],param_list[0]['b']],[param_list[1]['a'],param_list[1]['w'],param_list[1]['b']])
+            G_test=self.Single_Lorentz(self.freqs,cdat[layers][0]['a'],cdat[layers][0]['w'],cdat[layers][0]['b'])
+            Gp_test=self.Single_Lorentz(self.freqs,cdat[layers][1]['a'],cdat[layers][1]['w'],cdat[layers][1]['b'])
+            y_test=G_test+Gp_test
+
+            fit_plot=pg.plot()
+            fit_plot.addLegend(offset=(-1,1))
+            fit_plot.plot(self.freqs,y_norm,pen='g',name='Raw Data')
+            fit_plot.plot(self.freqs,y_test,pen='b',name='Test Data')
+            fit_plot.plot(self.freqs,y_fit,pen='r',name='Fitted Data')
+            fit_plot.setLabel('left','I<sub>norm</sub>[arb]')
+            fit_plot.setLabel('bottom',u'\u03c9'+'[cm<sup>-1</sup>]')
+
+            exporter=pg.exporters.ImageExporter(fit_plot.plotItem)
+            exporter.params.param('width').setValue(1024, blockSignal=exporter.widthChanged)
+            exporter.params.param('height').setValue(860, blockSignal=exporter.heightChanged)
+            exporter.export(raman.dirpath+'/overlayplot_'+str(i)+'.png')
 
     def find_nearest(self,array,value):
         array=np.asarray(array)
