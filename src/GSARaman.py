@@ -69,6 +69,7 @@ class GSARaman(QtWidgets.QWidget):
 
         self.errmsg=QtWidgets.QMessageBox()
         self.downloadMsg=QtWidgets.QMessageBox()
+        self.cnfmdnld=False
 
         self.pathmade=False
 
@@ -143,13 +144,23 @@ class GSARaman(QtWidgets.QWidget):
             shutil.copy2(flnm[0],self.dirpath)
 
     def downloadData(self):
-        print self.dirpath
-        self.save_files(self.f_list)
-        print os.listdir(self.dirpath)
-        self.zip_files(self.dirpath)
-        shutil.rmtree(self.dirpath)
-        self.pathmade=False
-        print 'did it'
+        self.downloadMsg.setIcon(QMessageBox.Question)
+        self.downloadMsg.setWindowTitle('Confirm Download')
+        self.downloadMsg.setText('The following files will be downloaded:')
+        self.downloadMsg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        self.downloadMsg.buttonClicked.connect(self.msgbtn)
+
+        if self.cnfmdnld:
+            self.save_files(self.f_list)
+            self.zip_files(self.dirpath)
+            shutil.rmtree(self.dirpath)
+            self.pathmade=False
+
+    def msgbtn(self, i):
+        if i.text() == 'Ok':
+            self.cnfmdnld=True
+        else:
+            self.cnfmdnld=False
 
     def get_all_file_paths(self,directory):
         file_paths=[]
