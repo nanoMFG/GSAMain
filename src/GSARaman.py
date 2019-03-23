@@ -144,23 +144,28 @@ class GSARaman(QtWidgets.QWidget):
             shutil.copy2(flnm[0],self.dirpath)
 
     def downloadData(self):
-        self.downloadMsg.setIcon(QMessageBox.Question)
+        self.downloadMsg.setIcon(QtWidgets.QMessageBox.Question)
         self.downloadMsg.setWindowTitle('Confirm Download')
-        self.downloadMsg.setText('The following files will be downloaded:')
-        self.downloadMsg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        self.downloadMsg.setText('The Raman spectrum(s) following files will be downloaded:\n'+'\n'.join('{}'.format(item[0]) for item in self.f_list))
+        self.downloadMsg.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
         self.downloadMsg.buttonClicked.connect(self.msgbtn)
+        self.downloadMsg.exec_()
 
         if self.cnfmdnld:
             self.save_files(self.f_list)
             self.zip_files(self.dirpath)
             shutil.rmtree(self.dirpath)
             self.pathmade=False
+            print 'did it'
 
     def msgbtn(self, i):
-        if i.text() == 'Ok':
+        print i.text()
+        if i.text() == 'OK':
             self.cnfmdnld=True
+            print 'True'
         else:
             self.cnfmdnld=False
+            print 'false'
 
     def get_all_file_paths(self,directory):
         file_paths=[]
@@ -170,10 +175,12 @@ class GSARaman(QtWidgets.QWidget):
         return file_paths
 
     def zip_files(self,directory):
-        file_paths=self.get_all_file_paths(directory)
-        with ZipFile('data.zip','w') as zip:
-            for file in file_paths:
-                zip.write(file,compress_type=zipfile.ZIP_DEFLATED)
+        zipname=QtWidgets.QFileDialog.getSaveFileName()
+        shutil.make_archive(zipname,'zip',directory)
+        #file_paths=self.get_all_file_paths(directory)
+        #with ZipFile('data.zip','w') as zip:
+        #    for file in file_paths:
+        #        zip.write(file,compress_type=zipfile.ZIP_DEFLATED)
 
 class SingleSpect(QtWidgets.QWidget):
     def __init__(self, parent=None):
