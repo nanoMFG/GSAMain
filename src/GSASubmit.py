@@ -316,7 +316,10 @@ class ReviewTab(QtGui.QScrollArea):
 			shutil.move(response_dict['Raman File'],mdf_path)
 		if response_dict['SEM Image File'] != '':
 			shutil.move(response_dict['SEM Image File'],mdf_path)
-		json.dumps(response_dict['json'],os.path.join(mdf_path,'recipe.json'))
+
+		dump_file = open(os.path.join(mdf_path,'recipe.json'), 'w')
+		json.dump(response_dict['json'],dump_file)
+		dump_file.close()
 
 		box_adaptor = BoxAdaptor("../box_config.json")
 		upload_folder = box_adaptor.create_upload_folder()
