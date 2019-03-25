@@ -290,7 +290,6 @@ class ReviewTab(QtGui.QScrollArea):
 		self.preparation_response = None
 		self.files_response = None
 		self.submitButton = QtGui.QPushButton('Submit')
-		self.submitButton.clicked.connect(lambda: self.upload_to_mdf())
 
 	def zipdir(self, path, ziph):
 		"""
