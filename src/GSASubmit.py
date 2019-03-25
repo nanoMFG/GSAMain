@@ -307,23 +307,27 @@ class ReviewTab(QtGui.QScrollArea):
 												file))
 
 
-	def upload_to_mdf(self):
-		import zipfile
+	def upload_to_mdf(self,response_dict):
+		import zipfile, time, shutil
+		mdf_dir = 'mdf_%s'%time.time()
+		os.mkdir(mdf_dir)
+		mdf_path = os.path.abspath(mdf_dir)
+		shutil.move(response_dict['Raman File'],mdf_path)
+		shutil.move(response_dict['SEM Image File'],mdf_path)
+		json.dumps(response_dict['json'],os.path.join(mdf_path,'recipe.json'))
 
 		box_adaptor = BoxAdaptor("../box_config.json")
 		upload_folder = box_adaptor.create_upload_folder()
 
-		sample_id = 'KZPd_170903-1'
-		zip_path = os.path.join("..", "output", sample_id + ".zip")
+		zip_path = mdf_path + ".zip"
 		zipf = zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED)
-		download_path = os.path.join("..", "output", sample_id)
-		self.zipdir(download_path, zipf)
+		self.zipdir(mdf_path, zipf)
 		zipf.close()
 		print("Uploading ", zip_path, " to box")
 
-		box_file = box_adaptor.upload_file(upload_folder, zip_path, sample_id + ".zip")
+		box_file = box_adaptor.upload_file(upload_folder, zip_path, mdf_dir+'.zip')
 		mdf = MDFAdaptor()
-		mdf.upload({}, box_file)
+		mdf.upload(response_dict['json'], box_file)
 
 
 	def refresh(self,properties_response,preparation_response,files_response):
@@ -437,7 +441,7 @@ class ReviewTab(QtGui.QScrollArea):
 			json_file = s.json_encodable()
 		full_response = {'json':json_file}
 		full_response.update(files_response)
-		print(full_response)
+		return full_response
 
 
 

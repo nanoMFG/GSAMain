@@ -5,7 +5,6 @@ class MDFAdaptor:
     def __init__(self):
         self.mdfcc = MDFConnectClient(test=True, service_instance="dev")
 
-
     def upload(self, recipe, box_file):
         experiment_date = datetime.strptime(recipe.experiment_date, "%Y-%m-%d")
 
@@ -28,11 +27,11 @@ class MDFAdaptor:
             "catalyst": recipe.catalyst,
             "max_temperature": max_temp(recipe),
             "carbon_source": carbon_source(recipe),
-            "base_pressure": recipe.base_pressure,
-            "sample_surface_area": recipe.sample_surface_area,
-            "sample_thickness": recipe.thickness,
-            "orientation": "",
-            "grain_size": ""
+            "base_pressure": recipe.base_pressure
+            # "sample_surface_area": recipe.sample_surface_area,
+            # "sample_thickness": recipe.thickness,
+            # "orientation": "",
+            # "grain_size": ""
         }
 
 
