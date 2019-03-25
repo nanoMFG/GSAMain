@@ -70,81 +70,101 @@ class sample(Base):
     tube_diameter = Column(Float(precision=32),info={
         'verbose_name':'Tube Diameter',
         'std_unit':'mm',
-        'conversions': {'inches':25.4}
+        'conversions': {'mm':1,'inches':25.4}
         })
     cross_sectional_area = Column(Float,info={
         'verbose_name':'Cross Sectional Area',
         'std_unit': 'mm^2',
-        'conversions': {'inches^2':25.4**2}
+        'conversions': {'mm^2':1,'inches^2':25.4**2}
         })
     tube_length = Column(Float,info={
         'verbose_name':'Tube Length',
         'std_unit': 'mm',
-        'conversions': {'inches^2':25.4**2}
+        'conversions': {'mm':1,'inches':25.4}
         })
     base_pressure = Column(Float,info={
         'verbose_name':'Base Pressure',
         'std_unit': 'mTorr',
-        'conversions': {'Pa':1/133.322,'mbar':1/1.33322}
+        'conversions': {'mTorr':1,'Pa':1/133.322,'mbar':1/1.33322}
         })
 
     # GRAPHENE PROPERTIES
     average_thickness_of_growth = Column(Float(precision=32),info={
         'verbose_name':'Average Thickness of Growth',
-        'std_unit': 'nm'
+        'std_unit': 'nm',
+        'conversions':{'nm':1}
         })
     standard_deviation_of_growth = Column(Float,info={
         'verbose_name':'St. Dev. of Growth',
-        'std_unit': 'nm'
+        'std_unit': 'nm',
+        'conversions':{'nm':1}
         })
     number_of_layers = Column(Integer,info={'verbose_name':'Number of Layers'})
     growth_coverage = Column(Float,info={
         'verbose_name':'Growth Coverage',
-        'std_unit': '%'
+        'std_unit': '%',
+        'conversions':{'%':1}
         })
     domain_size = Column(Float,info={
         'verbose_name':'Domain Size',
-        'std_unit': 'um^2'
+        'std_unit': 'um^2',
+        'conversions':{'um^2':1}
         })
     shape = Column(String(32),info={
         'verbose_name':'Shape',
         'choices': ['Hexagonal','Square','Circle','Nondescript']
         })
 
-    # RAMAN
-    d_peak_shift = Column(Float,info={
-        'verbose_name':'D Peak Shift',
-        'std_unit': 'cm^-1'
-        })
-    d_peak_amplitude = Column(Float,info={'verbose_name':'D Peak Amplitude'})
-    d_fwhm = Column(Float,info={
-        'verbose_name':"D FWHM",
-        'std_unit': 'cm^-1'
-        })
-    g_peak_shift = Column(Float,info={
-        'verbose_name':'G Peak Shift',
-        'std_unit': 'cm^-1'
-        })
-    g_peak_amplitude = Column(Float,info={'verbose_name':'G Peak Amplitude'})
-    g_fwhm = Column(Float,info={
-        'verbose_name':'G FWHM',
-        'std_unit': 'cm^-1'
-        })
-    g_prime_peak_shift = Column(Float,info={
-        'verbose_name':'G\' Peak Shift',
-        'std_unit': 'cm^-1'
-        })
-    g_prime_peak_amplitude = Column(Float, info={'verbose_name':'G\' Peak Amplitude'})
-    g_prime_fwhm = Column(Float,info={
-        'verbose_name':'G\' FWHM',
-        'std_unit': 'cm^-1'
-        })
+    # # RAMAN
+    # d_peak_shift = Column(Float,info={
+    #     'verbose_name':'D Peak Shift',
+    #     'std_unit': 'cm^-1'
+    #     })
+    # d_peak_amplitude = Column(Float,info={'verbose_name':'D Peak Amplitude'})
+    # d_fwhm = Column(Float,info={
+    #     'verbose_name':"D FWHM",
+    #     'std_unit': 'cm^-1'
+    #     })
+    # g_peak_shift = Column(Float,info={
+    #     'verbose_name':'G Peak Shift',
+    #     'std_unit': 'cm^-1'
+    #     })
+    # g_peak_amplitude = Column(Float,info={'verbose_name':'G Peak Amplitude'})
+    # g_fwhm = Column(Float,info={
+    #     'verbose_name':'G FWHM',
+    #     'std_unit': 'cm^-1'
+    #     })
+    # g_prime_peak_shift = Column(Float,info={
+    #     'verbose_name':'G\' Peak Shift',
+    #     'std_unit': 'cm^-1'
+    #     })
+    # g_prime_peak_amplitude = Column(Float, info={'verbose_name':'G\' Peak Amplitude'})
+    # g_prime_fwhm = Column(Float,info={
+    #     'verbose_name':'G\' FWHM',
+    #     'std_unit': 'cm^-1'
+    #     })
 
     # SUBSTRATE
-    thickness = Column(Float,info={'verbose_name':'Thickness'})
-    diameter = Column(Float,info={'verbose_name':'Diameter'})
-    length = Column(Float,info={'verbose_name':'Length'})
-    sample_surface_area = Column(Float,info={'verbose_name':'Sample Surface Area'})
+    thickness = Column(Float,info=
+        {'verbose_name':'Thickness',
+        'std_unit':'um',
+        'conversions':{'um':1}
+        })
+    diameter = Column(Float,info=
+        {'verbose_name':'Diameter',
+        'std_unit':'um',
+        'conversions':{'um':1}
+        })
+    length = Column(Float,info=
+        {'verbose_name':'Length',
+        'std_unit':'um',
+        'conversions':{'um':1}
+        })
+    # sample_surface_area = Column(Float,info=
+    #     {'verbose_name':'Sample Surface Area',
+    #     'std_unit': 'um^2',
+    #     'conversions':{'um^2':1}
+    #     })
 
     # PREPARATION STEPS
     preparation_steps = relationship("preparation_step")
@@ -163,25 +183,21 @@ class sample(Base):
             "growth_coverage": self.growth_coverage,
             "domain_size": self.domain_size,
             "shape": self.shape,
-            "d_peak_shift": self.d_peak_shift,
-            "d_peak_amplitude": self.d_peak_amplitude,
-            "d_fwhm": self.d_fwhm,
-            "g_peak_shift": self.g_peak_shift,
-            "g_peak_amplitude": self.g_peak_amplitude,
-            "g_fwhm": self.g_fwhm,
-            "g_prime_peak_shift": self.g_prime_peak_shift,
-            "g_prime_peak_amplitude": self.g_prime_peak_amplitude,
-            "g_prime_fwhm": self.g_prime_fwhm,
-            "sample_surface_area": self.sample_surface_area,
+            # "d_peak_shift": self.d_peak_shift,
+            # "d_peak_amplitude": self.d_peak_amplitude,
+            # "d_fwhm": self.d_fwhm,
+            # "g_peak_shift": self.g_peak_shift,
+            # "g_peak_amplitude": self.g_peak_amplitude,
+            # "g_fwhm": self.g_fwhm,
+            # "g_prime_peak_shift": self.g_prime_peak_shift,
+            # "g_prime_peak_amplitude": self.g_prime_peak_amplitude,
+            # "g_prime_fwhm": self.g_prime_fwhm,
+            # "sample_surface_area": self.sample_surface_area,
             "thickness": self.thickness,
             "diameter": self.diameter,
             "length": self.length,
-            "annealing_steps": sorted([s.json_encodable() for s in
-                                self.annealing_steps if s.timestamp] , key= lambda s: s["timestamp"]),
-            "growing_steps": sorted([s.json_encodable() for s in
-                                self.growing_steps if s.timestamp], key= lambda s: s["timestamp"]),
-            "cooling_steps": sorted([s.json_encodable() for s in
-                                self.cooling_steps if s.timestamp], key= lambda s: s["timestamp"])
+            "preparation_steps": sorted([s.json_encodable() for s in
+                                self.preparation_steps if s.timestamp] , key= lambda s: s["timestamp"])
         }
 
 
@@ -193,32 +209,35 @@ class preparation_step(Base):
         'verbose_name':'Name',
         'choices': ['Annealing','Growing','Cooling']
         })
-    timestamp = Column(Float,info={
+    timestamp = Column(Float,primary_key=True,info={
         'verbose_name':'Timestamp',
         'std_unit': 'min',
-        'conversions': {'sec':1/60.,'hrs':60}
+        'conversions': {'min':1,'sec':1/60.,'hrs':60}
         })
     furnace_temperature = Column(Float,info={
         'verbose_name':'Furnace Temperature',
-        'std_unit': 'C'
+        'std_unit': 'C',
+        'conversions': {'C':1}
         })
     furnace_pressure = Column(Float,info={
         'verbose_name':'Furnace Pressure',
         'std_unit': 'mTorr',
-        'conversions': {'Pa':1/133.322,'mbar':1/1.33322}
+        'conversions': {'mTorr':1,'Pa':1/133.322,'mbar':1/1.33322}
         })
     sample_location = Column(Float,info={
         'verbose_name':'Sample Location',
         'std_unit':'mm',
-        'conversions': {'inches':25.4}
+        'conversions': {'inches':25.4,'mm':1}
         })
     helium_flow_rate = Column(Float,info={
         'verbose_name':'Helium Flow Rate',
-        'std_unit': 'sccm'
+        'std_unit': 'sccm',
+        'conversions': {'sccm':1}
         })
     hydrogen_flow_rate = Column(Float,info={
         'verbose_name':'Hydrogen Flow Rate',
-        'std_unit': 'sccm'
+        'std_unit': 'sccm',
+        'conversions': {'sccm':1}
         })
     carbon_source = Column(String(16),info={
         'verbose_name':'Carbon Source',
@@ -226,17 +245,19 @@ class preparation_step(Base):
         })
     carbon_source_flow_rate = Column(Float,info={
         'verbose_name':'Carbon Source Flow Rate',
-        'std_unit': 'sccm'
+        'std_unit': 'sccm',
+        'conversions': {'sccm':1}
         })
     argon_flow_rate = Column(Float,info={
         'verbose_name':'Argon Flow Rate',
-        'std_unit': 'sccm'
+        'std_unit': 'sccm',
+        'conversions': {'sccm':1}
         })
     cooling_rate = Column(Float,info={
         'verbose_name':'Cooling Rate',
-        'std_unit': 'C/min'
+        'std_unit': 'C/min',
+        'conversions': {'C/min':1}
         })
-    step = Column(Integer,primary_key=True,info={'verbose_name':'Step'})
 
     #sample = relationship("sample", back_populates="preparation_steps")
 

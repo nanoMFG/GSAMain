@@ -11,7 +11,7 @@ from gresq.config import config
 from gresq.csv2db import build_db
 from GSAQuery import GSAQuery
 from GSAImage import GSAImage
-
+import pyqtgraph as pg
 
 preparation_fields = [
 	'name',
@@ -40,16 +40,6 @@ properties_fields = [
   "growth_coverage",
   "domain_size",
   "shape",
-  "d_peak_shift",
-  "d_peak_amplitude",
-  "d_fwhm",
-  "g_peak_shift",
-  "g_peak_amplitude",
-  "g_fwhm",
-  "g_prime_peak_shift",
-  "g_prime_peak_amplitude",
-  "g_prime_fwhm",
-  "sample_surface_area",
   "thickness",
   "diameter",
   "length"
@@ -73,6 +63,7 @@ class GSASubmit(QtGui.QTabWidget):
 		self.file_upload = FileUploadTab(mode=self.mode)
 		self.review = ReviewTab()
 
+		self.setTabPosition(QtGui.QTabWidget.South)
 		self.addTab(self.preparation,'Preparation')
 		self.addTab(self.properties,'Properties')
 		self.addTab(self.file_upload,'File Upload')
@@ -82,6 +73,12 @@ class GSASubmit(QtGui.QTabWidget):
 			properties_response = self.properties.getResponse(),
 			preparation_response = self.preparation.getResponse(),
 			files_response = self.file_upload.getResponse()) if x == self.indexOf(self.review) else None)
+
+		self.review.submitButton.clicked.connect(lambda: self.review.fullResponse(
+			properties_response = self.properties.getResponse(),
+			preparation_response = self.preparation.getResponse(),
+			files_response = self.file_upload.getResponse()
+			))
 
 		self.preparation.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.properties))
 		self.properties.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.file_upload))
@@ -153,8 +150,8 @@ class FieldsFormWidget(QtGui.QWidget):
 		self.units_input = {}
 
 		for f,field in enumerate(fields):
-			row = f%13
-			col = f//13
+			row = f%9
+			col = f//9
 			info = getattr(model,field).info
 			self.layout.addWidget(QtGui.QLabel(info['verbose_name']),row,3*col)
 			if sql_validator['str'](getattr(model,field)):
@@ -185,11 +182,8 @@ class FieldsFormWidget(QtGui.QWidget):
 				elif sql_validator['float'](getattr(model,field)):
 					self.input_widgets[field].setValidator(QtGui.QDoubleValidator())
 				
-
-				if 'std_unit' in info.keys():
-					self.units_input[field] = QtGui.QComboBox()
-					self.units_input[field].addItem(info['std_unit'])
 				if 'conversions' in info.keys():
+					self.units_input[field] = QtGui.QComboBox()
 					self.units_input[field].addItems(info['conversions'])					
 
 				self.layout.addWidget(self.input_widgets[field],row,3*col+1)
@@ -209,9 +203,9 @@ class FieldsFormWidget(QtGui.QWidget):
 				response[field]['unit'] = ''
 			else:
 				if sql_validator['int'](getattr(self.model,field)):
-					response[field]['value'] = self.input_widgets[field].text() if self.input_widgets[field].text() != '' else '0'
+					response[field]['value'] = self.input_widgets[field].text() if self.input_widgets[field].text() != '' else None
 				else:
-					response[field]['value'] = self.input_widgets[field].text() if self.input_widgets[field].text() != '' else '0'
+					response[field]['value'] = self.input_widgets[field].text() if self.input_widgets[field].text() != '' else None
 				if field in self.units_input.keys():
 					response[field]['unit'] = self.units_input[field].currentText()
 				else:
@@ -310,32 +304,21 @@ class ReviewTab(QtGui.QScrollArea):
 		filesLabel = QtGui.QLabel('Files')
 		filesLabel.setFont(label_font)
 
-		out = sample()
 		self.layout.addWidget(propertiesLabel,0,0,QtCore.Qt.AlignLeft)
-		for field in properties_fields:
+		label = QtGui.QLabel()
+		for field in properties_response.keys():
 			info = getattr(sample,field).info
 			row = self.layout.rowCount()
 			value = properties_response[field]['value']
 			unit = properties_response[field]['unit']
 			label = QtGui.QLabel(info['verbose_name'])
 			self.layout.addWidget(label,row,0,QtCore.Qt.AlignLeft|QtCore.Qt.AlignCenter)
-			self.layout.addWidget(QtGui.QLabel(value),row,1,QtCore.Qt.AlignRight|QtCore.Qt.AlignCenter)
-			self.layout.addWidget(QtGui.QLabel(unit),row,2,QtCore.Qt.AlignLeft|QtCore.Qt.AlignCenter)
+			self.layout.addWidget(QtGui.QLabel(str(value)),row,1,QtCore.Qt.AlignRight|QtCore.Qt.AlignCenter)
+			self.layout.addWidget(QtGui.QLabel(str(unit)),row,2,QtCore.Qt.AlignLeft|QtCore.Qt.AlignCenter)
 			self.layout.addItem(
 				QtGui.QSpacerItem(label.sizeHint().width(),label.sizeHint().height(), hPolicy = QtGui.QSizePolicy.Expanding),
 				row,
 				3)
-
-			if 'std_unit' in info.keys() and unit == info['std_unit']:
-				m = 1
-			elif 'conversions' in info.keys():
-				m = info['conversions'][unit]
-			if sql_validator['int'](getattr(sample,field)):
-				setattr(out,field,int(int(value)*m))
-			elif sql_validator['float'](getattr(sample,field)):
-				setattr(out,field,float(float(value)*m))
-			elif sql_validator['str'](getattr(sample,field)):
-				setattr(out,field,value)
 
 		self.layout.addItem(
 			QtGui.QSpacerItem(label.sizeHint().width(),label.sizeHint().height(), vPolicy = QtGui.QSizePolicy.Fixed),
@@ -346,15 +329,15 @@ class ReviewTab(QtGui.QScrollArea):
 			stepLabel = QtGui.QLabel('Step %s'%step)
 			stepLabel.setFont(sublabel_font)
 			self.layout.addWidget(stepLabel,self.layout.rowCount(),0,QtCore.Qt.AlignLeft)
-			for field in preparation_fields:
+			for field in step_response.keys():
 				info = getattr(preparation_step,field).info
 				row = self.layout.rowCount()
 				value = step_response[field]['value']
 				unit = step_response[field]['unit']
 				label = QtGui.QLabel(info['verbose_name'])
 				self.layout.addWidget(label,row,0,QtCore.Qt.AlignLeft|QtCore.Qt.AlignCenter)
-				self.layout.addWidget(QtGui.QLabel(value),row,1,QtCore.Qt.AlignRight|QtCore.Qt.AlignCenter)
-				self.layout.addWidget(QtGui.QLabel(unit),row,2,QtCore.Qt.AlignLeft|QtCore.Qt.AlignCenter)
+				self.layout.addWidget(QtGui.QLabel(str(value)),row,1,QtCore.Qt.AlignRight|QtCore.Qt.AlignCenter)
+				self.layout.addWidget(QtGui.QLabel(str(unit)),row,2,QtCore.Qt.AlignLeft|QtCore.Qt.AlignCenter)
 				self.layout.addItem(
 					QtGui.QSpacerItem(label.sizeHint().width(),label.sizeHint().height(), hPolicy = QtGui.QSizePolicy.Expanding),
 					row,
@@ -367,7 +350,7 @@ class ReviewTab(QtGui.QScrollArea):
 		self.layout.addWidget(filesLabel,self.layout.rowCount(),0,QtCore.Qt.AlignLeft)
 		for key in files_response.keys():
 			row = self.layout.rowCount()
-			value = QtGui.QLabel(files_response[key])
+			value = QtGui.QLabel(str(files_response[key]))
 			label = QtGui.QLabel(key)
 			self.layout.addWidget(label,row,0,QtCore.Qt.AlignLeft|QtCore.Qt.AlignCenter)
 			self.layout.addWidget(value,row,1,QtCore.Qt.AlignRight|QtCore.Qt.AlignCenter)
@@ -377,6 +360,46 @@ class ReviewTab(QtGui.QScrollArea):
 		self.setWidget(self.contentWidget)
 		self.setWidgetResizable(True)
 
+	def fullResponse(self,properties_response,preparation_response,files_response):
+		with dal.session_scope() as session:
+			s = sample()
+			for field,item in properties_response.items():
+				value = item['value']
+				unit = item['unit']
+				if value != None:
+					if sql_validator['str'](getattr(sample,field)) or sql_validator['int'](getattr(sample,field)):
+						setattr(s,field,value)
+					elif sql_validator['float'](getattr(sample,field)):
+						value = float(value)
+						setattr(s,field,value*getattr(sample,field).info['conversions'][unit])
+					else:
+						value = int(value)
+						setattr(s,field,value)
+			session.add(s)
+			session.commit()
+			for step in preparation_response:
+				p = preparation_step()
+				p.sample_id = s.id
+				for field,item in step.items():
+					value = item['value']
+					unit = item['unit']
+					if value != None:
+						if sql_validator['str'](getattr(preparation_step,field)) or sql_validator['int'](getattr(preparation_step,field)):
+							setattr(p,field,value)
+						elif sql_validator['float'](getattr(preparation_step,field)):
+							value = float(value)
+							setattr(p,field,value*getattr(preparation_step,field).info['conversions'][unit])
+						else:
+							value = int(value)
+							setattr(p,field,value)
+				session.add(p)
+				session.commit()
+
+
+			json_file = s.json_encodable()
+		full_response = {'json':json_file}
+		full_response.update(files_response)
+		print(full_response)
 
 
 
