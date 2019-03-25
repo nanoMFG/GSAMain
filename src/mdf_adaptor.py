@@ -26,8 +26,8 @@ class MDFAdaptor:
         submission["projects"] = {}
         submission["projects"]["nanomfg"] = {
             "catalyst": recipe.catalyst,
-            "max_temperature": max_temp(recipe),
-            "carbon_source": carbon_source(recipe),
+            "max_temperature": recipe.max_temp(),
+            "carbon_source": recipe.carbon_source(),
             "base_pressure": recipe.base_pressure,
             "sample_surface_area": recipe.sample_surface_area,
             "sample_thickness": recipe.thickness,
