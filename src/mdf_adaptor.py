@@ -32,6 +32,7 @@ class MDFAdaptor:
             # "sample_thickness": recipe.thickness,
             # "orientation": "",
             # "grain_size": ""
+
         }
 
 
