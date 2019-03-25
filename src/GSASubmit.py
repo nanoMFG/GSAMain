@@ -5,13 +5,15 @@ import cv2, sys, time, json, copy, subprocess, os
 from skimage import transform
 from PyQt5 import QtGui, QtCore
 import pyqtgraph as pg
+
+from box_adaptor import BoxAdaptor
 from gresq.database import sample, preparation_step, dal, Base, mdf_forge
 from sqlalchemy import String, Integer, Float, Numeric
 from gresq.config import config
 from gresq.csv2db import build_db
 from GSAQuery import GSAQuery
 from GSAImage import GSAImage
-
+from mdf_adaptor import MDFAdaptor
 
 preparation_fields = [
 	'name',
@@ -293,6 +295,41 @@ class ReviewTab(QtGui.QScrollArea):
 		self.preparation_response = None
 		self.files_response = None
 		self.submitButton = QtGui.QPushButton('Submit')
+		self.submitButton.clicked.connect(lambda: self.upload_to_mdf())
+
+	def zipdir(self, path, ziph):
+		"""
+        Create a zipfile from a nested directory. Make the paths in the zip file
+        relative to the root directory
+        :param path: Path to the root directory
+        :param ziph: zipfile handler
+        :return:
+        """
+		for root, dirs, files in os.walk(path):
+			for file in files:
+				ziph.write(os.path.join(root, file),
+						   arcname=os.path.join(os.path.relpath(root, path),
+												file))
+
+
+	def upload_to_mdf(self):
+		import zipfile
+
+		box_adaptor = BoxAdaptor("../box_config.json")
+		upload_folder = box_adaptor.create_upload_folder()
+
+		sample_id = 'KZPd_170903-1'
+		zip_path = os.path.join("..", "output", sample_id + ".zip")
+		zipf = zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED)
+		download_path = os.path.join("..", "output", sample_id)
+		self.zipdir(download_path, zipf)
+		zipf.close()
+		print("Uploading ", zip_path, " to box")
+
+		box_file = box_adaptor.upload_file(upload_folder, zip_path, sample_id + ".zip")
+		mdf = MDFAdaptor()
+		mdf.upload({}, box_file)
+
 
 	def refresh(self,properties_response,preparation_response,files_response):
 		self.properties_response = properties_response
