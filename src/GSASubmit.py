@@ -13,6 +13,7 @@ from gresq.config import config
 from gresq.csv2db import build_db
 from GSAQuery import GSAQuery
 from GSAImage import GSAImage
+from gresq.recipe import Recipe
 from mdf_adaptor import MDFAdaptor
 import pyqtgraph as pg
 
@@ -327,7 +328,7 @@ class ReviewTab(QtGui.QScrollArea):
 
 		box_file = box_adaptor.upload_file(upload_folder, zip_path, mdf_dir+'.zip')
 		mdf = MDFAdaptor()
-		mdf.upload(response_dict['json'], box_file)
+		mdf.upload(Recipe(response_dict['json']), box_file)
 
 
 	def refresh(self,properties_response,preparation_response,files_response):
