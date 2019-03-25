@@ -443,7 +443,7 @@ class ReviewTab(QtGui.QScrollArea):
 			json_file = s.json_encodable()
 		full_response = {'json':json_file}
 		full_response.update(files_response)
-		return full_response
+		self.upload_to_mdf(full_response)
 
 
 
