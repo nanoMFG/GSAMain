@@ -312,8 +312,10 @@ class ReviewTab(QtGui.QScrollArea):
 		mdf_dir = 'mdf_%s'%time.time()
 		os.mkdir(mdf_dir)
 		mdf_path = os.path.abspath(mdf_dir)
-		shutil.move(response_dict['Raman File'],mdf_path)
-		shutil.move(response_dict['SEM Image File'],mdf_path)
+		if response_dict['Raman File'] != '':
+			shutil.move(response_dict['Raman File'],mdf_path)
+		if response_dict['SEM Image File'] != '':
+			shutil.move(response_dict['SEM Image File'],mdf_path)
 		json.dumps(response_dict['json'],os.path.join(mdf_path,'recipe.json'))
 
 		box_adaptor = BoxAdaptor("../box_config.json")
