@@ -132,6 +132,7 @@ class PreparationTab(QtGui.QWidget):
 		self.steps_list.addItem(w.input_widgets['name'].currentText())
 		item = self.steps_list.item(idx)
 		w.input_widgets['name'].activated[str].connect(item.setText)
+		# w.
 
 	def getResponse(self):
 		response = []
@@ -444,7 +445,23 @@ class ReviewTab(QtGui.QScrollArea):
 		full_response.update(files_response)
 		self.upload_to_mdf(full_response)
 
+		def validate_temperature(json_file):
+			for step in json_file['preparation_steps']:
+				if step['furnace_temperature'] == None:
+					return False
+			return True
 
+		def validate_pressure(json_file):
+			for step in json_file['preparation_steps']:
+				if step['furnace_pressure'] == None:
+					return False
+			return True
+
+		def validate_base_pressure(json_file):
+			if json_file['base_pressure'] == None:
+				return False
+			else:
+				return True
 
 if __name__ == '__main__':
 	dal.init_db(config['development'])
