@@ -7,8 +7,7 @@ import uuid
 class BoxAdaptor():
     def __init__(self, path_to_config):
         if (os.path.isfile(path_to_config) == False):
-            raise ValueError(
-                f"configPath must be a path to the JSON config file for your Box JWT app")
+            raise ValueError("configPath must be a path to the JSON config file for your Box JWT app")
         auth = JWTAuth.from_settings_file(path_to_config)
         print("Authenticating...")
         auth.authenticate_instance()

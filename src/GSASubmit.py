@@ -133,7 +133,13 @@ class PreparationTab(QtGui.QWidget):
 		self.steps_list.addItem(w.input_widgets['name'].currentText())
 		item = self.steps_list.item(idx)
 		w.input_widgets['name'].activated[str].connect(item.setText)
-		# w.
+		w.input_widgets['name'].activated[str].connect(
+			lambda x: w.input_widgets['carbon_source'].hide() if x!='Growing' else w.input_widgets['carbon_source'].show())
+		w.input_widgets['name'].activated[str].connect(
+			lambda x: w.input_widgets['carbon_source_flow_rate'].hide() if x!='Growing' else w.input_widgets['carbon_source_flow_rate'].show())
+		w.input_widgets['name'].activated[str].connect(
+			lambda x: w.units_input['carbon_source_flow_rate'].hide() if x!='Growing' else w.units_input['carbon_source_flow_rate'].show())
+		w.input_widgets['name'].activated[str].emit(w.input_widgets['name'].currentText())
 
 	def getResponse(self):
 		response = []
@@ -313,9 +319,9 @@ class ReviewTab(QtGui.QScrollArea):
 		mdf_dir = 'mdf_%s'%time.time()
 		os.mkdir(mdf_dir)
 		mdf_path = os.path.abspath(mdf_dir)
-		if response_dict['Raman File'] != '':
+		if os.path.isfile(response_dict['Raman File']):
 			shutil.move(response_dict['Raman File'],mdf_path)
-		if response_dict['SEM Image File'] != '':
+		if os.path.isfile(response_dict['SEM Image File']):
 			shutil.move(response_dict['SEM Image File'],mdf_path)
 
 		dump_file = open(os.path.join(mdf_path,'recipe.json'), 'w')
@@ -332,8 +338,8 @@ class ReviewTab(QtGui.QScrollArea):
 		print("Uploading ", zip_path, " to box")
 
 		box_file = box_adaptor.upload_file(upload_folder, zip_path, mdf_dir+'.zip')
-		mdf = MDFAdaptor()
-		mdf.upload(Recipe(response_dict['json']), box_file)
+		# mdf = MDFAdaptor()
+		# mdf.upload(Recipe(response_dict['json']), box_file)
 
 
 	def refresh(self,properties_response,preparation_response,files_response):
@@ -409,6 +415,52 @@ class ReviewTab(QtGui.QScrollArea):
 		self.setWidgetResizable(True)
 
 	def fullResponse(self,properties_response,preparation_response,files_response):
+		def validate_temperature(preparation_response):
+			for s,step in enumerate(preparation_response):
+				if step['furnace_temperature']['value'] == None:
+					return "Missing input for field '%s' for Preparation Step %s (%s)."%(preparation_step.furnace_temperature.info['verbose_name'],s,step['name']['value'])
+			return True
+
+		def validate_pressure(preparation_response):
+			for s,step in enumerate(preparation_response):
+				if step['furnace_pressure']['value'] == None:
+					return "Missing input for field '%s' for Preparation Step %s (%s)."%(preparation_step.furnace_pressure.info['verbose_name'],s,step['name']['value'])
+			return True
+
+		def validate_base_pressure(properties_response):
+			if properties_response['base_pressure']['value'] == None:
+				return "Missing input for field '%s' in Properties."%(sample.base_pressure.info['verbose_name'])
+			else:
+				return True
+
+		def validate_timestamp(preparation_response):
+			for s,step in enumerate(preparation_response):
+				if step['timestamp']['value'] == None:
+					return "Missing input for field '%s' for preparation Step %s (%s)."%(preparation_step.timestamp.info['verbose_name'],s,step['name']['value'])
+			return True
+
+		if len(preparation_response)>0:
+			validator_response = [
+				validate_temperature(preparation_response),
+				validate_pressure(preparation_response),
+				validate_timestamp(preparation_response),
+				validate_base_pressure(properties_response)]
+				
+			if any([v!=True for v in validator_response]):
+				error_dialog = QtGui.QMessageBox(self)
+				error_dialog.setWindowModality(QtCore.Qt.WindowModal)
+				error_dialog.setText("Input Error!")
+				error_dialog.setInformativeText("\n\n".join([v for v in validator_response if v != True]))
+				error_dialog.exec()
+				return
+		else:
+			error_dialog = QtGui.QMessageBox(self)
+			error_dialog.setWindowModality(QtCore.Qt.WindowModal)
+			error_dialog.setText("Input Error!")
+			error_dialog.setInformativeText("Missing preparation steps.")
+			error_dialog.exec()
+			return
+
 		with dal.session_scope() as session:
 			s = sample()
 			for field,item in properties_response.items():
@@ -447,25 +499,21 @@ class ReviewTab(QtGui.QScrollArea):
 			json_file = s.json_encodable()
 		full_response = {'json':json_file}
 		full_response.update(files_response)
-		self.upload_to_mdf(full_response)
 
-		def validate_temperature(json_file):
-			for step in json_file['preparation_steps']:
-				if step['furnace_temperature'] == None:
-					return False
-			return True
+		confirmation_dialog = QtGui.QMessageBox(self)
+		confirmation_dialog.setText("Are you sure you want to submit this recipe?")
+		confirmation_dialog.setInformativeText("Note: you will not be able to undo this submission.")
+		confirmation_dialog.setStandardButtons(QtGui.QMessageBox.Ok | QtGui.QMessageBox.Cancel)
+		confirmation_dialog.setWindowModality(QtCore.Qt.WindowModal)
 
-		def validate_pressure(json_file):
-			for step in json_file['preparation_steps']:
-				if step['furnace_pressure'] == None:
-					return False
-			return True
+		def upload_wrapper(btn):
+			print(btn.text())
+			if btn.text() == "OK":
+				self.upload_to_mdf(full_response)
+		confirmation_dialog.buttonClicked.connect(upload_wrapper)
+		confirmation_dialog.exec()		
 
-		def validate_base_pressure(json_file):
-			if json_file['base_pressure'] == None:
-				return False
-			else:
-				return True
+
 
 if __name__ == '__main__':
 	dal.init_db(config['development'])
