@@ -1,3 +1,8 @@
 #!/bin/sh
 
-/usr/bin/invoke_app "$@" -C rappture -t gresq
+/usr/bin/invoke_app "$@" -C "python @tool/bin/GSADashboard.pyc nanohub" \
+                         -u anaconda3-5.1 \
+                         -u pyqtgraph-0.10.0 \
+                         -t gresq \
+                         -w captive \
+                         -c filexfer
