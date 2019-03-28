@@ -176,7 +176,9 @@ class GSARaman(QtWidgets.QWidget):
 
     def zip_files(self,directory):
         zipname=QtWidgets.QFileDialog.getSaveFileName()
-        shutil.make_archive(zipname,'zip',directory)
+        shutil.make_archive(zipname[0],'zip',directory)
+        #print zipname
+
         #file_paths=self.get_all_file_paths(directory)
         #with ZipFile('data.zip','w') as zip:
         #    for file in file_paths:
