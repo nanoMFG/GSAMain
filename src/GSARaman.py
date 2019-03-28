@@ -167,22 +167,9 @@ class GSARaman(QtWidgets.QWidget):
             self.cnfmdnld=False
             print 'false'
 
-    def get_all_file_paths(self,directory):
-        file_paths=[]
-        for root,directories,files in os.walk(directory):
-            for filename in files:
-                filepath=os.path.join(root,filename)
-        return file_paths
-
     def zip_files(self,directory):
         zipname=QtWidgets.QFileDialog.getSaveFileName()
         shutil.make_archive(zipname[0],'zip',directory)
-        #print zipname
-
-        #file_paths=self.get_all_file_paths(directory)
-        #with ZipFile('data.zip','w') as zip:
-        #    for file in file_paths:
-        #        zip.write(file,compress_type=zipfile.ZIP_DEFLATED)
 
 class SingleSpect(QtWidgets.QWidget):
     def __init__(self, parent=None):
