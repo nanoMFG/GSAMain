@@ -134,6 +134,7 @@ class GSARaman(QtWidgets.QWidget):
                 self.widget.mapLoop(self.data)
                 self.fitbut.setEnabled(False)
                 self.download_but.setEnabled(True)
+        print 'done'
 
     def make_temp_dir(self):
         self.dirpath = tempfile.mkdtemp()
@@ -262,10 +263,6 @@ class SingleSpect(QtWidgets.QWidget):
         self.fit_plot.setLabel('left','I<sub>norm</sub>[arb]')
         self.fit_plot.setLabel('bottom',u'\u03c9'+'[cm<sup>-1</sup>]')
         self.fit_plot.win.hide()
-        # exporter1=pg.exporters.ImageExporter(self.fit_plot.plotItem)
-        # exporter1.params.param('width').setValue(1024, blockSignal=exporter1.widthChanged)
-        # exporter1.params.param('height').setValue(860, blockSignal=exporter1.heightChanged)
-        # exporter1.export(raman.dirpath+'/fitplot.png')
 
         self.overlay_plot=pg.plot()
         self.overlay_plot.addLegend(offset=(-1,1))
@@ -394,9 +391,11 @@ class MapFit(QtWidgets.QWidget):
             raman.statusBar.setValue(self.completed)
             self.param_dict.update(i[0])
             self.norm_dict.update(i[1])
+            self.make_plots(i[2])
+
 
         self.mapSpecPlot(self.param_dict)
-        self.make_plots(self.param_dict.keys())
+        #self.make_plots(self.param_dict.keys())
 
     def mapSpecPlot(self,data_dict):
 
@@ -665,33 +664,33 @@ class MapFit(QtWidgets.QWidget):
 
             self.plotSpects((x_key,y_key))
 
-    def make_plots(self,keys):
-        for i in keys:
-            param_list=self.param_dict[i]
-            G_fit=self.Single_Lorentz(self.freqs,param_list[0]['a'],param_list[0]['w'],param_list[0]['b'])
-            Gp_fit=self.Single_Lorentz(self.freqs,param_list[1]['a'],param_list[1]['w'],param_list[1]['b'])
-            D_fit=self.Single_Lorentz(self.freqs,param_list[2]['a'],param_list[2]['w'],param_list[2]['b'])
-            y_fit=G_fit+Gp_fit+D_fit
+    def make_plots(self,key):
+        i=key
+        param_list=self.param_dict[i]
+        G_fit=self.Single_Lorentz(self.freqs,param_list[0]['a'],param_list[0]['w'],param_list[0]['b'])
+        Gp_fit=self.Single_Lorentz(self.freqs,param_list[1]['a'],param_list[1]['w'],param_list[1]['b'])
+        D_fit=self.Single_Lorentz(self.freqs,param_list[2]['a'],param_list[2]['w'],param_list[2]['b'])
+        y_fit=G_fit+Gp_fit+D_fit
 
-            y_norm=self.norm_dict[pos]
+        y_norm=self.norm_dict[i]
 
-            layers=self.checkParams([param_list[0]['a'],param_list[0]['w'],param_list[0]['b']],[param_list[1]['a'],param_list[1]['w'],param_list[1]['b']])
-            G_test=self.Single_Lorentz(self.freqs,cdat[layers][0]['a'],cdat[layers][0]['w'],cdat[layers][0]['b'])
-            Gp_test=self.Single_Lorentz(self.freqs,cdat[layers][1]['a'],cdat[layers][1]['w'],cdat[layers][1]['b'])
-            y_test=G_test+Gp_test
+        layers=self.checkParams([param_list[0]['a'],param_list[0]['w'],param_list[0]['b']],[param_list[1]['a'],param_list[1]['w'],param_list[1]['b']])
+        G_test=self.Single_Lorentz(self.freqs,cdat[layers][0]['a'],cdat[layers][0]['w'],cdat[layers][0]['b'])
+        Gp_test=self.Single_Lorentz(self.freqs,cdat[layers][1]['a'],cdat[layers][1]['w'],cdat[layers][1]['b'])
+        y_test=G_test+Gp_test
 
-            fit_plot=pg.plot()
-            fit_plot.addLegend(offset=(-1,1))
-            fit_plot.plot(self.freqs,y_norm,pen='g',name='Raw Data')
-            fit_plot.plot(self.freqs,y_test,pen='b',name='Test Data')
-            fit_plot.plot(self.freqs,y_fit,pen='r',name='Fitted Data')
-            fit_plot.setLabel('left','I<sub>norm</sub>[arb]')
-            fit_plot.setLabel('bottom',u'\u03c9'+'[cm<sup>-1</sup>]')
+        fit_plot=pg.plot()
+        fit_plot.addLegend(offset=(-1,1))
+        fit_plot.plot(self.freqs,y_norm,pen='g',name='Raw Data')
+        fit_plot.plot(self.freqs,y_test,pen='b',name='Test Data')
+        fit_plot.plot(self.freqs,y_fit,pen='r',name='Fitted Data')
+        fit_plot.setLabel('left','I<sub>norm</sub>[arb]')
+        fit_plot.setLabel('bottom',u'\u03c9'+'[cm<sup>-1</sup>]')
 
-            exporter=pg.exporters.ImageExporter(fit_plot.plotItem)
-            exporter.params.param('width').setValue(1024, blockSignal=exporter.widthChanged)
-            exporter.params.param('height').setValue(860, blockSignal=exporter.heightChanged)
-            exporter.export(raman.dirpath+'/overlayplot_'+str(i)+'.png')
+        exporter=pg.exporters.ImageExporter(fit_plot.plotItem)
+        exporter.params.param('width').setValue(1024, blockSignal=exporter.widthChanged)
+        exporter.params.param('height').setValue(860, blockSignal=exporter.heightChanged)
+        exporter.export(raman.dirpath+'/overlayplot_'+str(i)+'.png')
 
     def find_nearest(self,array,value):
         array=np.asarray(array)
@@ -752,9 +751,7 @@ def fitting(data_tuple):
     Gpdict={'a':Gp_param[0],'w':Gp_param[1],'b':Gp_param[2]}
     Ddict={'a':D_param[0],'w':D_param[1],'b':D_param[2]}
 
-    return [{pos:[Gdict,Gpdict,Ddict]},{pos:y_norm}]
-
-
+    return [{pos:[Gdict,Gpdict,Ddict]},{pos:y_norm},pos]
 
 app=QtWidgets.QApplication([])
 SingleSpect=SingleSpect()
