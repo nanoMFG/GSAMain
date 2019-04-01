@@ -7,7 +7,7 @@ def build_db(session):
     rslt = mdf.search()
 
     def safe_get_recipe_value(recipe, property):
-        if recipe[property]:
+        if property in recipe and recipe[property]:
             return recipe[property]
         else:
             return None
