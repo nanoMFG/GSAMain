@@ -263,7 +263,7 @@ class preparation_step(Base):
 
     def json_encodable(self):
         rslt = {
-            "name": self.name
+            "name": self.name,
             "timestamp": self.timestamp,
             "furnace_temperature": self.furnace_temperature,
             "furnace_pressure": self.furnace_pressure,

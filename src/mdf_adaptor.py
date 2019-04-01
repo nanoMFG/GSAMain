@@ -3,7 +3,7 @@ from datetime import datetime
 
 class MDFAdaptor:
     def __init__(self):
-        self.mdfcc = MDFConnectClient(test=True, service_instance="dev")
+        self.mdfcc = MDFConnectClient(test=True, service_instance="prod")
 
     def upload(self, recipe, box_file):
         experiment_date = datetime.now()
@@ -37,9 +37,7 @@ class MDFAdaptor:
 
         print("\n\n\n\n------>",submission)
 
+        mdf_source_id = self.mdfcc.submit_dataset(submission=submission)
+        print("Submitted to MDF -----> "+str(mdf_source_id))
 
-
-        # mdf_source_id = self.mdfcc.submit_dataset(submission=submission)
-        # print("Submitted to MDF -----> "+str(mdf_source_id))
-        #
-        # self.mdfcc.reset_submission()
+        self.mdfcc.reset_submission()
