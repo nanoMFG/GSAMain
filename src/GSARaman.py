@@ -19,6 +19,7 @@ import shutil
 import os
 import zipfile
 from zipfile import ZipFile
+import json
 
 filelist=[]
 layer1=[{'a':3.00007920e-01,'w':3.73588869e+01,'b':1.58577373e+03},{'a':1.00000000e+00,'w':3.25172389e+01,'b':2.68203383e+03}]
@@ -272,7 +273,7 @@ class SingleSpect(QtWidgets.QWidget):
         self.overlay_plot.setLabel('left','I<sub>norm</sub>[arb]')
         self.overlay_plot.setLabel('bottom',u'\u03c9'+'[cm<sup>-1</sup>]')
         self.overlay_plot.win.hide()
-        exporter2=pg.exporters.ImageExporter(self.fit_plot.plotItem)
+        exporter2=pg.exporters.ImageExporter(self.overlay_plot.plotItem)
         exporter2.params.param('width').setValue(1024, blockSignal=exporter2.widthChanged)
         exporter2.params.param('height').setValue(860, blockSignal=exporter2.heightChanged)
         exporter2.export(raman.dirpath+'/overlayplot.png')
@@ -356,6 +357,7 @@ class MapFit(QtWidgets.QWidget):
 
         self.param_dict={}
         self.norm_dict={}
+        self.json_dict={}
 
         self.fig1=plt.figure()
         self.canvas1=FigureCanvas(self.fig1)
@@ -390,12 +392,13 @@ class MapFit(QtWidgets.QWidget):
             self.completed+=(1/length)*100+1
             raman.statusBar.setValue(self.completed)
             self.param_dict.update(i[0])
+            self.json_dict.update({str(i[0].keys()[0]):i[0][i[0].keys()[0]]})
             self.norm_dict.update(i[1])
-            self.make_plots(i[2])
-
 
         self.mapSpecPlot(self.param_dict)
-        #self.make_plots(self.param_dict.keys())
+        self.make_plots(self.param_dict)
+        with open(raman.dirpath+'/mapParams.json','w') as fp:
+            data=json.dump(self.json_dict, fp, sort_keys=True, indent=4)
 
     def mapSpecPlot(self,data_dict):
 
@@ -664,33 +667,132 @@ class MapFit(QtWidgets.QWidget):
 
             self.plotSpects((x_key,y_key))
 
-    def make_plots(self,key):
-        i=key
-        param_list=self.param_dict[i]
-        G_fit=self.Single_Lorentz(self.freqs,param_list[0]['a'],param_list[0]['w'],param_list[0]['b'])
-        Gp_fit=self.Single_Lorentz(self.freqs,param_list[1]['a'],param_list[1]['w'],param_list[1]['b'])
-        D_fit=self.Single_Lorentz(self.freqs,param_list[2]['a'],param_list[2]['w'],param_list[2]['b'])
-        y_fit=G_fit+Gp_fit+D_fit
+    def make_plots(self,data_dict):
+        keys=data_dict.keys()
+        peaks=['Dpeak','Gpeak','Gppeak','Quality']
 
-        y_norm=self.norm_dict[i]
+        for num in range(4):
+            i=num
+            print i
+            if num<=2:
+                data_array_a=np.append(np.array(keys[0]),[data_dict[keys[0]][num]['a']])
+                data_array_a=np.array([data_array_a])
+                length=len(keys)
 
-        layers=self.checkParams([param_list[0]['a'],param_list[0]['w'],param_list[0]['b']],[param_list[1]['a'],param_list[1]['w'],param_list[1]['b']])
-        G_test=self.Single_Lorentz(self.freqs,cdat[layers][0]['a'],cdat[layers][0]['w'],cdat[layers][0]['b'])
-        Gp_test=self.Single_Lorentz(self.freqs,cdat[layers][1]['a'],cdat[layers][1]['w'],cdat[layers][1]['b'])
-        y_test=G_test+Gp_test
+                for k in range(length):
+                    new_entry=np.append(np.array(keys[k]),[data_dict[keys[k]][num]['a']])
+                    new_entry=np.array([new_entry])
+                    data_array_a=np.append(data_array_a,new_entry,axis=0)
+                z_a=data_array_a[:,2]
+                x_a=data_array_a[:,0]
+                y_a=data_array_a[:,1]
 
-        fit_plot=pg.plot()
-        fit_plot.addLegend(offset=(-1,1))
-        fit_plot.plot(self.freqs,y_norm,pen='g',name='Raw Data')
-        fit_plot.plot(self.freqs,y_test,pen='b',name='Test Data')
-        fit_plot.plot(self.freqs,y_fit,pen='r',name='Fitted Data')
-        fit_plot.setLabel('left','I<sub>norm</sub>[arb]')
-        fit_plot.setLabel('bottom',u'\u03c9'+'[cm<sup>-1</sup>]')
+                xi_a=np.linspace(min(data_array_a[:,0]),max(data_array_a[:,0]))
+                xi_a=np.linspace(min(x_a),max(x_a))
+                yi_a=np.linspace(min(data_array_a[:,1]),max(data_array_a[:,1]))
+                yi_a=np.linspace(min(y_a),max(y_a))
+                X_a,Y_a=np.meshgrid(xi_a,yi_a)
+                Z_a=griddata((x_a,y_a),z_a,(X_a,Y_a),method='nearest')
 
-        exporter=pg.exporters.ImageExporter(fit_plot.plotItem)
-        exporter.params.param('width').setValue(1024, blockSignal=exporter.widthChanged)
-        exporter.params.param('height').setValue(860, blockSignal=exporter.heightChanged)
-        exporter.export(raman.dirpath+'/overlayplot_'+str(i)+'.png')
+                fig1=plt.figure()
+                fig1.clear()
+                ax1=fig1.add_subplot(111)
+                C1=ax1.contourf(X_a,Y_a,Z_a)
+                plt.colorbar(C1,ax=ax1)
+                plt.set_cmap('inferno')
+                plt.savefig(raman.dirpath+'/mapPlot_'+peaks[i]+'_a.png')
+        
+                data_array_w=np.append(np.array(keys[0]),[data_dict[keys[0]][num]['w']])
+                data_array_w=np.array([data_array_w])
+                length=len(keys)
+
+                for k in range(length):
+                    new_entry=np.append(np.array(keys[k]),[data_dict[keys[k]][num]['w']])
+                    new_entry=np.array([new_entry])
+                    data_array_w=np.append(data_array_w,new_entry,axis=0)
+                z_w=data_array_w[:,2]
+
+                Z_w=griddata((x_a,y_a),z_w,(X_a,Y_a),method='nearest')
+                
+                fig2=plt.figure()
+                fig2.clear()
+                ax2=fig2.add_subplot(111)
+                C2=ax2.contourf(X_a,Y_a,Z_w)
+                plt.colorbar(C2,ax=ax2)
+                plt.set_cmap('inferno')
+                plt.savefig(raman.dirpath+'/mapPlot_'+peaks[i]+'_w.png')
+
+                data_array_b=np.append(np.array(keys[0]),[data_dict[keys[0]][num]['b']])
+                data_array_b=np.array([data_array_b])
+                length=len(keys)
+
+                for k in range(length):
+                    new_entry=np.append(np.array(keys[k]),[data_dict[keys[k]][num]['b']])
+                    new_entry=np.array([new_entry])
+                    data_array_b=np.append(data_array_b,new_entry,axis=0)
+                z_b=data_array_b[:,2]
+
+
+                Z_b=griddata((x_a,y_a),z_b,(X_a,Y_a),method='nearest')
+
+                fig3=plt.figure()
+                fig3.clear()
+                ax3=fig3.add_subplot(111)
+                C3=ax3.contourf(X_a,Y_a,Z_b)
+                plt.colorbar(C3,ax=ax3)
+                plt.set_cmap('inferno')
+                plt.savefig(raman.dirpath+'/mapPlot_'+peaks[i]+'_b.png')
+
+            else:
+                data_array_d=np.append(np.array(keys[0]),[data_dict[keys[0]][2]['a']])
+                data_array_d=np.array([data_array_d])
+                data_array_g=np.append(np.array(keys[0]),[data_dict[keys[0]][0]['a']])
+                data_array_g=np.array([data_array_g])
+                data_array_gp=np.append(np.array(keys[0]),[data_dict[keys[0]][1]['a']])
+                data_array_gp=np.array([data_array_gp])
+                length=len(keys)
+
+                for k in range(length):
+                    new_entry1=np.append(np.array(keys[k]),[data_dict[keys[k]][2]['a']])
+                    new_entry1=np.array([new_entry1])
+                    new_entry2=np.append(np.array(keys[k]),[data_dict[keys[k]][0]['a']])
+                    new_entry2=np.array([new_entry2])
+                    new_entry3=np.append(np.array(keys[k]),[data_dict[keys[k]][1]['a']])
+                    new_entry3=np.array([new_entry3])
+
+                    data_array_d=np.append(data_array_d,new_entry1,axis=0)
+                    data_array_g=np.append(data_array_g,new_entry2,axis=0)
+                    data_array_gp=np.append(data_array_gp,new_entry3,axis=0)
+
+                z_1=np.ones(data_array_d[:,2].shape)-np.divide(data_array_d[:,2],data_array_g[:,2])
+                z_2=np.divide(data_array_g[:,2],data_array_gp[:,2])
+
+                x_a=data_array_d[:,0]
+                y_a=data_array_d[:,1]
+
+                xi_a=np.linspace(min(data_array_a[:,0]),max(data_array_a[:,0]))
+                xi_a=np.linspace(min(x_a),max(x_a))
+                yi_a=np.linspace(min(data_array_a[:,1]),max(data_array_a[:,1]))
+                yi_a=np.linspace(min(y_a),max(y_a))
+                X_a,Y_a=np.meshgrid(xi_a,yi_a)
+                Z_1=griddata((x_a,y_a),z_1,(X_a,Y_a),method='nearest')
+                Z_2=griddata((x_a,y_a),z_2,(X_a,Y_a),method='nearest')
+
+                fig1=plt.figure()
+                fig1.clear()
+                ax1=fig1.add_subplot(111)
+                C1=ax1.contourf(X_a,Y_a,Z_1)
+                plt.colorbar(C1,ax=ax1)
+                plt.set_cmap('inferno')
+                plt.savefig(raman.dirpath+'/mapPlot_'+peaks[i]+'_dg.png')
+
+                fig2=plt.figure()
+                fig2.clear()
+                ax2=fig2.add_subplot(111)
+                C2=ax2.contourf(X_a,Y_a,Z_2)
+                plt.colorbar(C2,ax=ax2)
+                plt.set_cmap('inferno')
+                plt.savefig(raman.dirpath+'/mapPlot_'+peaks[i]+'_ggp.png')
 
     def find_nearest(self,array,value):
         array=np.asarray(array)
