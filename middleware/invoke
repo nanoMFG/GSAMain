@@ -1,6 +1,6 @@
 #!/bin/sh
 
-/usr/bin/invoke_app "$@" -C "python @tool/bin/GSADashboard.pyc nanohub" \
+/usr/bin/invoke_app "$@" -C "python @tool/bin/GSADashboard.pyc nanohub 2>&1 | tee ${SESSIONDIR}/gresq.log" \
                          -u anaconda3-5.1 \
                          -u pyqtgraph-0.10.0 \
                          -t gresq \
