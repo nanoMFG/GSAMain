@@ -59,13 +59,13 @@ label_font = QtGui.QFont("Helvetica", 28, QtGui.QFont.Bold)
 sublabel_font = QtGui.QFont("Helvetica", 18)
 
 class GSASubmit(QtGui.QTabWidget):
-	def __init__(self,mode='local',parent=None):
+	def __init__(self,mode='local',parent=None, box_config_path=None):
 		super(GSASubmit,self).__init__(parent=parent)
 		self.mode = mode
 		self.properties = PropertiesTab()
 		self.preparation = PreparationTab()
 		self.file_upload = FileUploadTab(mode=self.mode)
-		self.review = ReviewTab()
+		self.review = ReviewTab(box_config_path=box_config_path)
 
 		self.setTabPosition(QtGui.QTabWidget.South)
 		self.addTab(self.preparation,'Preparation')
@@ -292,11 +292,12 @@ class FileUploadTab(QtGui.QWidget):
 		return {'SEM Image File': self.sem_file_path, 'Raman File': self.raman_file_path}
 
 class ReviewTab(QtGui.QScrollArea):
-	def __init__(self,parent=None):
+	def __init__(self,parent=None, box_config_path=None):
 		super(ReviewTab,self).__init__(parent=parent)
 		self.properties_response = None
 		self.preparation_response = None
 		self.files_response = None
+		self.box_config_path = box_config_path
 		self.submitButton = QtGui.QPushButton('Submit')
 
 	def zipdir(self, path, ziph):
@@ -328,7 +329,7 @@ class ReviewTab(QtGui.QScrollArea):
 		json.dump(response_dict['json'],dump_file)
 		dump_file.close()
 
-		box_adaptor = BoxAdaptor("../box_config.json")
+		box_adaptor = BoxAdaptor(self.box_config_path)
 		upload_folder = box_adaptor.create_upload_folder()
 
 		zip_path = mdf_path + ".zip"

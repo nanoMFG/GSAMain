@@ -16,12 +16,12 @@ from GSAImage import GSAImage
 from GSASubmit import GSASubmit
 
 class GSADashboard(QtGui.QTabWidget):
-	def __init__(self,parent=None,mode='local'):
+	def __init__(self,parent=None,mode='local', box_config_path=None):
 		super(GSADashboard,self).__init__(parent=parent)
 		
 		self.query_tab = GSAQuery()
 		self.image_tab = GSAImage().widget()
-		self.submit_tab =  GSASubmit()
+		self.submit_tab =  GSASubmit(box_config_path=box_config_path)
 		self.raman_tab =  QtGui.QWidget()
 
 		self.addTab(self.query_tab,'Query')
@@ -41,7 +41,13 @@ if __name__ == '__main__':
 		mode = 'local'
 	if mode not in ['nanohub','local']:
 		mode = 'local'
+
+	if len(sys.argv) > 2:
+		box_config_path=sys.argv[2]
+	else:
+		box_config_path = "../box_config.json"
+
 	app = QtGui.QApplication([])      
-	dashboard = GSADashboard(mode=mode)
+	dashboard = GSADashboard(mode=mode, box_config_path=box_config_path)
 	dashboard.show()
 	sys.exit(app.exec_())
