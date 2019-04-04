@@ -20,8 +20,8 @@ class GSADashboard(QtGui.QTabWidget):
 		super(GSADashboard,self).__init__(parent=parent)
 		
 		self.query_tab = GSAQuery()
-		self.image_tab = GSAImage().widget()
-		self.submit_tab =  GSASubmit(box_config_path=box_config_path)
+		self.image_tab = GSAImage(mode=mode).widget()
+		self.submit_tab =  GSASubmit(mode=mode,box_config_path=box_config_path)
 		self.raman_tab =  QtGui.QWidget()
 
 		self.addTab(self.query_tab,'Query')
