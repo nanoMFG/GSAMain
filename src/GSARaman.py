@@ -32,6 +32,10 @@ cdat={'monolayer':layer1,'bilayer':layer2,'trilayer':layer3,'four layers':layer4
 
 w=[]
 
+pg.setConfigOption('background', 'w')
+pg.setConfigOption('foreground', 'k')
+pg.mkPen('k')
+
 class GSARaman(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(GSARaman,self).__init__(parent=parent)
@@ -92,7 +96,6 @@ class GSARaman(QtWidgets.QWidget):
         self.f_list=filelist
 
     def checkFileType(self, flnm):
-        #for flnm in filelist:
         if flnm[0][-3:]=='csv':
             self.data=pd.read_csv(flnm[0])
         else:
@@ -115,10 +118,18 @@ class GSARaman(QtWidgets.QWidget):
     def doFitting(self):
         if not self.pathmade:
                 self.make_temp_dir()
-
+        map_i=1
+        sing_i=1
         for flnm in filelist:
             self.checkFileType(flnm)
             if self.spect_type=='single':
+
+                self.newpath=str(self.dirpath)+'/SingleSpect'+str(sing_i)
+                if not os.path.exists(self.newpath):
+                    os.makedirs(self.newpath)
+                    sing_i+=1
+                shutil.copy2(flnm[0],self.newpath)
+
                 self.widget=SingleSpect
                 self.displayWidget.setCurrentWidget(self.widget)
 
@@ -129,21 +140,23 @@ class GSARaman(QtWidgets.QWidget):
                 self.fitbut.setEnabled(False)
                 self.download_but.setEnabled(True)
             else:
+
+                self.newpath=str(self.dirpath)+'/MapSpect'+str(map_i)
+                if not os.path.exists(self.newpath):
+                    os.makedirs(self.newpath)
+                    map_i+=1
+                shutil.copy2(flnm[0],self.newpath)
+
                 self.widget=MapFit
                 self.displayWidget.setCurrentWidget(self.widget)
 
                 self.widget.mapLoop(self.data)
                 self.fitbut.setEnabled(False)
                 self.download_but.setEnabled(True)
-        print 'done'
 
     def make_temp_dir(self):
         self.dirpath = tempfile.mkdtemp()
         self.pathmade=True
-
-    def save_files(self, filelist):
-        for flnm in filelist:
-            shutil.copy2(flnm[0],self.dirpath)
 
     def downloadData(self):
         self.downloadMsg.setIcon(QtWidgets.QMessageBox.Question)
@@ -154,11 +167,10 @@ class GSARaman(QtWidgets.QWidget):
         self.downloadMsg.exec_()
 
         if self.cnfmdnld:
-            self.save_files(self.f_list)
             self.zip_files(self.dirpath)
             shutil.rmtree(self.dirpath)
             self.pathmade=False
-            print 'did it'
+            self.download_but.setEnabled(False)
 
     def msgbtn(self, i):
         print i.text()
@@ -251,6 +263,10 @@ class SingleSpect(QtWidgets.QWidget):
         D_param,D_cov=curve_fit(self.Single_Lorentz,x,y,bounds=([0,10,1300],[np.max(I),50,1400]),p0=pD)
         D_fit=self.Single_Lorentz(x,D_param[0],D_param[1],D_param[2])
 
+        param_dict={'G':{'a':G_param[0],'w':G_param[1],'b':G_param[2]},'Gp':{'a':Gp_param[0],'w':Gp_param[1],'b':Gp_param[2]},'D':{'a':D_param[0],'w':D_param[1],'b':D_param[2]}}
+        with open(raman.newpath+'/spectParams.json','w') as fp:
+            data=json.dump(param_dict, fp, sort_keys=True, indent=4)
+
         y_fit=G_fit+Gp_fit+D_fit
         self.checkParams(G_param,Gp_param)
 
@@ -259,7 +275,7 @@ class SingleSpect(QtWidgets.QWidget):
         Gp_test=self.Single_Lorentz(x,test_params[1]['a'],test_params[1]['w'],test_params[1]['b'])
         y_test=G_test+Gp_test
 
-        self.fit_plot=pg.plot(x,y_fit,pen='w')
+        self.fit_plot=pg.plot(x,y_fit,pen='k')
         self.fit_plot.setRange(yRange=[0,1])
         self.fit_plot.setLabel('left','I<sub>norm</sub>[arb]')
         self.fit_plot.setLabel('bottom',u'\u03c9'+'[cm<sup>-1</sup>]')
@@ -276,7 +292,7 @@ class SingleSpect(QtWidgets.QWidget):
         exporter2=pg.exporters.ImageExporter(self.overlay_plot.plotItem)
         exporter2.params.param('width').setValue(1024, blockSignal=exporter2.widthChanged)
         exporter2.params.param('height').setValue(860, blockSignal=exporter2.heightChanged)
-        exporter2.export(raman.dirpath+'/overlayplot.png')
+        exporter2.export(raman.newpath+'/overlayplot.png')
 
         self.fitting_params=QtWidgets.QLabel(
             """Fitting Parameters:
@@ -303,7 +319,7 @@ class SingleSpect(QtWidgets.QWidget):
         for i in y:
             y_norm.append((i-np.min(y))/(np.max(y)-np.min(y)))
 
-        self.spect_plot=pg.plot(x,y_norm,pen='w')
+        self.spect_plot=pg.plot(x,y_norm,pen='k')
         self.spect_plot.setFixedSize(400,500)
         self.spect_plot.setLabel('left','I<sub>norm</sub>[arb]')
         self.spect_plot.setLabel('bottom',u'\u03c9'+'[cm<sup>-1</sup>]')
@@ -397,16 +413,17 @@ class MapFit(QtWidgets.QWidget):
 
         self.mapSpecPlot(self.param_dict)
         self.make_plots(self.param_dict)
-        with open(raman.dirpath+'/mapParams.json','w') as fp:
+        with open(raman.newpath+'/mapParams.json','w') as fp:
             data=json.dump(self.json_dict, fp, sort_keys=True, indent=4)
 
     def mapSpecPlot(self,data_dict):
 
         keys=data_dict.keys()
-        num=self.paramnum
-        print self.paramnum
+        peaks=['G','Gp','D','Quality']
+        j=self.paramnum
+        num=peaks[j]
 
-        if num<=2:
+        if j<=2:
             self.data_array_a=np.append(np.array(keys[0]),[data_dict[keys[0]][num]['a']])
             self.data_array_a=np.array([self.data_array_a])
             length=len(keys)
@@ -482,20 +499,20 @@ class MapFit(QtWidgets.QWidget):
             self.mapPlot.addTab(self.canvas3,u'\u03c9')
 
         else:
-            data_array_d=np.append(np.array(keys[0]),[data_dict[keys[0]][2]['a']])
+            data_array_d=np.append(np.array(keys[0]),[data_dict[keys[0]]['D']['a']])
             data_array_d=np.array([data_array_d])
-            data_array_g=np.append(np.array(keys[0]),[data_dict[keys[0]][0]['a']])
+            data_array_g=np.append(np.array(keys[0]),[data_dict[keys[0]]['G']['a']])
             data_array_g=np.array([data_array_g])
-            data_array_gp=np.append(np.array(keys[0]),[data_dict[keys[0]][1]['a']])
+            data_array_gp=np.append(np.array(keys[0]),[data_dict[keys[0]]['Gp']['a']])
             data_array_gp=np.array([data_array_gp])
             length=len(keys)
 
             for i in range(length):
-                new_entry1=np.append(np.array(keys[i]),[data_dict[keys[i]][2]['a']])
+                new_entry1=np.append(np.array(keys[i]),[data_dict[keys[i]]['D']['a']])
                 new_entry1=np.array([new_entry1])
-                new_entry2=np.append(np.array(keys[i]),[data_dict[keys[i]][0]['a']])
+                new_entry2=np.append(np.array(keys[i]),[data_dict[keys[i]]['G']['a']])
                 new_entry2=np.array([new_entry2])
-                new_entry3=np.append(np.array(keys[i]),[data_dict[keys[i]][1]['a']])
+                new_entry3=np.append(np.array(keys[i]),[data_dict[keys[i]]['Gp']['a']])
                 new_entry3=np.array([new_entry3])
 
                 data_array_d=np.append(data_array_d,new_entry1,axis=0)
@@ -552,32 +569,34 @@ class MapFit(QtWidgets.QWidget):
     def changeHist(self,i):
         z=self.histList[i]
         widths=[0.01,0.1,0.1]
+        
+        hist,bin_edges=np.histogram(z,bins=25,density=False)
 
-        hist,bin_edges=np.histogram(z,bins='auto',density=False)
+        hist,bin_edges=np.histogram(z,bins=25,density=False)
         hist_shift=np.ptp(z)/len(hist)
         self.hist_plot=pg.plot()
         bg1=pg.BarGraphItem(x=bin_edges[0:len(hist)-1]+hist_shift,height=hist,width=widths[i],brush='r')
         self.hist_plot.addItem(bg1)
 
         if self.hist_plotted==False:
-            self.spectPlots.addTab(self.hist_plot,'histogram')
+            self.spectPlots.addTab(self.hist_plot,'Histogram')
             self.hist_plotted=True
         else:
             self.spectPlots.removeTab(0)
-            self.spectPlots.insertTab(0,self.hist_plot,'histogram')
+            self.spectPlots.insertTab(0,self.hist_plot,'Histogram')
             
         self.hist_plot.win.hide()
 
     def plotSpects(self,pos):
         param_list=self.param_dict[pos]
-        G_fit=self.Single_Lorentz(self.freqs,param_list[0]['a'],param_list[0]['w'],param_list[0]['b'])
-        Gp_fit=self.Single_Lorentz(self.freqs,param_list[1]['a'],param_list[1]['w'],param_list[1]['b'])
-        D_fit=self.Single_Lorentz(self.freqs,param_list[2]['a'],param_list[2]['w'],param_list[2]['b'])
+        G_fit=self.Single_Lorentz(self.freqs,param_list['G']['a'],param_list['G']['w'],param_list['G']['b'])
+        Gp_fit=self.Single_Lorentz(self.freqs,param_list['Gp']['a'],param_list['Gp']['w'],param_list['Gp']['b'])
+        D_fit=self.Single_Lorentz(self.freqs,param_list['D']['a'],param_list['D']['w'],param_list['D']['b'])
         y_fit=G_fit+Gp_fit+D_fit
 
         y_norm=self.norm_dict[pos]
 
-        layers=self.checkParams([param_list[0]['a'],param_list[0]['w'],param_list[0]['b']],[param_list[1]['a'],param_list[1]['w'],param_list[1]['b']])
+        layers=self.checkParams([param_list['G']['a'],param_list['G']['w'],param_list['G']['b']],[param_list['Gp']['a'],param_list['Gp']['w'],param_list['Gp']['b']])
         G_test=self.Single_Lorentz(self.freqs,cdat[layers][0]['a'],cdat[layers][0]['w'],cdat[layers][0]['b'])
         Gp_test=self.Single_Lorentz(self.freqs,cdat[layers][1]['a'],cdat[layers][1]['w'],cdat[layers][1]['b'])
         y_test=G_test+Gp_test
@@ -614,7 +633,7 @@ class MapFit(QtWidgets.QWidget):
                 """u'\u03b1'"""="""+str(round(param_list[2]['a'],4))+"""
                 """u'\u0393'"""="""+str(round(param_list[2]['w'],4))+"""
                 """u'\u03c9'"""="""+str(round(param_list[2]['b'],4))+"""
-            Quality="""+str(round(1-(param_list[2]['a']/param_list[0]['a']),4))+"""(Ratio of D to G)
+            Quality="""+str(round(1-(param_list['D']['a']/param_list['G']['a']),4))+"""(Ratio of D to G)
             Best Case Match: """+layers)
 
         self.fitting_params.setFixedSize(300,500)
@@ -669,12 +688,12 @@ class MapFit(QtWidgets.QWidget):
 
     def make_plots(self,data_dict):
         keys=data_dict.keys()
-        peaks=['Dpeak','Gpeak','Gppeak','Quality']
+        peaks=['Gpeak','Gppeak','Dpeak','Quality']
+        peak_keys=['G','Gp','D','Quality']
 
-        for num in range(4):
-            i=num
-            print i
-            if num<=2:
+        for j in range(4):
+            num=peak_keys[j]
+            if j<=2:
                 data_array_a=np.append(np.array(keys[0]),[data_dict[keys[0]][num]['a']])
                 data_array_a=np.array([data_array_a])
                 length=len(keys)
@@ -700,7 +719,7 @@ class MapFit(QtWidgets.QWidget):
                 C1=ax1.contourf(X_a,Y_a,Z_a)
                 plt.colorbar(C1,ax=ax1)
                 plt.set_cmap('inferno')
-                plt.savefig(raman.dirpath+'/mapPlot_'+peaks[i]+'_a.png')
+                plt.savefig(raman.newpath+'/mapPlot_'+peaks[j]+'_a.png')
         
                 data_array_w=np.append(np.array(keys[0]),[data_dict[keys[0]][num]['w']])
                 data_array_w=np.array([data_array_w])
@@ -720,7 +739,7 @@ class MapFit(QtWidgets.QWidget):
                 C2=ax2.contourf(X_a,Y_a,Z_w)
                 plt.colorbar(C2,ax=ax2)
                 plt.set_cmap('inferno')
-                plt.savefig(raman.dirpath+'/mapPlot_'+peaks[i]+'_w.png')
+                plt.savefig(raman.newpath+'/mapPlot_'+peaks[j]+'_w.png')
 
                 data_array_b=np.append(np.array(keys[0]),[data_dict[keys[0]][num]['b']])
                 data_array_b=np.array([data_array_b])
@@ -741,23 +760,23 @@ class MapFit(QtWidgets.QWidget):
                 C3=ax3.contourf(X_a,Y_a,Z_b)
                 plt.colorbar(C3,ax=ax3)
                 plt.set_cmap('inferno')
-                plt.savefig(raman.dirpath+'/mapPlot_'+peaks[i]+'_b.png')
+                plt.savefig(raman.newpath+'/mapPlot_'+peaks[j]+'_b.png')
 
             else:
-                data_array_d=np.append(np.array(keys[0]),[data_dict[keys[0]][2]['a']])
+                data_array_d=np.append(np.array(keys[0]),[data_dict[keys[0]]['D']['a']])
                 data_array_d=np.array([data_array_d])
-                data_array_g=np.append(np.array(keys[0]),[data_dict[keys[0]][0]['a']])
+                data_array_g=np.append(np.array(keys[0]),[data_dict[keys[0]]['G']['a']])
                 data_array_g=np.array([data_array_g])
-                data_array_gp=np.append(np.array(keys[0]),[data_dict[keys[0]][1]['a']])
+                data_array_gp=np.append(np.array(keys[0]),[data_dict[keys[0]]['Gp']['a']])
                 data_array_gp=np.array([data_array_gp])
                 length=len(keys)
 
                 for k in range(length):
-                    new_entry1=np.append(np.array(keys[k]),[data_dict[keys[k]][2]['a']])
+                    new_entry1=np.append(np.array(keys[k]),[data_dict[keys[k]]['D']['a']])
                     new_entry1=np.array([new_entry1])
-                    new_entry2=np.append(np.array(keys[k]),[data_dict[keys[k]][0]['a']])
+                    new_entry2=np.append(np.array(keys[k]),[data_dict[keys[k]]['G']['a']])
                     new_entry2=np.array([new_entry2])
-                    new_entry3=np.append(np.array(keys[k]),[data_dict[keys[k]][1]['a']])
+                    new_entry3=np.append(np.array(keys[k]),[data_dict[keys[k]]['Gp']['a']])
                     new_entry3=np.array([new_entry3])
 
                     data_array_d=np.append(data_array_d,new_entry1,axis=0)
@@ -784,7 +803,7 @@ class MapFit(QtWidgets.QWidget):
                 C1=ax1.contourf(X_a,Y_a,Z_1)
                 plt.colorbar(C1,ax=ax1)
                 plt.set_cmap('inferno')
-                plt.savefig(raman.dirpath+'/mapPlot_'+peaks[i]+'_dg.png')
+                plt.savefig(raman.newpath+'/mapPlot_'+peaks[j]+'_dg.png')
 
                 fig2=plt.figure()
                 fig2.clear()
@@ -792,7 +811,7 @@ class MapFit(QtWidgets.QWidget):
                 C2=ax2.contourf(X_a,Y_a,Z_2)
                 plt.colorbar(C2,ax=ax2)
                 plt.set_cmap('inferno')
-                plt.savefig(raman.dirpath+'/mapPlot_'+peaks[i]+'_ggp.png')
+                plt.savefig(raman.newpath+'/mapPlot_'+peaks[j]+'_ggp.png')
 
     def find_nearest(self,array,value):
         array=np.asarray(array)
@@ -853,7 +872,7 @@ def fitting(data_tuple):
     Gpdict={'a':Gp_param[0],'w':Gp_param[1],'b':Gp_param[2]}
     Ddict={'a':D_param[0],'w':D_param[1],'b':D_param[2]}
 
-    return [{pos:[Gdict,Gpdict,Ddict]},{pos:y_norm},pos]
+    return [{pos:{'G':Gdict,'Gp':Gpdict,'D':Ddict}},{pos:y_norm},pos]
 
 app=QtWidgets.QApplication([])
 SingleSpect=SingleSpect()
