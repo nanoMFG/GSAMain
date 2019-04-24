@@ -59,6 +59,11 @@ label_font = QtGui.QFont("Helvetica", 28, QtGui.QFont.Bold)
 sublabel_font = QtGui.QFont("Helvetica", 18)
 
 class GSASubmit(QtGui.QTabWidget):
+	"""
+	Main submission widget
+	mode:				Upload method (local or nanohub)
+	box_config_path:	Path to box configuration file
+	"""
 	def __init__(self,mode='local',parent=None, box_config_path=None):
 		super(GSASubmit,self).__init__(parent=parent)
 		self.mode = mode
@@ -94,6 +99,9 @@ class GSASubmit(QtGui.QTabWidget):
 		self.file_upload.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.review))
 
 class ProvenanceTab(QtGui.QWidget):
+	"""
+	Provenance information tab. Users input author information.
+	"""
 	def __init__(self,parent=None):
 		super(ProvenanceTab,self).__init__(parent=parent)
 		self.layout = QtGui.QGridLayout(self)
@@ -114,6 +122,9 @@ class ProvenanceTab(QtGui.QWidget):
 		self.remove_author_btn.clicked.connect(self.remove_author)
 
 	def add_author(self):
+		"""
+		Add another author. Adds new entry to author list and creates new author input widget.
+		"""
 		w = FieldsFormWidget(fields=["first_name","last_name","institution"],model=author)
 		idx = self.stackedFormWidget.addWidget(w)
 		self.stackedFormWidget.setCurrentIndex(idx)
@@ -125,11 +136,17 @@ class ProvenanceTab(QtGui.QWidget):
 			lambda txt: item.setText("%s, %s"%(w.input_widgets["last_name"].text(),w.input_widgets["first_name"].text())))
 
 	def remove_author(self):
+		"""
+		Removes author as selected from author list widget.
+		"""
 		x=self.author_list.currentRow()
 		self.stackedFormWidget.removeWidget(self.stackedFormWidget.widget(x))
 		self.author_list.takeItem(x)
 
 	def getResponse(self):
+		"""
+		Returns a list of dictionary responses, as defined in FieldsFormWidget.getResponse() for each step.
+		"""
 		response = []
 		for i in range(self.stackedFormWidget.count()):
 			response.append(self.stackedFormWidget.widget(i).getResponse())
@@ -140,6 +157,9 @@ class ProvenanceTab(QtGui.QWidget):
 
 
 class PropertiesTab(QtGui.QWidget):
+	"""
+	Properties tab widget. Users input graphene properties and experimental parameters.
+	"""
 	def __init__(self,parent=None):
 		super(PropertiesTab,self).__init__(parent=parent)
 		self.layout = QtGui.QGridLayout(self)
@@ -158,6 +178,9 @@ class PropertiesTab(QtGui.QWidget):
 		pass
 
 class PreparationTab(QtGui.QWidget):
+	"""
+	Preparation tab widget. Users input the recipe preparation steps.
+	"""
 	def __init__(self,parent=None):
 		super(PreparationTab,self).__init__(parent=parent)
 		self.layout = QtGui.QGridLayout(self)
@@ -184,6 +207,9 @@ class PreparationTab(QtGui.QWidget):
 		self.layout.addWidget(self.nextButton,1,0,1,2)
 
 	def addStep(self):
+		"""
+		Add another step. Adds new entry to step list and creates new step input widget.
+		"""
 		w = FieldsFormWidget(fields=preparation_fields,model=preparation_step)
 		idx = self.stackedFormWidget.addWidget(w)
 		self.stackedFormWidget.setCurrentIndex(idx)
@@ -199,11 +225,17 @@ class PreparationTab(QtGui.QWidget):
 		w.input_widgets['name'].activated[str].emit(w.input_widgets['name'].currentText())
 
 	def removeStep(self):
+		"""
+		Removes step as selected from step list widget.
+		"""
 		x=self.steps_list.currentRow()
 		self.stackedFormWidget.removeWidget(self.stackedFormWidget.widget(x))
 		self.steps_list.takeItem(x)
 
 	def getResponse(self):
+		"""
+		Returns a list of dictionary responses, as defined in FieldsFormWidget.getResponse() for each step.
+		"""
 		response = []
 		for i in range(self.stackedFormWidget.count()):
 			response.append(self.stackedFormWidget.widget(i).getResponse())
@@ -214,6 +246,16 @@ class PreparationTab(QtGui.QWidget):
 			
 
 class FieldsFormWidget(QtGui.QWidget):
+	"""
+	Generic widget that creates a form from the selected fields from a particular model. Automatically
+	determines whether to use a combo box or line edit widget. Applies appropriate validators and 
+	allows users to select the appropriate unit as defined in the model. If the field is a String 
+	field and 'choices' is not in the model 'info' dictionary, a line edit is used instead of combo box.
+
+	fields:	The fields from the model to generate the form. Note: fields must exist in the model.
+	model:	The model to base the form on. The model is used to determine data type of each field
+			and appropriate ancillary information found in the field's 'info' dictionary.
+	"""
 	def __init__(self,fields,model,parent=None):
 		super(FieldsFormWidget,self).__init__(parent=parent)
 		self.layout = QtGui.QGridLayout(self)
@@ -271,6 +313,13 @@ class FieldsFormWidget(QtGui.QWidget):
 					self.layout.addWidget(self.units_input[field],row,3*col+2)
 
 	def getResponse(self):
+		"""
+		Returns a dictionary response of the form fields. Dictionary, D, is defined as:
+			D[field] = {
+				'value':	output of the input widget for 'field'. If empty, it is None.
+				'unit':		output of the units widget for 'field'. If empty or nonexistent, it is None.
+			}
+		"""
 		response = {}
 		for field in self.fields:
 			info = getattr(self.model,field).info
@@ -298,6 +347,11 @@ class FieldsFormWidget(QtGui.QWidget):
 				
 	
 class FileUploadTab(QtGui.QWidget):
+	"""
+	File upload widget tab. Users upload SEM and Raman files as well as associated input.
+
+	mode:	Upload method (local or nanohub)
+	"""
 	def __init__(self,parent=None,mode='local'):
 		super(FileUploadTab,self).__init__(parent=parent)
 		self.layout = QtGui.QGridLayout(self)
@@ -393,6 +447,14 @@ class FileUploadTab(QtGui.QWidget):
 				return
 
 	def getResponse(self):
+		"""
+		Returns a response dictionary containing:
+			SEM Image File:				The path to the SEM file.
+			Raman Files:				A list of paths to the Raman files.
+			Characteristic Percentage:	A list of percentages, where each entry represents the fraction of 
+										the sample that each Raman file represents.
+			Raman Wavelength:			The wavelength of the Raman spectroscopy.
+		"""
 		return {
 			'SEM Image File': self.sem_file_path, 
 			'Raman Files': [self.raman_list.item(i).text() for i in range(self.raman_list.count())],
@@ -403,6 +465,11 @@ class FileUploadTab(QtGui.QWidget):
 		pass
 
 class ReviewTab(QtGui.QScrollArea):
+	"""
+	Review tab widget. Allows users to look over input and submit. Validates data and then uploads to MDF.
+
+	box_config_path:	Path to box configuration file
+	"""
 	def __init__(self,parent=None, box_config_path=None):
 		super(ReviewTab,self).__init__(parent=parent)
 		self.properties_response = None
@@ -456,6 +523,14 @@ class ReviewTab(QtGui.QScrollArea):
 
 
 	def refresh(self,properties_response,preparation_response,files_response,provenance_response):
+		"""
+		Refreshes the review fields.
+
+		properties_response:		Response from PropertiesTab.getResponse().
+		preparation_response:		Response from PreparationTab.getResponse().
+		files_response:				Response from FileUploadTab.getResponse().
+		provenance_response:		Response from ProvenanceTab.getResponse().
+		"""
 		self.properties_response = properties_response
 		self.preparation_response = preparation_response
 		self.files_response = files_response
@@ -473,11 +548,13 @@ class ReviewTab(QtGui.QScrollArea):
 		authorsLabel = QtGui.QLabel('Authors')
 		authorsLabel.setFont(label_font)
 
+		# Author response
 		self.layout.addWidget(authorsLabel,self.layout.rowCount(),0,QtCore.Qt.AlignLeft)
 		for a,auth in enumerate(provenance_response):
 			row = self.layout.rowCount()
 			self.layout.addWidget(QtGui.QLabel("%s, %s   [%s]"%(auth["last_name"]["value"],auth["first_name"]["value"],auth["institution"]["value"])))
 
+		# Properties response
 		self.layout.addWidget(propertiesLabel,self.layout.rowCount(),0,QtCore.Qt.AlignLeft)
 		label = QtGui.QLabel()
 		for field in properties_response.keys():
@@ -494,6 +571,7 @@ class ReviewTab(QtGui.QScrollArea):
 				row,
 				3)
 
+		# Preparation response
 		self.layout.addItem(
 			QtGui.QSpacerItem(label.sizeHint().width(),label.sizeHint().height(), vPolicy = QtGui.QSizePolicy.Fixed),
 			self.layout.rowCount(),
@@ -517,6 +595,7 @@ class ReviewTab(QtGui.QScrollArea):
 					row,
 					3)
 		
+		# File upload response
 		self.layout.addItem(
 			QtGui.QSpacerItem(label.sizeHint().width(),label.sizeHint().height(), vPolicy = QtGui.QSizePolicy.Fixed),
 			self.layout.rowCount(),
@@ -539,6 +618,19 @@ class ReviewTab(QtGui.QScrollArea):
 		self.setWidgetResizable(True)
 
 	def fullResponse(self,properties_response,preparation_response,files_response, provenance_response):
+		"""
+		Submits the full, validated response and returns output.
+
+		properties_response:		Response from PropertiesTab.getResponse().
+		preparation_response:		Response from PreparationTab.getResponse().
+		files_response:				Response from FileUploadTab.getResponse().
+		provenance_response:		Response from ProvenanceTab.getResponse().
+
+		Returns dictionary containing:
+		json:			json encodable dictionary of 'sample' model.
+		**kwargs:		All entries from files_response
+
+		"""
 		def validate_temperature(preparation_response):
 			for s,step in enumerate(preparation_response):
 				if step['furnace_temperature']['value'] == None:
@@ -667,7 +759,9 @@ class ReviewTab(QtGui.QScrollArea):
 			if btn.text() == "OK":
 				self.upload_to_mdf(full_response)
 		confirmation_dialog.buttonClicked.connect(upload_wrapper)
-		confirmation_dialog.exec()		
+		confirmation_dialog.exec()
+
+		return full_response	
 
 
 
