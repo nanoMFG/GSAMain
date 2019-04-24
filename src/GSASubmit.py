@@ -619,12 +619,21 @@ class ReviewTab(QtGui.QScrollArea):
 
 	def fullResponse(self,properties_response,preparation_response,files_response, provenance_response):
 		"""
-		Submits the full, validated response and returns output.
+		Checks and validates responses. If invalid, displays message box with problems. 
+		Otherwise, it submits the full, validated response and returns the output response dictionary.
 
 		properties_response:		Response from PropertiesTab.getResponse().
 		preparation_response:		Response from PreparationTab.getResponse().
 		files_response:				Response from FileUploadTab.getResponse().
 		provenance_response:		Response from ProvenanceTab.getResponse().
+
+		Validations performed:
+			Ensures temperature input for each preparation step.
+			Ensures pressure input for each preparation step.
+			Ensures timestep input for each preparation step.
+			Ensures base pressure input in properties.
+			Ensures total characteristic percentages add up to 100.
+			Ensures at least one author.
 
 		Returns dictionary containing:
 		json:			json encodable dictionary of 'sample' model.
