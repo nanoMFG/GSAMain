@@ -60,6 +60,7 @@ from sqlalchemy.orm import relationship, backref
 class sample(Base):
     __tablename__ = 'samples'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
+    authors = relationship("author")
     material_name = Column(String(32),info={
         'verbose_name':'Material Name',
         'choices': ['Graphene']
@@ -116,33 +117,7 @@ class sample(Base):
         })
 
     # # RAMAN
-    # d_peak_shift = Column(Float,info={
-    #     'verbose_name':'D Peak Shift',
-    #     'std_unit': 'cm^-1'
-    #     })
-    # d_peak_amplitude = Column(Float,info={'verbose_name':'D Peak Amplitude'})
-    # d_fwhm = Column(Float,info={
-    #     'verbose_name':"D FWHM",
-    #     'std_unit': 'cm^-1'
-    #     })
-    # g_peak_shift = Column(Float,info={
-    #     'verbose_name':'G Peak Shift',
-    #     'std_unit': 'cm^-1'
-    #     })
-    # g_peak_amplitude = Column(Float,info={'verbose_name':'G Peak Amplitude'})
-    # g_fwhm = Column(Float,info={
-    #     'verbose_name':'G FWHM',
-    #     'std_unit': 'cm^-1'
-    #     })
-    # g_prime_peak_shift = Column(Float,info={
-    #     'verbose_name':'G\' Peak Shift',
-    #     'std_unit': 'cm^-1'
-    #     })
-    # g_prime_peak_amplitude = Column(Float, info={'verbose_name':'G\' Peak Amplitude'})
-    # g_prime_fwhm = Column(Float,info={
-    #     'verbose_name':'G\' FWHM',
-    #     'std_unit': 'cm^-1'
-    #     })
+
 
     # SUBSTRATE
     thickness = Column(Float,info=
@@ -183,21 +158,13 @@ class sample(Base):
             "growth_coverage": self.growth_coverage,
             "domain_size": self.domain_size,
             "shape": self.shape,
-            # "d_peak_shift": self.d_peak_shift,
-            # "d_peak_amplitude": self.d_peak_amplitude,
-            # "d_fwhm": self.d_fwhm,
-            # "g_peak_shift": self.g_peak_shift,
-            # "g_peak_amplitude": self.g_peak_amplitude,
-            # "g_fwhm": self.g_fwhm,
-            # "g_prime_peak_shift": self.g_prime_peak_shift,
-            # "g_prime_peak_amplitude": self.g_prime_peak_amplitude,
-            # "g_prime_fwhm": self.g_prime_fwhm,
             # "sample_surface_area": self.sample_surface_area,
             "thickness": self.thickness,
             "diameter": self.diameter,
             "length": self.length,
             "preparation_steps": sorted([s.json_encodable() for s in
-                                self.preparation_steps if s.timestamp] , key= lambda s: s["timestamp"])
+                                self.preparation_steps if s.timestamp] , key= lambda s: s["timestamp"]),
+            "authors": [s.json_encodable() for s in self.authors]
         }
 
 
@@ -280,6 +247,77 @@ class preparation_step(Base):
 
         return rslt
 
+class author(Base):
+    __tablename__ = 'author'
+    sample_id = Column(Integer,ForeignKey(sample.id),primary_key=True,info={'verbose_name':'Sample ID'})
+    first_name = Column(String(64), primary_key=True, info={'verbose_name':'First Name'})
+    last_name = Column(String(64), primary_key=True, info={'verbose_name':'Last Name'})
+    institution = Column(String(64), primary_key=True, info={'verbose_name':'Institution'})
+
+    def json_encodable(self):
+        return {
+            'first_name': self.first_name,
+            'last_name': self.last_name,
+            'institution': self.institution
+        }
+
+class raman_spectrum(Base):
+    __tablename__ = 'raman_spectrum'
+    sample_id = Column(Integer,ForeignKey(sample.id),primary_key=True,info={'verbose_name':'Sample ID'})
+    wavelength = Column(Float,info={
+        'verbose_name':'Wavelength',
+        'std_unit': 'Hz',
+        'conversions': {'Hz':1}
+        })
+    percent = Column(Float,info={
+        'verbose_name':'Characteristic Percent',
+        'std_unit': '%',
+        'conversions': {'%':1}
+        })
+    d_peak_shift = Column(Float,info={
+        'verbose_name':'D Peak Shift',
+        'std_unit': 'cm^-1'
+        })
+    d_peak_amplitude = Column(Float,info={'verbose_name':'D Peak Amplitude'})
+    d_fwhm = Column(Float,info={
+        'verbose_name':"D FWHM",
+        'std_unit': 'cm^-1'
+        })
+    g_peak_shift = Column(Float,primary_key=True,info={
+        'verbose_name':'G Peak Shift',
+        'std_unit': 'cm^-1'
+        })
+    g_peak_amplitude = Column(Float,primary_key=True,info={'verbose_name':'G Peak Amplitude'})
+    g_fwhm = Column(Float,primary_key=True,info={
+        'verbose_name':'G FWHM',
+        'std_unit': 'cm^-1'
+        })
+    g_prime_peak_shift = Column(Float,info={
+        'verbose_name':'G\' Peak Shift',
+        'std_unit': 'cm^-1'
+        })
+    g_prime_peak_amplitude = Column(Float, info={'verbose_name':'G\' Peak Amplitude'})
+    g_prime_fwhm = Column(Float,info={
+        'verbose_name':'G\' FWHM',
+        'std_unit': 'cm^-1'
+        })
+
+    def json_encodable(self):
+        rslt = {
+            "wavelength": self.wavelength,
+            "percent": self.percent,
+            "d_peak_shift": self.d_peak_shift,
+            "d_peak_amplitude": self.d_peak_amplitude,
+            "d_fwhm": self.d_fwhm,
+            "g_peak_shift": self.g_peak_shift,
+            "g_peak_amplitude": self.g_peak_amplitude,
+            "g_fwhm": self.g_fwhm,
+            "g_prime_peak_shift": self.g_prime_peak_shift,
+            "g_prime_peak_amplitude": self.g_prime_peak_amplitude,
+            "g_prime_fwhm": self.g_prime_fwhm,
+        }
+
+        return rslt
 
 class image(Base):
     __tablename__ = 'images'
