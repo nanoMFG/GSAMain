@@ -874,6 +874,62 @@ def fitting(data_tuple):
 
     return [{pos:{'G':Gdict,'Gp':Gpdict,'D':Ddict}},{pos:y_norm},pos]
 
+
+def checkFileType(flnm):
+    if flnm[0][-3:]=='csv':
+        data=pd.read_csv(flnm[0])
+    else:
+        data=pd.read_table(flnm[0])
+
+    cols=self.data.shape[1]        
+    rows=self.data.shape[0]
+
+    if cols == 1:
+        data=pd.DataFrame(data.iloc[0:rows/2,0],data.iloc[rows/2:rows,0])
+    else:
+        if type(data.iloc[0,0]) is str:
+            data=data.iloc[1:rows,:]
+        else:
+            data=data
+    return data
+
+def auto_fitting(flnm):
+    data=checkFileType(flnm)
+
+    x=np.array(data.iloc[:,0])
+    y=np.array(data.iloc[:,1])
+
+    y_norm=[]
+    for i in y:
+            y_norm.append((i-np.min(y))/(np.max(y)-np.min(y)))
+
+    I=backgroundFit(x,y_norm)
+
+    pG=[1.1*np.max(I), 50, 1581.6] #a w b
+    pGp=[1.1*np.max(I), 50, 2675]
+    pD=[0.1*np.max(I),15,1350]
+
+    #fit G peak
+    G_param,G_cov=curve_fit(Single_Lorentz,x,y_norm,bounds=([0.3*np.max(I),33,1400],[1.5*np.max(I),60,2000]),p0=pG)
+    G_fit=Single_Lorentz(x,G_param[0],G_param[1],G_param[2])
+
+    #fit G' peak
+    Gp_param,Gp_cov=curve_fit(Single_Lorentz,x,y_norm,bounds=([0.3*np.max(I),32,2000],[1.5*np.max(I),60,3000]),p0=pGp)
+    Gp_fit=Single_Lorentz(x,Gp_param[0],Gp_param[1],Gp_param[2])
+
+    #fit D peak
+    D_param,D_cov=curve_fit(Single_Lorentz,x,y_norm,bounds=([0,10,1300],[np.max(I),50,1400]),p0=pD)
+    D_fit=Single_Lorentz(x,D_param[0],D_param[1],D_param[2])
+
+    Gdict={'a':G_param[0],'w':G_param[1],'b':G_param[2]}
+    Gpdict={'a':Gp_param[0],'w':Gp_param[1],'b':Gp_param[2]}
+    Ddict={'a':D_param[0],'w':D_param[1],'b':D_param[2]}
+
+    return {'G':Gdict,'Gp':Gpdict,'D':Ddict}
+
+
+
+
 app=QtWidgets.QApplication([])
 SingleSpect=SingleSpect()
 MapFit=MapFit()
