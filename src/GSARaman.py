@@ -109,10 +109,10 @@ class GSARaman(QtWidgets.QWidget):
         self.f_list=filelist
 
     def checkFileType(self, flnm):
-        if flnm[0][-3:]=='csv':
-            self.data=pd.read_csv(flnm[0])
+        if flnm[-3:]=='csv':
+            self.data=pd.read_csv(flnm)
         else:
-            self.data=pd.read_table(flnm[0])
+            self.data=pd.read_table(flnm)
 
         cols=self.data.shape[1]
         rows=self.data.shape[0]
@@ -141,7 +141,7 @@ class GSARaman(QtWidgets.QWidget):
                 if not os.path.exists(self.newpath):
                     os.makedirs(self.newpath)
                     sing_i+=1
-                shutil.copy2(flnm[0],self.newpath)
+                shutil.copy2(flnm,self.newpath)
 
                 self.widget=SingleSpect
                 self.displayWidget.setCurrentWidget(self.widget)
