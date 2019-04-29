@@ -92,10 +92,10 @@ class GSARaman(QtWidgets.QWidget):
                fpath = subprocess.check_output('importfile',shell=True).strip().decode("utf-8")
             except Exception as e:
                 print(e)
-                
+
         filelist.append(fpath)
-        if filelist[-1][0]!=u'':
-            if filelist[-1][0][-3:]!='txt' and filelist[-1][0][-3:]!='csv':
+        if filelist[-1]!=u'':
+            if filelist[-1][-3:]!='txt' and filelist[-1][-3:]!='csv':
                 self.errmsg.setIcon(QtWidgets.QMessageBox.Critical)
                 self.errmsg.setText('Please upload a .txt or .csv')
                 self.errmsg.exec_()
