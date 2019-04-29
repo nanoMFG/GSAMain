@@ -79,7 +79,20 @@ class GSARaman(QtWidgets.QWidget):
         self.pathmade=False
 
     def openFileName(self):
-        fpath=QtWidgets.QFileDialog.getOpenFileName()
+
+        if self.mode == 'local':
+            try:
+                fpath = QtGui.QFileDialog.getOpenFileName()
+                if isinstance(fpath,tuple):
+                   fpath = fpath[0]
+            except Exception as e:
+                print(e)
+        elif self.mode == 'nanohub':
+           try:
+               fpath = subprocess.check_output('importfile',shell=True).strip().decode("utf-8")
+            except Exception as e:
+                print(e)
+                
         filelist.append(fpath)
         if filelist[-1][0]!=u'':
             if filelist[-1][0][-3:]!='txt' and filelist[-1][0][-3:]!='csv':
@@ -929,6 +942,27 @@ def auto_fitting(flnm):
 
 
 
+    #def importFile(self):
+    #    if self.mode == 'local':
+    #        try:
+    #            file_path = QtGui.QFileDialog.getOpenFileName()
+    #            if isinstance(file_path,tuple):
+    #               file_path = file_path[0]
+    #            else:
+    #                return
+    #            return file_path
+    #        except Exception as e:
+    #            print(e)
+    #           return
+    #    elif self.mode == 'nanohub':
+    #       try:
+    #           file_path = subprocess.check_output('importfile',shell=True).strip().decode("utf-8")
+    #           return file_path
+    #        except Exception as e:
+    #            print(e)
+    #            return
+    #    else:
+    #            return
 
 app=QtWidgets.QApplication([])
 SingleSpect=SingleSpect()
