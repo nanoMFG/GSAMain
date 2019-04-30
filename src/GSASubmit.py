@@ -13,6 +13,7 @@ from gresq.config import config
 from gresq.csv2db import build_db
 from GSAQuery import GSAQuery
 from GSAImage import GSAImage
+import GSARaman
 from gresq.recipe import Recipe
 from mdf_adaptor import MDFAdaptor
 import pyqtgraph as pg
@@ -729,7 +730,10 @@ class ReviewTab(QtGui.QScrollArea):
 			return True
 
 		def validate_percentages(files_response):
-			sm = sum([float(i) for i in files_response['Characteristic Percentage']])
+			try:
+				sm = sum([float(i) for i in files_response['Characteristic Percentage']])
+			except:
+				return "Please make sure you have input a characteristic percentage for all Raman spectra."
 			if sm != 100:
 				return "Characteristic percentages must sum to 100%. They currently sum to %s."%sm
 			return True
@@ -833,12 +837,15 @@ class ReviewTab(QtGui.QScrollArea):
 			### RAMAN IS A SEPARATE DATASETS FROM SAMPLE ###
 
 			for ri,ram in enumerate(files_response['Raman Files']):
-				params = None
+				params = GSARaman.autofitting(GSARaman.checkflnm(ram))
 				r = raman_spectrum()
+				for peak in params.keys():
+					for v in params[peak].keys():
+						setattr(r,p+v,params[peak][v])
 				if files_response['Raman Wavength'] != None:
 					r.wavelength = files_response['Raman Wavength']
 				if files_response['Characteristic Percentage'] != None:
-					r.percent = files_response['Characteristic Percentage'][ri]
+					r.percent = float(files_response['Characteristic Percentage'][ri])
 				session.add(r)
 				session.commit()
 

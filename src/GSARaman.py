@@ -934,11 +934,11 @@ def auto_fitting(flnm):
     D_param,D_cov=curve_fit(Single_Lorentz,x,y_norm,bounds=([0,10,1300],[np.max(I),50,1400]),p0=pD)
     D_fit=Single_Lorentz(x,D_param[0],D_param[1],D_param[2])
 
-    Gdict={'a':G_param[0],'w':G_param[1],'b':G_param[2]}
-    Gpdict={'a':Gp_param[0],'w':Gp_param[1],'b':Gp_param[2]}
-    Ddict={'a':D_param[0],'w':D_param[1],'b':D_param[2]}
+    Gdict={'peak_amplitude':G_param[0],'fwhm':G_param[1],'peak_shift':G_param[2]}
+    Gpdict={'peak_amplitude':Gp_param[0],'fwhm':Gp_param[1],'peak_shift':Gp_param[2]}
+    Ddict={'peak_amplitude':D_param[0],'fwhm':D_param[1],'peak_shift':D_param[2]}
 
-    return {'G':Gdict,'Gp':Gpdict,'D':Ddict}
+    return {'g':Gdict,'g_prime':Gpdict,'d':Ddict}
 
 
 
