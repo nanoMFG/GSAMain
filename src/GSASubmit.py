@@ -7,8 +7,8 @@ from PyQt5 import QtGui, QtCore
 import pyqtgraph as pg
 
 from box_adaptor import BoxAdaptor
-from gresq.database import sample, preparation_step, dal, Base, mdf_forge, author, raman_spectrum
-from sqlalchemy import String, Integer, Float, Numeric
+from gresq.database import sample, preparation_step, dal, Base, mdf_forge, author, raman_spectrum, recipe, properties
+from sqlalchemy import String, Integer, Float, Numeric, Date
 from gresq.config import config
 from gresq.csv2db import build_db
 from GSAQuery import GSAQuery
@@ -16,6 +16,12 @@ from GSAImage import GSAImage
 from gresq.recipe import Recipe
 from mdf_adaptor import MDFAdaptor
 import pyqtgraph as pg
+
+
+sample_fields = [
+	"material_name",
+	"experiment_date"
+]
 
 preparation_fields = [
 	'name',
@@ -31,28 +37,31 @@ preparation_fields = [
 	'cooling_rate'
 ]
 
+recipe_fields = [
+	"catalyst",
+	"tube_diameter",
+	"cross_sectional_area",
+	"tube_length",
+	"base_pressure",
+	"thickness",
+	"diameter",
+	"length"
+]
+
 properties_fields = [
-  "material_name",
-  "catalyst",
-  "tube_diameter",
-  "cross_sectional_area",
-  "tube_length",
-  "base_pressure",
-  "average_thickness_of_growth",
-  "standard_deviation_of_growth",
-  "number_of_layers",
-  "growth_coverage",
-  "domain_size",
-  "shape",
-  "thickness",
-  "diameter",
-  "length"
+	"average_thickness_of_growth",
+	"standard_deviation_of_growth",
+	"number_of_layers",
+	"growth_coverage",
+	"domain_size",
+	"shape"
 ]
 
 sql_validator = {
 	'int': lambda x: isinstance(x.property.columns[0].type,Integer),
 	'float': lambda x: isinstance(x.property.columns[0].type,Float),
-	'str': lambda x: isinstance(x.property.columns[0].type,String)
+	'str': lambda x: isinstance(x.property.columns[0].type,String),
+	'date': lambda x: isinstance(x.property.columns[0].type,Date)
 }
 
 label_font = QtGui.QFont("Helvetica", 28, QtGui.QFont.Bold)
@@ -94,6 +103,7 @@ class GSASubmit(QtGui.QTabWidget):
 			provenance_response = self.provenance.getResponse()
 			))
 
+		self.provenance.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.preparation))
 		self.preparation.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.properties))
 		self.properties.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.file_upload))
 		self.file_upload.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.review))
@@ -108,15 +118,25 @@ class ProvenanceTab(QtGui.QWidget):
 		self.layout.setAlignment(QtCore.Qt.AlignTop)
 
 		self.stackedFormWidget = QtGui.QStackedWidget()
+		self.stackedFormWidget.setFrameStyle(QtGui.QFrame.StyledPanel)
+		self.sample_input = FieldsFormWidget(fields=sample_fields,model=sample)
 		self.author_list = QtGui.QListWidget()
 		self.author_list.currentRowChanged.connect(self.stackedFormWidget.setCurrentIndex)
-		self.add_author_btn = QtGui.QPushButton("Add Author")
+		self.add_author_btn = QtGui.QPushButton("New Author")
 		self.remove_author_btn = QtGui.QPushButton("Remove Author")
+		self.nextButton = QtGui.QPushButton('Next >>>')
+		spacer = QtGui.QSpacerItem(
+			self.nextButton.sizeHint().width(),
+			self.nextButton.sizeHint().height(), 
+			vPolicy = QtGui.QSizePolicy.Expanding)
 
-		self.layout.addWidget(self.stackedFormWidget,0,0)
-		self.layout.addWidget(self.add_author_btn,1,0)
-		self.layout.addWidget(self.remove_author_btn,2,0)
-		self.layout.addWidget(self.author_list,3,0)
+		self.layout.addWidget(self.sample_input,0,0,1,2)
+		self.layout.addWidget(self.stackedFormWidget,1,0,1,2)
+		self.layout.addWidget(self.add_author_btn,2,0,1,1)
+		self.layout.addWidget(self.remove_author_btn,2,1,1,1)
+		self.layout.addWidget(self.author_list,3,0,1,2)
+		self.layout.addItem(spacer,4,0)
+		self.layout.addWidget(self.nextButton,5,0,1,2)
 
 		self.add_author_btn.clicked.connect(self.add_author)
 		self.remove_author_btn.clicked.connect(self.remove_author)
@@ -165,11 +185,16 @@ class PropertiesTab(QtGui.QWidget):
 		self.layout = QtGui.QGridLayout(self)
 		self.layout.setAlignment(QtCore.Qt.AlignTop)
 
-		self.properties_form = FieldsFormWidget(properties_fields,sample)
+		self.properties_form = FieldsFormWidget(properties_fields,properties)
 		self.nextButton = QtGui.QPushButton('Next >>>')
+		spacer = QtGui.QSpacerItem(
+			self.nextButton.sizeHint().width(),
+			self.nextButton.sizeHint().height(), 
+			vPolicy = QtGui.QSizePolicy.Expanding)
 
 		self.layout.addWidget(self.properties_form,0,0)
-		self.layout.addWidget(self.nextButton,1,0)
+		self.layout.addItem(spacer,1,0)
+		self.layout.addWidget(self.nextButton,2,0)
 
 	def getResponse(self):
 		return self.properties_form.getResponse()
@@ -188,6 +213,7 @@ class PreparationTab(QtGui.QWidget):
 		self.layout.setAlignment(QtCore.Qt.AlignRight)
 
 		self.stackedFormWidget = QtGui.QStackedWidget()
+		self.stackedFormWidget.setFrameStyle(QtGui.QFrame.StyledPanel)
 		self.steps_list = QtGui.QListWidget()
 		self.steps_list.setMaximumWidth(150)
 		self.steps_list.currentRowChanged.connect(self.stackedFormWidget.setCurrentIndex)
@@ -202,9 +228,11 @@ class PreparationTab(QtGui.QWidget):
 		self.miniLayout.addWidget(self.addStepButton,0,0)
 		self.miniLayout.addWidget(self.steps_list,1,0)
 		self.miniLayout.addWidget(self.removeStepButton,2,0)
-		self.layout.addLayout(self.miniLayout,0,0)
-		self.layout.addWidget(self.stackedFormWidget,0,1)
-		self.layout.addWidget(self.nextButton,1,0,1,2)
+		self.recipeParams = FieldsFormWidget(fields=recipe_fields,model=recipe)
+		self.layout.addLayout(self.miniLayout,0,0,2,1)
+		self.layout.addWidget(self.recipeParams,0,1,1,1)
+		self.layout.addWidget(self.stackedFormWidget,1,1,1,1)
+		self.layout.addWidget(self.nextButton,2,0,1,2)
 
 	def addStep(self):
 		"""
@@ -236,10 +264,12 @@ class PreparationTab(QtGui.QWidget):
 		"""
 		Returns a list of dictionary responses, as defined in FieldsFormWidget.getResponse() for each step.
 		"""
-		response = []
+		prep_response = []
 		for i in range(self.stackedFormWidget.count()):
-			response.append(self.stackedFormWidget.widget(i).getResponse())
-		return response
+			prep_response.append(self.stackedFormWidget.widget(i).getResponse())
+		recipe_response = self.recipeParams.getResponse()
+
+		return {'preparation_step':prep_response,'recipe':recipe_response}
 
 	def clear(self):
 		pass
@@ -296,7 +326,13 @@ class FieldsFormWidget(QtGui.QWidget):
 				else:
 					self.input_widgets[field] = QtGui.QLineEdit()
 				self.layout.addWidget(self.input_widgets[field],row,3*col+1)	
-					
+
+			elif sql_validator['date'](getattr(model,field)):
+				self.input_widgets[field] = QtGui.QDateEdit()
+				self.input_widgets[field].setCalendarPopup(True)
+				self.input_widgets[field].setDate(QtCore.QDate.currentDate())
+				self.layout.addWidget(self.input_widgets[field],row,3*col+1)
+
 			else:
 				self.input_widgets[field] = QtGui.QLineEdit()
 				if sql_validator['int'](getattr(model,field)):
@@ -330,6 +366,8 @@ class FieldsFormWidget(QtGui.QWidget):
 				else:
 					response[field]['value'] = self.input_widgets[field].currentText()
 				response[field]['unit'] = ''
+			elif isinstance(self.input_widgets[field],QtGui.QDateTimeEdit):
+				response[field]['value'] = self.input_widgets[field].date().toPyDate()
 			else:
 				if sql_validator['int'](getattr(self.model,field)):
 					response[field]['value'] = self.input_widgets[field].text() if self.input_widgets[field].text() != '' else None
@@ -360,16 +398,15 @@ class FileUploadTab(QtGui.QWidget):
 		self.sem_file_path = ''
 
 		self.raman_list = QtGui.QListWidget()
-		self.stackedFormWidget = QtGui.QStackedWidget()
+		self.sem_list = QtGui.QListWidget()
+		self.stackedRamanFormWidget = QtGui.QStackedWidget()
+		self.stackedRamanFormWidget.setFrameStyle(QtGui.QFrame.StyledPanel)
 
 		self.upload_sem = QtGui.QPushButton('Upload SEM Image')
 		self.upload_raman = QtGui.QPushButton('Upload Raman Spectroscopy')
 		self.remove_sem = QtGui.QPushButton('Remove SEM Image')
 		self.remove_raman = QtGui.QPushButton('Remove Raman Spectroscopy')
-		self.wavelength_input = QtGui.QLineEdit()
-		self.wavelength_input.setValidator(QtGui.QDoubleValidator())
-
-		self.sem_label = QtGui.QLabel('No SEM file uploaded.')
+		self.wavelength_input = FieldsFormWidget(fields=['wavelength'],model=raman_spectrum)
 
 		self.nextButton = QtGui.QPushButton('Next >>>')
 		spacer = QtGui.QSpacerItem(
@@ -377,52 +414,52 @@ class FileUploadTab(QtGui.QWidget):
 			self.nextButton.sizeHint().height(), 
 			vPolicy = QtGui.QSizePolicy.Expanding)
 
-		self.layout.addWidget(self.upload_sem,0,0)
-		self.layout.addWidget(self.remove_sem,0,1)
-		self.layout.addWidget(self.sem_label,1,0,1,2)
-		self.layout.addWidget(self.raman_list,2,0,1,2)
-		self.layout.addWidget(QtGui.QLabel("Raman Wavelength (Hz):"),3,0)
-		self.layout.addWidget(self.wavelength_input,3,1)
-		self.layout.addWidget(self.upload_raman,4,0)
-		self.layout.addWidget(self.remove_raman,4,1)
-		self.layout.addWidget(QtGui.QLabel("Characteristic Percentage (%):"),5,0)
-		self.layout.addWidget(self.stackedFormWidget,5,1)
-		self.layout.addItem(spacer,5,0,1,2)
-		self.layout.addWidget(self.nextButton,6,0,1,2)
+		self.layout.addWidget(self.upload_sem,0,0,1,1)
+		self.layout.addWidget(self.remove_sem,1,0,1,1)
+		self.layout.addWidget(self.sem_list,0,1,3,1)
+		self.layout.addWidget(self.upload_raman,3,0,1,1)
+		self.layout.addWidget(self.wavelength_input,4,0,1,1)
+		self.layout.addWidget(QtGui.QLabel("Characteristic Percentage (%):"),5,0,1,1)
+		self.layout.addWidget(self.stackedRamanFormWidget,6,0,1,1)
+		self.layout.addWidget(self.remove_raman,7,0,1,1)
+		self.layout.addWidget(self.raman_list,3,1,5,1)
+		self.layout.addItem(spacer,8,0,1,2)
+		self.layout.addWidget(self.nextButton,9,0,1,2)
 
 		self.upload_sem.clicked.connect(self.importSEM)
 		self.upload_raman.clicked.connect(self.importRaman)
-		self.raman_list.currentRowChanged.connect(self.stackedFormWidget.setCurrentIndex)
+		self.raman_list.currentRowChanged.connect(self.stackedRamanFormWidget.setCurrentIndex)
 		self.remove_sem.clicked.connect(self.removeSEM)
 		self.remove_raman.clicked.connect(self.removeRaman)
 
+
 	def removeSEM(self):
-		self.sem_file_path = ''
-		self.sem_label.setText('')
+		x=self.sem_list.currentRow()
+		self.sem_list.takeItem(x)
 
 	def removeRaman(self):
 		x=self.raman_list.currentRow()
-		self.stackedFormWidget.removeWidget(self.stackedFormWidget.widget(x))
+		self.stackedRamanFormWidget.removeWidget(self.stackedRamanFormWidget.widget(x))
 		self.raman_list.takeItem(x)
 
 	def importSEM(self):
 		self.sem_file_path = self.importFile()
 		if isinstance(self.sem_file_path,str):
-			self.sem_label.setText(self.sem_file_path)
+			self.sem_list.addItem(self.sem_file_path)
 
 	def importRaman(self):
 		self.raman_file_path = self.importFile()
 		if isinstance(self.raman_file_path,str):
-			if self.stackedFormWidget.count() > 0:
-				sm = sum([float(self.stackedFormWidget.widget(i).text()) for i in range(self.stackedFormWidget.count())])
+			if self.stackedRamanFormWidget.count() > 0:
+				sm = sum([float(self.stackedRamanFormWidget.widget(i).text()) for i in range(self.stackedRamanFormWidget.count())])
 			else:
 				sm = 0
 			self.raman_list.addItem(self.raman_file_path)
 			w = QtGui.QLineEdit()
-			w.setPlaceholderText("Input must be less than %s"%(100-sm))
+			w.setPlaceholderText("Input must be <= %s"%(100-sm))
 			w.setValidator(QtGui.QDoubleValidator(0.,100.-sm,2))
-			self.stackedFormWidget.addWidget(w)
-			self.stackedFormWidget.setCurrentIndex(self.stackedFormWidget.count()-1)
+			self.stackedRamanFormWidget.addWidget(w)
+			self.stackedRamanFormWidget.setCurrentIndex(self.stackedRamanFormWidget.count()-1)
 
 	def importFile(self):
 		if self.mode == 'local':
@@ -455,11 +492,12 @@ class FileUploadTab(QtGui.QWidget):
 										the sample that each Raman file represents.
 			Raman Wavelength:			The wavelength of the Raman spectroscopy.
 		"""
-		return {
-			'SEM Image File': self.sem_file_path, 
+		r = {
+			'SEM Image Files': [self.sem_list.item(i).text() for i in range(self.sem_list.count())], 
 			'Raman Files': [self.raman_list.item(i).text() for i in range(self.raman_list.count())],
-			'Characteristic Percentage': [self.stackedFormWidget.widget(i).text() for i in range(self.stackedFormWidget.count())],
-			'Raman Wavength':self.wavelength_input.text()}
+			'Characteristic Percentage': [self.stackedRamanFormWidget.widget(i).text() for i in range(self.stackedRamanFormWidget.count())],
+			'Raman Wavength': self.wavelength_input.getResponse()['wavelength']['value']}
+		return r
 
 	def clear(self):
 		pass
@@ -501,8 +539,9 @@ class ReviewTab(QtGui.QScrollArea):
 		for f in response_dict['Raman Files']:
 			if os.path.isfile(f):
 				shutil.move(f,mdf_path)
-		if os.path.isfile(response_dict['SEM Image File']):
-			shutil.move(response_dict['SEM Image File'],mdf_path)
+		for f in response_dict['SEM Image Files']:
+			if os.path.isfile(f):
+				shutil.move(f,mdf_path)
 
 		dump_file = open(os.path.join(mdf_path,'recipe.json'), 'w')
 		json.dump(response_dict['json'],dump_file)
@@ -541,7 +580,7 @@ class ReviewTab(QtGui.QScrollArea):
 		
 		propertiesLabel = QtGui.QLabel('Properties')
 		propertiesLabel.setFont(label_font)
-		preparationLabel = QtGui.QLabel('Preparation Steps')
+		preparationLabel = QtGui.QLabel('Recipe')
 		preparationLabel.setFont(label_font)
 		filesLabel = QtGui.QLabel('Files')
 		filesLabel.setFont(label_font)
@@ -558,7 +597,7 @@ class ReviewTab(QtGui.QScrollArea):
 		self.layout.addWidget(propertiesLabel,self.layout.rowCount(),0,QtCore.Qt.AlignLeft)
 		label = QtGui.QLabel()
 		for field in properties_response.keys():
-			info = getattr(sample,field).info
+			info = getattr(properties,field).info
 			row = self.layout.rowCount()
 			value = properties_response[field]['value']
 			unit = properties_response[field]['unit']
@@ -577,7 +616,23 @@ class ReviewTab(QtGui.QScrollArea):
 			self.layout.rowCount(),
 			0)
 		self.layout.addWidget(preparationLabel,self.layout.rowCount(),0,QtCore.Qt.AlignLeft)
-		for step, step_response in enumerate(preparation_response):
+		recipe_response = preparation_response['recipe']
+		for field in recipe_response.keys():
+			info = getattr(recipe,field).info
+			row = self.layout.rowCount()
+			value = recipe_response[field]['value']
+			unit = recipe_response[field]['unit']
+			label = QtGui.QLabel(info['verbose_name'])
+			self.layout.addWidget(label,row,0,QtCore.Qt.AlignLeft|QtCore.Qt.AlignCenter)
+			self.layout.addWidget(QtGui.QLabel(str(value)),row,1,QtCore.Qt.AlignRight|QtCore.Qt.AlignCenter)
+			self.layout.addWidget(QtGui.QLabel(str(unit)),row,2,QtCore.Qt.AlignLeft|QtCore.Qt.AlignCenter)
+			self.layout.addItem(
+				QtGui.QSpacerItem(label.sizeHint().width(),label.sizeHint().height(), hPolicy = QtGui.QSizePolicy.Expanding),
+				row,
+				3)	
+
+		self.layout.addWidget(QtGui.QLabel("Preparation Steps:"),self.layout.rowCount(),0,QtCore.Qt.AlignLeft)
+		for step, step_response in enumerate(preparation_response['preparation_step']):
 			stepLabel = QtGui.QLabel('Step %s'%step)
 			stepLabel.setFont(sublabel_font)
 			self.layout.addWidget(stepLabel,self.layout.rowCount(),0,QtCore.Qt.AlignLeft)
@@ -601,10 +656,16 @@ class ReviewTab(QtGui.QScrollArea):
 			self.layout.rowCount(),
 			0)
 		self.layout.addWidget(filesLabel,self.layout.rowCount(),0,QtCore.Qt.AlignLeft)
-		self.layout.addWidget(QtGui.QLabel("SEM Image File"),self.layout.rowCount(),0)
-		self.layout.addWidget(QtGui.QLabel(files_response['SEM Image File']),self.layout.rowCount(),1)
+		self.layout.addWidget(QtGui.QLabel("SEM Image Files:"),self.layout.rowCount(),0)
+		for k in range(len(files_response["SEM Image Files"])):
+			row = self.layout.rowCount()
+			name = files_response["SEM Image Files"][k]
+			label = QtGui.QLabel("%s"%(name))
+			self.layout.addWidget(label,row,0,QtCore.Qt.AlignLeft|QtCore.Qt.AlignCenter)
+		
 		self.layout.addWidget(QtGui.QLabel("Raman Wavength"),self.layout.rowCount(),0)
 		self.layout.addWidget(QtGui.QLabel(files_response['Raman Wavength']),self.layout.rowCount(),1)
+		self.layout.addWidget(QtGui.QLabel("Raman Spectroscopy Files:"),self.layout.rowCount(),0)
 		for k in range(len(files_response["Raman Files"])):
 			row = self.layout.rowCount()
 			name = files_response["Raman Files"][k]
@@ -641,31 +702,34 @@ class ReviewTab(QtGui.QScrollArea):
 
 		"""
 		def validate_temperature(preparation_response):
-			for s,step in enumerate(preparation_response):
+			for s,step in enumerate(preparation_response['preparation_step']):
 				if step['furnace_temperature']['value'] == None:
-					return "Missing input for field '%s' for Preparation Step %s (%s)."%(preparation_step.furnace_temperature.info['verbose_name'],s,step['name']['value'])
+					return "Missing input for field '%s' for Preparation Step %s (%s)."\
+						%(preparation_step.furnace_temperature.info['verbose_name'],s,step['name']['value'])
 			return True
 
 		def validate_pressure(preparation_response):
-			for s,step in enumerate(preparation_response):
+			for s,step in enumerate(preparation_response['preparation_step']):
 				if step['furnace_pressure']['value'] == None:
-					return "Missing input for field '%s' for Preparation Step %s (%s)."%(preparation_step.furnace_pressure.info['verbose_name'],s,step['name']['value'])
+					return "Missing input for field '%s' for Preparation Step %s (%s)."\
+						%(preparation_step.furnace_pressure.info['verbose_name'],s,step['name']['value'])
 			return True
 
-		def validate_base_pressure(properties_response):
-			if properties_response['base_pressure']['value'] == None:
+		def validate_base_pressure(preparation_response):
+			if preparation_response['recipe']['base_pressure']['value'] == None:
 				return "Missing input for field '%s' in Properties."%(sample.base_pressure.info['verbose_name'])
 			else:
 				return True
 
 		def validate_timestamp(preparation_response):
-			for s,step in enumerate(preparation_response):
+			for s,step in enumerate(preparation_response['preparation_step']):
 				if step['timestamp']['value'] == None:
-					return "Missing input for field '%s' for preparation Step %s (%s)."%(preparation_step.timestamp.info['verbose_name'],s,step['name']['value'])
+					return "Missing input for field '%s' for preparation Step %s (%s)."\
+						%(preparation_step.timestamp.info['verbose_name'],s,step['name']['value'])
 			return True
 
 		def validate_percentages(files_response):
-			sm = sum([float(i) for i in files_response['Characteristic_Percentage']])
+			sm = sum([float(i) for i in files_response['Characteristic Percentage']])
 			if sm != 100:
 				return "Characteristic percentages must sum to 100%. They currently sum to %s."%sm
 			return True
@@ -700,24 +764,47 @@ class ReviewTab(QtGui.QScrollArea):
 			return
 
 		with dal.session_scope() as session:
+			### SAMPLE DATASET ###
 			s = sample()
+			
+			# Recipe
+			c = recipe()
+			c.sample_id = s.id
+			for field,item in preparation_response["recipe"].items():
+				if value != None:
+					if sql_validator['str'](getattr(recipe,field)) or sql_validator['int'](getattr(recipe,field)):
+						setattr(c,field,value)
+					elif sql_validator['float'](getattr(recipe,field)):
+						value = float(value)
+						setattr(s,field,value*getattr(recipe,field).info['conversions'][unit])
+					else:
+						value = int(value)
+						setattr(s,field,value)
+			session.add(c)
+			session.commit()
+
+			# Properties
+			pr = properties()
+			pr.sample_id = s.id
 			for field,item in properties_response.items():
 				value = item['value']
 				unit = item['unit']
 				if value != None:
-					if sql_validator['str'](getattr(sample,field)) or sql_validator['int'](getattr(sample,field)):
-						setattr(s,field,value)
-					elif sql_validator['float'](getattr(sample,field)):
+					if sql_validator['str'](getattr(properties,field)) or sql_validator['int'](getattr(properties,field)):
+						setattr(pr,field,value)
+					elif sql_validator['float'](getattr(properties,field)):
 						value = float(value)
-						setattr(s,field,value*getattr(sample,field).info['conversions'][unit])
+						setattr(pr,field,value*getattr(properties,field).info['conversions'][unit])
 					else:
 						value = int(value)
-						setattr(s,field,value)
-			session.add(s)
+						setattr(pr,field,value)
+			session.add(pr)
 			session.commit()
-			for step in preparation_response:
+
+			# Preparation Step
+			for step in preparation_response['preparation_step']:
 				p = preparation_step()
-				p.sample_id = s.id
+				p.recipe_id = c.id
 				for field,item in step.items():
 					value = item['value']
 					unit = item['unit']
@@ -743,12 +830,15 @@ class ReviewTab(QtGui.QScrollArea):
 				session.add(a)
 				session.commit()
 
+			### RAMAN IS A SEPARATE DATASETS FROM SAMPLE ###
+
 			for ri,ram in enumerate(files_response['Raman Files']):
 				params = None
 				r = raman_spectrum()
-				r.sample_id = s.id
-				r.wavelength = files_response['Raman Wavength']
-				r.percent = files_response['Characteristic Percentage'][ri]
+				if files_response['Raman Wavength'] != None:
+					r.wavelength = files_response['Raman Wavength']
+				if files_response['Characteristic Percentage'] != None:
+					r.percent = files_response['Characteristic Percentage'][ri]
 				session.add(r)
 				session.commit()
 
@@ -764,9 +854,9 @@ class ReviewTab(QtGui.QScrollArea):
 		confirmation_dialog.setWindowModality(QtCore.Qt.WindowModal)
 
 		def upload_wrapper(btn):
-			print(btn.text())
 			if btn.text() == "OK":
-				self.upload_to_mdf(full_response)
+				pass
+				# self.upload_to_mdf(full_response)
 		confirmation_dialog.buttonClicked.connect(upload_wrapper)
 		confirmation_dialog.exec()
 
