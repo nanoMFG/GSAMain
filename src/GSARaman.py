@@ -12,6 +12,8 @@ from PIL.ImageQt import ImageQt
 from multiprocessing import Pool
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+# import matplotlib
+# matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import qimage2ndarray
 import tempfile
@@ -88,8 +90,8 @@ class GSARaman(QtWidgets.QWidget):
             except Exception as e:
                 print(e)
         elif self.mode == 'nanohub':
-           try:
-               fpath = subprocess.check_output('importfile',shell=True).strip().decode("utf-8")
+            try:
+                fpath = subprocess.check_output('importfile',shell=True).strip().decode("utf-8")
             except Exception as e:
                 print(e)
 
@@ -186,13 +188,13 @@ class GSARaman(QtWidgets.QWidget):
             self.download_but.setEnabled(False)
 
     def msgbtn(self, i):
-        print i.text()
+        print(i.text())
         if i.text() == 'OK':
             self.cnfmdnld=True
-            print 'True'
+            print('True')
         else:
             self.cnfmdnld=False
-            print 'false'
+            print('false')
 
     def zip_files(self,directory):
         zipname=QtWidgets.QFileDialog.getSaveFileName()
