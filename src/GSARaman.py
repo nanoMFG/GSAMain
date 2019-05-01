@@ -1,4 +1,6 @@
 from __future__ import division
+import matplotlib
+matplotlib.use('Qt5Agg')
 from PyQt5 import QtGui, QtCore, QtWidgets
 import pyqtgraph as pg
 import pyqtgraph.exporters
@@ -12,8 +14,6 @@ from PIL.ImageQt import ImageQt
 from multiprocessing import Pool
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-# import matplotlib
-# matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import qimage2ndarray
 import tempfile
