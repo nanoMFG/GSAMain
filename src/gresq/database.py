@@ -5,7 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
 from contextlib import contextmanager
 from . config import Config
-import ast
+import ast, datetime
 
 Base = declarative_base()
 
@@ -67,134 +67,22 @@ class sample(Base):
         'verbose_name':'Material Name',
         'choices': ['Graphene']
         })
-    recipe = relationship("recipe")
-    properties = relationship("properties")
+    recipe = relationship("recipe",uselist=False)
+    properties = relationship("properties",uselist=False)
 
     def json_encodable(self):
         return {
             "material_name": self.material_name,
-            "experiment_date": self.experiment_date,
+            "experiment_date":self.experiment_date.timetuple(),
             "authors": [s.json_encodable() for s in self.authors],
             "recipe": self.recipe.json_encodable(),
             "properties": self.properties.json_encodable()
         }
 
-# class sample2(Base):
-#     __tablename__ = 'samples'
-#     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-#     authors = relationship("author")
-#     # experiment_date = Column(DateTime)
-#     material_name = Column(String(32),info={
-#         'verbose_name':'Material Name',
-#         'choices': ['Graphene']
-#         })
-
-#     # EXPERIMENTAL CONDITIONS:
-#     catalyst = Column(String(64),info={'verbose_name':'Catalyst', 'choices':[]})
-#     tube_diameter = Column(Float(precision=32),info={
-#         'verbose_name':'Tube Diameter',
-#         'std_unit':'mm',
-#         'conversions': {'mm':1,'inches':25.4}
-#         })
-#     cross_sectional_area = Column(Float,info={
-#         'verbose_name':'Cross Sectional Area',
-#         'std_unit': 'mm^2',
-#         'conversions': {'mm^2':1,'inches^2':25.4**2}
-#         })
-#     tube_length = Column(Float,info={
-#         'verbose_name':'Tube Length',
-#         'std_unit': 'mm',
-#         'conversions': {'mm':1,'inches':25.4}
-#         })
-#     base_pressure = Column(Float,info={
-#         'verbose_name':'Base Pressure',
-#         'std_unit': 'mTorr',
-#         'conversions': {'mTorr':1,'Pa':1/133.322,'mbar':1/1.33322}
-#         })
-
-#     # GRAPHENE PROPERTIES
-#     average_thickness_of_growth = Column(Float(precision=32),info={
-#         'verbose_name':'Average Thickness of Growth',
-#         'std_unit': 'nm',
-#         'conversions':{'nm':1}
-#         })
-#     standard_deviation_of_growth = Column(Float,info={
-#         'verbose_name':'St. Dev. of Growth',
-#         'std_unit': 'nm',
-#         'conversions':{'nm':1}
-#         })
-#     number_of_layers = Column(Integer,info={'verbose_name':'Number of Layers'})
-#     growth_coverage = Column(Float,info={
-#         'verbose_name':'Growth Coverage',
-#         'std_unit': '%',
-#         'conversions':{'%':1}
-#         })
-#     domain_size = Column(Float,info={
-#         'verbose_name':'Domain Size',
-#         'std_unit': 'um^2',
-#         'conversions':{'um^2':1}
-#         })
-#     shape = Column(String(32),info={
-#         'verbose_name':'Shape',
-#         'choices': ['Hexagonal','Square','Circle','Nondescript']
-#         })
-
-#     # # RAMAN
-
-
-#     # SUBSTRATE
-#     thickness = Column(Float,info=
-#         {'verbose_name':'Thickness',
-#         'std_unit':'um',
-#         'conversions':{'um':1}
-#         })
-#     diameter = Column(Float,info=
-#         {'verbose_name':'Diameter',
-#         'std_unit':'um',
-#         'conversions':{'um':1}
-#         })
-#     length = Column(Float,info=
-#         {'verbose_name':'Length',
-#         'std_unit':'um',
-#         'conversions':{'um':1}
-#         })
-#     # sample_surface_area = Column(Float,info=
-#     #     {'verbose_name':'Sample Surface Area',
-#     #     'std_unit': 'um^2',
-#     #     'conversions':{'um^2':1}
-#     #     })
-
-#     # PREPARATION STEPS
-#     preparation_steps = relationship("preparation_step")
-
-#     def json_encodable(self):
-#         return {
-#             "material_name": self.material_name,
-#             'experiment_date': self.experiment_date,
-#             "catalyst": self.catalyst,
-#             "tube_diameter": self.tube_diameter,
-#             "cross_sectional_area": self.cross_sectional_area,
-#             "tube_length": self.tube_length,
-#             "base_pressure": self.base_pressure,
-#             "average_thickness_of_growth": self.average_thickness_of_growth,
-#             "standard_deviation_of_growth": self.standard_deviation_of_growth,
-#             "number_of_layers": self.number_of_layers,
-#             "growth_coverage": self.growth_coverage,
-#             "domain_size": self.domain_size,
-#             "shape": self.shape,
-#             # "sample_surface_area": self.sample_surface_area,
-#             "thickness": self.thickness,
-#             "diameter": self.diameter,
-#             "length": self.length,
-#             "preparation_steps": sorted([s.json_encodable() for s in
-#                                 self.preparation_steps if s.timestamp] , key= lambda s: s["timestamp"]),
-#             "authors": [s.json_encodable() for s in self.authors]
-#         }
-
 class recipe(Base):
     __tablename__ = 'recipes'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    sample_id = Column(Integer,ForeignKey(sample.id),primary_key=True,info={'verbose_name':'Sample ID'})
+    sample_id = Column(Integer,ForeignKey(sample.id),info={'verbose_name':'Sample ID'})
     # SUBSTRATE
     thickness = Column(Float,info=
         {'verbose_name':'Thickness',
@@ -240,18 +128,18 @@ class recipe(Base):
 
     def json_encodable(self):
         params = [
-            "catalyst"
-            "tube_diameter"
-            "cross_sectional_area"
-            "tube_length"
-            "base_pressure"
-            "thickness"
-            "diameter"
+            "catalyst",
+            "tube_diameter",
+            "cross_sectional_area",
+            "tube_length",
+            "base_pressure",
+            "thickness",
+            "diameter",
             "length"
             ]
         json_dict = {}
         for p in params:
-            json_dict[p] = {'value':getattr(self,p),'unit':getattr(self,p).info['std_unit']}
+            json_dict[p] = {'value':getattr(self,p),'unit':getattr(recipe,p).info['std_unit']}
         json_dict['preparation_steps'] = sorted([s.json_encodable() for s in self.preparation_steps if s.timestamp] , key= lambda s: s["timestamp"])
 
         return json_dict
@@ -296,6 +184,7 @@ class preparation_step(Base):
         })
     carbon_source = Column(String(16),info={
         'verbose_name':'Carbon Source',
+        'std_unit': None,
         'choices': ['CH4','C2H4','C2H2','C6H6']
         })
     carbon_source_flow_rate = Column(Float,info={
@@ -335,7 +224,7 @@ class preparation_step(Base):
 
         json_dict = {}
         for p in params:
-            json_dict[p] = {'value':getattr(self,p),'unit':getattr(self,p).info['std_unit']}
+            json_dict[p] = {'value':getattr(self,p),'unit':getattr(preparation_step,p).info['std_unit']}
 
         return json_dict
 
@@ -395,7 +284,7 @@ class properties(Base):
             ]
         json_dict = {}
         for p in params:
-            json_dict[p] = {'value':getattr(self,p),'unit':getattr(self,p).info['std_unit']}
+            json_dict[p] = {'value':getattr(self,p),'unit':getattr(properties,p).info['std_unit']}
         return json_dict
 
 class raman_spectrum(Base):
@@ -456,7 +345,7 @@ class raman_spectrum(Base):
         ]
         json_dict = {}
         for p in params:
-            json_dict[p] = {'value':getattr(self,p),'unit':getattr(self,p).info['std_unit']}
+            json_dict[p] = {'value':getattr(self,p),'unit':getattr(raman_spectrum,p).info['std_unit']}
 
         return json_dict
 

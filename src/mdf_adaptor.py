@@ -9,9 +9,9 @@ class MDFAdaptor:
         experiment_date = datetime.now()
 
         self.mdfcc.create_dc_block(title="Graphene Synthesis Sample " + "TBD",
-                                   authors=["TBD"],
-                                   affiliations=["TBD"],
-                                   publication_year=experiment_date.year
+                                   authors=["%s, %s"%(auth['last_name'],auth['first_name']) for auth in recipe.authors],
+                                   affiliations=[auth['institution'] for auth in recipe.authors],
+                                   publication_year=recipe.experiment_date[0]
                                    )
         self.mdfcc.add_data(box_file.get_shared_link_download_url(access='open'))
 

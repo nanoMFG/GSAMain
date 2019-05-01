@@ -13,7 +13,7 @@ from gresq.config import config
 from gresq.csv2db import build_db
 from GSAQuery import GSAQuery
 from GSAImage import GSAImage
-import GSARaman
+# import GSARaman
 from gresq.recipe import Recipe
 from mdf_adaptor import MDFAdaptor
 import pyqtgraph as pg
@@ -171,7 +171,7 @@ class ProvenanceTab(QtGui.QWidget):
 		response = []
 		for i in range(self.stackedFormWidget.count()):
 			response.append(self.stackedFormWidget.widget(i).getResponse())
-		return response
+		return {'author':response, 'sample': self.sample_input.getResponse()}
 
 	def clear(self):
 		pass
@@ -590,7 +590,7 @@ class ReviewTab(QtGui.QScrollArea):
 
 		# Author response
 		self.layout.addWidget(authorsLabel,self.layout.rowCount(),0,QtCore.Qt.AlignLeft)
-		for a,auth in enumerate(provenance_response):
+		for a,auth in enumerate(provenance_response['author']):
 			row = self.layout.rowCount()
 			self.layout.addWidget(QtGui.QLabel("%s, %s   [%s]"%(auth["last_name"]["value"],auth["first_name"]["value"],auth["institution"]["value"])))
 
@@ -718,7 +718,7 @@ class ReviewTab(QtGui.QScrollArea):
 
 		def validate_base_pressure(preparation_response):
 			if preparation_response['recipe']['base_pressure']['value'] == None:
-				return "Missing input for field '%s' in Properties."%(sample.base_pressure.info['verbose_name'])
+				return "Missing input for field '%s' in Preparation."%(recipe.base_pressure.info['verbose_name'])
 			else:
 				return True
 
@@ -730,16 +730,19 @@ class ReviewTab(QtGui.QScrollArea):
 			return True
 
 		def validate_percentages(files_response):
-			try:
-				sm = sum([float(i) for i in files_response['Characteristic Percentage']])
-			except:
-				return "Please make sure you have input a characteristic percentage for all Raman spectra."
-			if sm != 100:
-				return "Characteristic percentages must sum to 100%. They currently sum to %s."%sm
-			return True
+			if len(files_response['Raman Files'])>0:
+				try:
+					sm = sum([float(i) for i in files_response['Characteristic Percentage']])
+				except:
+					return "Please make sure you have input a characteristic percentage for all Raman spectra."
+				if sm != 100:
+					return "Characteristic percentages must sum to 100%. They currently sum to %s."%sm
+				return True
+			else:
+				return True
 
 		def validate_authors(provenance_response):
-			if len(provenance_response)==0:
+			if len(provenance_response['author'])==0:
 				return "You must have at least one author."
 			return True
 
@@ -748,7 +751,7 @@ class ReviewTab(QtGui.QScrollArea):
 				validate_temperature(preparation_response),
 				validate_pressure(preparation_response),
 				validate_timestamp(preparation_response),
-				validate_base_pressure(properties_response),
+				validate_base_pressure(preparation_response),
 				validate_percentages(files_response),
 				validate_authors(provenance_response)]
 				
@@ -770,20 +773,31 @@ class ReviewTab(QtGui.QScrollArea):
 		with dal.session_scope() as session:
 			### SAMPLE DATASET ###
 			s = sample()
-			
+			for field,item in provenance_response['sample'].items():
+				value = item['value']
+				if value != None:
+					if sql_validator['str'](getattr(sample,field)) or sql_validator['int'](getattr(sample,field)):
+						setattr(s,field,value)
+					elif sql_validator['date'](getattr(sample,field)):
+						setattr(s,field,value)
+			session.add(s)
+			session.commit()
+
 			# Recipe
 			c = recipe()
 			c.sample_id = s.id
 			for field,item in preparation_response["recipe"].items():
+				value = item['value']
+				unit = item['unit']
 				if value != None:
 					if sql_validator['str'](getattr(recipe,field)) or sql_validator['int'](getattr(recipe,field)):
 						setattr(c,field,value)
 					elif sql_validator['float'](getattr(recipe,field)):
 						value = float(value)
-						setattr(s,field,value*getattr(recipe,field).info['conversions'][unit])
+						setattr(c,field,value*getattr(recipe,field).info['conversions'][unit])
 					else:
 						value = int(value)
-						setattr(s,field,value)
+						setattr(c,field,value)
 			session.add(c)
 			session.commit()
 
@@ -824,7 +838,7 @@ class ReviewTab(QtGui.QScrollArea):
 				session.add(p)
 				session.commit()
 
-			for auth in provenance_response:
+			for auth in provenance_response['author']:
 				a = author()
 				a.sample_id = s.id
 				for field,item in auth.items():
@@ -836,18 +850,18 @@ class ReviewTab(QtGui.QScrollArea):
 
 			### RAMAN IS A SEPARATE DATASETS FROM SAMPLE ###
 
-			for ri,ram in enumerate(files_response['Raman Files']):
-				params = GSARaman.autofitting(GSARaman.checkflnm(ram))
-				r = raman_spectrum()
-				for peak in params.keys():
-					for v in params[peak].keys():
-						setattr(r,p+v,params[peak][v])
-				if files_response['Raman Wavength'] != None:
-					r.wavelength = files_response['Raman Wavength']
-				if files_response['Characteristic Percentage'] != None:
-					r.percent = float(files_response['Characteristic Percentage'][ri])
-				session.add(r)
-				session.commit()
+			# for ri,ram in enumerate(files_response['Raman Files']):
+			# 	params = GSARaman.autofitting(GSARaman.checkflnm(ram))
+			# 	r = raman_spectrum()
+			# 	for peak in params.keys():
+			# 		for v in params[peak].keys():
+			# 			setattr(r,p+v,params[peak][v])
+			# 	if files_response['Raman Wavength'] != None:
+			# 		r.wavelength = files_response['Raman Wavength']
+			# 	if files_response['Characteristic Percentage'] != None:
+			# 		r.percent = float(files_response['Characteristic Percentage'][ri])
+			# 	session.add(r)
+			# 	session.commit()
 
 
 			json_file = s.json_encodable()
@@ -862,8 +876,7 @@ class ReviewTab(QtGui.QScrollArea):
 
 		def upload_wrapper(btn):
 			if btn.text() == "OK":
-				pass
-				# self.upload_to_mdf(full_response)
+				self.upload_to_mdf(full_response)
 		confirmation_dialog.buttonClicked.connect(upload_wrapper)
 		confirmation_dialog.exec()
 
