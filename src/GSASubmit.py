@@ -139,10 +139,10 @@ class ProvenanceTab(QtGui.QWidget):
 		self.layout.addItem(spacer,4,0)
 		self.layout.addWidget(self.nextButton,5,0,1,2)
 
-		self.add_author_btn.clicked.connect(self.add_author)
-		self.remove_author_btn.clicked.connect(self.remove_author)
+		self.add_author_btn.clicked.connect(self.addAuthor)
+		self.remove_author_btn.clicked.connect(self.removeAuthor)
 
-	def add_author(self):
+	def addAuthor(self):
 		"""
 		Add another author. Adds new entry to author list and creates new author input widget.
 		"""
@@ -156,7 +156,7 @@ class ProvenanceTab(QtGui.QWidget):
 		w.input_widgets['first_name'].textChanged.connect(
 			lambda txt: item.setText("%s, %s"%(w.input_widgets["last_name"].text(),w.input_widgets["first_name"].text())))
 
-	def remove_author(self):
+	def removeAuthor(self):
 		"""
 		Removes author as selected from author list widget.
 		"""
@@ -174,7 +174,9 @@ class ProvenanceTab(QtGui.QWidget):
 		return {'author':response, 'sample': self.sample_input.getResponse()}
 
 	def clear(self):
-		pass
+		while self.author_list.count()>0:
+			self.removeAuthor()
+		self.sample_input.clear()
 
 
 class PropertiesTab(QtGui.QWidget):
@@ -201,7 +203,7 @@ class PropertiesTab(QtGui.QWidget):
 		return self.properties_form.getResponse()
 
 	def clear(self):
-		pass
+		self.properties_form.clear()
 
 class PreparationTab(QtGui.QWidget):
 	"""
@@ -263,7 +265,9 @@ class PreparationTab(QtGui.QWidget):
 
 	def getResponse(self):
 		"""
-		Returns a list of dictionary responses, as defined in FieldsFormWidget.getResponse() for each step.
+		Returns a response dictionary containing:
+			preparation_step:		A list of dictionary responses, as defined in FieldsFormWidget.getResponse() for each step.
+			recipe:					A dictionary containing response from recipe input widget.
 		"""
 		prep_response = []
 		for i in range(self.stackedFormWidget.count()):
@@ -273,7 +277,9 @@ class PreparationTab(QtGui.QWidget):
 		return {'preparation_step':prep_response,'recipe':recipe_response}
 
 	def clear(self):
-		pass
+		while steps_list.count()>0:
+			self.removeStep()
+		self.recipeParams.clear()
 			
 
 class FieldsFormWidget(QtGui.QWidget):
@@ -382,8 +388,13 @@ class FieldsFormWidget(QtGui.QWidget):
 		return response
 
 	def clear(self):
-		pass
-				
+		for widget in self.input_widgets.values()+self.other_input.values():
+			if isinstance(widget,QtGui.QComboBox):
+				widget.setCurrentIndex(0)
+			elif isinstance(widget,QtGui.QLineEdit):
+				widget.setText('')
+			elif isinstance(widget,QtGui.QDateTimeEdit):
+				widget.setDate(QtCore.QDate.currentDate())
 	
 class FileUploadTab(QtGui.QWidget):
 	"""
@@ -501,7 +512,10 @@ class FileUploadTab(QtGui.QWidget):
 		return r
 
 	def clear(self):
-		pass
+		while self.raman_list.count()>0:
+			self.removeRaman()
+		while self.sem_list.count()>0:
+			self.removeSEM()
 
 class ReviewTab(QtGui.QScrollArea):
 	"""
@@ -732,7 +746,7 @@ class ReviewTab(QtGui.QScrollArea):
 		def validate_percentages(files_response):
 			if len(files_response['Raman Files'])>0:
 				try:
-					sm = sum([float(i) for i in files_response['Characteristic Percentage']])
+					sm = sum([float(i) for i in files_response['Characteristic Percentage'] if i != '' else 0])
 				except:
 					return "Please make sure you have input a characteristic percentage for all Raman spectra."
 				if sm != 100:
@@ -883,14 +897,13 @@ class ReviewTab(QtGui.QScrollArea):
 		return full_response	
 
 
-
 if __name__ == '__main__':
 	dal.init_db(config['development'])
 	Base.metadata.drop_all(bind=dal.engine)
 	Base.metadata.create_all(bind=dal.engine)
 
 	app = QtGui.QApplication([])      
-	submit = GSASubmit()
+	submit = GSASubmit(box_config_path='box_config.json')
 	submit.show()
 	sys.exit(app.exec_())
 
