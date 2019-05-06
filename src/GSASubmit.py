@@ -746,7 +746,11 @@ class ReviewTab(QtGui.QScrollArea):
 		def validate_percentages(files_response):
 			if len(files_response['Raman Files'])>0:
 				try:
-					sm = sum([float(i) for i in files_response['Characteristic Percentage'] if i != '' else 0])
+					sm = []
+					for i in files['Characteristic Percentage']:
+						if i != '':
+							sm.append(float(i))
+					sm = sum(sm)
 				except:
 					return "Please make sure you have input a characteristic percentage for all Raman spectra."
 				if sm != 100:
