@@ -37,7 +37,12 @@ class MDFAdaptor:
 
         print("\n\n\n\n------>",submission)
 
-        mdf_source_id = self.mdfcc.submit_dataset(submission=submission)
-        print("Submitted to MDF -----> "+str(mdf_source_id))
+        mdf_result = self.mdfcc.submit_dataset(submission=submission)
+        if not mdf_result["success"]:
+            self.mdfcc.reset_submission()
+            print("\n\n\n--->Error-----> "+mdf_result['error'])
+            return mdf_result["error"]
 
+        print("Submitted to MDF -----> "+str(mdf_result))
         self.mdfcc.reset_submission()
+        return None
