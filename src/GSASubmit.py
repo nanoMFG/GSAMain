@@ -115,8 +115,8 @@ class ProvenanceTab(QtGui.QWidget):
 	"""
 	def __init__(self,parent=None):
 		super(ProvenanceTab,self).__init__(parent=parent)
-		self.layout = QtGui.QGridLayout(self)
-		self.layout.setAlignment(QtCore.Qt.AlignTop)
+		self.mainLayout = QtGui.QGridLayout(self)
+		self.mainLayout.setAlignment(QtCore.Qt.AlignTop)
 
 		self.stackedFormWidget = QtGui.QStackedWidget()
 		self.stackedFormWidget.setFrameStyle(QtGui.QFrame.StyledPanel)
@@ -126,21 +126,33 @@ class ProvenanceTab(QtGui.QWidget):
 		self.add_author_btn = QtGui.QPushButton("New Author")
 		self.remove_author_btn = QtGui.QPushButton("Remove Author")
 		self.nextButton = QtGui.QPushButton('Next >>>')
+		self.clearButton = QtGui.QPushButton('Clear Fields')
 		spacer = QtGui.QSpacerItem(
 			self.nextButton.sizeHint().width(),
 			self.nextButton.sizeHint().height(), 
 			vPolicy = QtGui.QSizePolicy.Expanding)
+		hspacer = QtGui.QSpacerItem(
+			self.nextButton.sizeHint().width(),
+			self.nextButton.sizeHint().height(), 
+			vPolicy = QtGui.QSizePolicy.Expanding,
+			hPolicy = QtGui.QSizePolicy.Expanding)
 
+		self.layout = QtGui.QGridLayout()
+		self.layout.setAlignment(QtCore.Qt.AlignTop)
 		self.layout.addWidget(self.sample_input,0,0,1,2)
 		self.layout.addWidget(self.stackedFormWidget,1,0,1,2)
 		self.layout.addWidget(self.add_author_btn,2,0,1,1)
 		self.layout.addWidget(self.remove_author_btn,2,1,1,1)
 		self.layout.addWidget(self.author_list,3,0,1,2)
-		self.layout.addItem(spacer,4,0)
-		self.layout.addWidget(self.nextButton,5,0,1,2)
+		self.layout.addItem(spacer,5,0)
+		self.layout.addWidget(self.clearButton,4,0,1,2)
+		self.layout.addWidget(self.nextButton,6,0,1,2)
+		self.mainLayout.addLayout(self.layout,0,0)
+		self.mainLayout.addItem(hspacer,0,1)
 
 		self.add_author_btn.clicked.connect(self.addAuthor)
 		self.remove_author_btn.clicked.connect(self.removeAuthor)
+		self.clearButton.clicked.connect(self.clear)
 
 	def addAuthor(self):
 		"""
@@ -175,6 +187,7 @@ class ProvenanceTab(QtGui.QWidget):
 
 	def clear(self):
 		while self.author_list.count()>0:
+			self.author_list.setCurrentRow(0)
 			self.removeAuthor()
 		self.sample_input.clear()
 
@@ -185,19 +198,34 @@ class PropertiesTab(QtGui.QWidget):
 	"""
 	def __init__(self,parent=None):
 		super(PropertiesTab,self).__init__(parent=parent)
-		self.layout = QtGui.QGridLayout(self)
-		self.layout.setAlignment(QtCore.Qt.AlignTop)
+		self.mainLayout = QtGui.QGridLayout(self)
+		self.mainLayout.setAlignment(QtCore.Qt.AlignTop)
 
 		self.properties_form = FieldsFormWidget(properties_fields,properties)
 		self.nextButton = QtGui.QPushButton('Next >>>')
+		self.clearButton = QtGui.QPushButton('Clear Fields')
 		spacer = QtGui.QSpacerItem(
 			self.nextButton.sizeHint().width(),
 			self.nextButton.sizeHint().height(), 
 			vPolicy = QtGui.QSizePolicy.Expanding)
+		hspacer = QtGui.QSpacerItem(
+			self.nextButton.sizeHint().width(),
+			self.nextButton.sizeHint().height(), 
+			vPolicy = QtGui.QSizePolicy.Expanding,
+			hPolicy = QtGui.QSizePolicy.Expanding)
 
+		self.layout = QtGui.QGridLayout()
+		self.layout.setAlignment(QtCore.Qt.AlignTop)
 		self.layout.addWidget(self.properties_form,0,0)
-		self.layout.addItem(spacer,1,0)
-		self.layout.addWidget(self.nextButton,2,0)
+		self.layout.addWidget(QtGui.QLabel("NOTE:\nThis section optional. Please input any properties data you may have."),2,0)
+		self.layout.addWidget(self.clearButton,1,0)
+		self.layout.addItem(spacer,3,0)
+		self.layout.addWidget(self.nextButton,4,0)
+
+		self.mainLayout.addLayout(self.layout,0,0)
+		self.mainLayout.addItem(hspacer,0,1)
+
+		self.clearButton.clicked.connect(self.clear)
 
 	def getResponse(self):
 		return self.properties_form.getResponse()
@@ -226,6 +254,8 @@ class PreparationTab(QtGui.QWidget):
 		self.addStepButton.clicked.connect(self.addStep)
 		self.removeStepButton.clicked.connect(self.removeStep)
 		self.nextButton = QtGui.QPushButton('Next >>>')
+		self.clearButton = QtGui.QPushButton('Clear Fields')
+		self.clearButton.clicked.connect(self.clear)
 
 		self.miniLayout = QtGui.QGridLayout()
 		self.miniLayout.addWidget(self.addStepButton,0,0)
@@ -235,7 +265,8 @@ class PreparationTab(QtGui.QWidget):
 		self.layout.addLayout(self.miniLayout,0,0,2,1)
 		self.layout.addWidget(self.recipeParams,0,1,1,1)
 		self.layout.addWidget(self.stackedFormWidget,1,1,1,1)
-		self.layout.addWidget(self.nextButton,2,0,1,2)
+		self.layout.addWidget(self.clearButton,2,0,1,2)
+		self.layout.addWidget(self.nextButton,3,0,1,2)
 
 	def addStep(self):
 		"""
@@ -277,7 +308,8 @@ class PreparationTab(QtGui.QWidget):
 		return {'preparation_step':prep_response,'recipe':recipe_response}
 
 	def clear(self):
-		while steps_list.count()>0:
+		while self.steps_list.count()>0:
+			self.steps_list.setCurrentRow(0)
 			self.removeStep()
 		self.recipeParams.clear()
 			
@@ -388,7 +420,7 @@ class FieldsFormWidget(QtGui.QWidget):
 		return response
 
 	def clear(self):
-		for widget in self.input_widgets.values()+self.other_input.values():
+		for widget in list(self.input_widgets.values())+list(self.other_input.values()):
 			if isinstance(widget,QtGui.QComboBox):
 				widget.setCurrentIndex(0)
 			elif isinstance(widget,QtGui.QLineEdit):
@@ -418,6 +450,7 @@ class FileUploadTab(QtGui.QWidget):
 		self.upload_raman = QtGui.QPushButton('Upload Raman Spectroscopy')
 		self.remove_sem = QtGui.QPushButton('Remove SEM Image')
 		self.remove_raman = QtGui.QPushButton('Remove Raman Spectroscopy')
+		self.clearButton = QtGui.QPushButton('Clear Fields')
 		self.wavelength_input = FieldsFormWidget(fields=['wavelength'],model=raman_spectrum)
 
 		self.nextButton = QtGui.QPushButton('Next >>>')
@@ -435,14 +468,16 @@ class FileUploadTab(QtGui.QWidget):
 		self.layout.addWidget(self.stackedRamanFormWidget,6,0,1,1)
 		self.layout.addWidget(self.remove_raman,7,0,1,1)
 		self.layout.addWidget(self.raman_list,3,1,5,1)
-		self.layout.addItem(spacer,8,0,1,2)
-		self.layout.addWidget(self.nextButton,9,0,1,2)
+		self.layout.addItem(spacer,9,0,1,2)
+		self.layout.addWidget(self.clearButton,8,0,1,2)
+		self.layout.addWidget(self.nextButton,10,0,1,2)
 
 		self.upload_sem.clicked.connect(self.importSEM)
 		self.upload_raman.clicked.connect(self.importRaman)
 		self.raman_list.currentRowChanged.connect(self.stackedRamanFormWidget.setCurrentIndex)
 		self.remove_sem.clicked.connect(self.removeSEM)
 		self.remove_raman.clicked.connect(self.removeRaman)
+		self.clearButton.clicked.connect(self.clear)
 
 
 	def removeSEM(self):
@@ -513,9 +548,12 @@ class FileUploadTab(QtGui.QWidget):
 
 	def clear(self):
 		while self.raman_list.count()>0:
+			self.raman_list.setCurrentRow(0)
 			self.removeRaman()
 		while self.sem_list.count()>0:
+			self.sem_list.setCurrentRow(0)
 			self.removeSEM()
+		self.wavelength_input.clear()
 
 class ReviewTab(QtGui.QScrollArea):
 	"""
