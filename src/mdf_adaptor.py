@@ -11,7 +11,7 @@ class MDFAdaptor:
         self.mdfcc.create_dc_block(title="Graphene Synthesis Sample " + "TBD",
                                    authors=["%s, %s"%(auth['last_name'],auth['first_name']) for auth in recipe.authors],
                                    affiliations=[auth['institution'] for auth in recipe.authors],
-                                   publication_year=recipe.experiment_date[0]
+                                   publication_year=recipe.experiment_year
                                    )
         self.mdfcc.add_data(box_file.get_shared_link_download_url(access='open'))
 
