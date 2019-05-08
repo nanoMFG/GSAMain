@@ -44,6 +44,9 @@ class Recipe:
         # we don't need a special call to super here because getattr is only
         # called when an attribute is NOT found in the instance's dictionary
         try:
-            return self.recipe['recipe'][k]["value"]
+            if isinstance(self.recipe['recipe'][k],dict):
+                return self.recipe['recipe'][k]["value"]
+            else:
+                return self.recipe['recipe'][k]
         except KeyError:
             raise AttributeError
