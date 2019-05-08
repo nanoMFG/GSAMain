@@ -610,8 +610,9 @@ class ReviewTab(QtGui.QScrollArea):
 		print("Uploading ", zip_path, " to box")
 
 		box_file = box_adaptor.upload_file(upload_folder, zip_path, mdf_dir+'.zip')
+
 		mdf = MDFAdaptor()
-		mdf.upload(Recipe(response_dict['json']), box_file)
+		return mdf.upload(Recipe(response_dict['json']), box_file)
 
 
 	def refresh(self,properties_response,preparation_response,files_response,provenance_response):
