@@ -28,10 +28,22 @@ class Recipe:
             return None
 
 
+    @property
+    def properties(self):
+        return self.recipe['properties']
+
+    @property
+    def authors(self):
+        return self.recipe['authors']
+
+    @property
+    def experiment_year(self):
+        return self.recipe['experiment_year']
+
     def __getattr__(self, k):
         # we don't need a special call to super here because getattr is only
         # called when an attribute is NOT found in the instance's dictionary
         try:
-            return self.recipe[k]
+            return self.recipe['recipe'][k]
         except KeyError:
             raise AttributeError
