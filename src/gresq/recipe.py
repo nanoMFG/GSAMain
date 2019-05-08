@@ -8,8 +8,8 @@ class Recipe:
         :param sample:
         :return: The max temperature or zero if there are no listed steps
         """
-        step_temps = [step["furnace_temperature"] for step in
-                      self.preparation_steps if step["furnace_temperature"]]
+        step_temps = [step["furnace_temperature"]["value"] for step in
+                      self.preparation_steps if step["furnace_temperature"]["value"]]
 
         if (len(step_temps)):
             return max(step_temps)
@@ -18,9 +18,9 @@ class Recipe:
 
     def carbon_source(self):
 
-        list_of_sources = [step["carbon_source"] for step
+        list_of_sources = [step["carbon_source"]["value"] for step
                           in self.preparation_steps
-                          if step["carbon_source"] and step["name"]=='Growing']
+                          if step["carbon_source"]["value"] and step["name"]=='Growing']
 
         if len(list_of_sources):
             return list_of_sources[0]
