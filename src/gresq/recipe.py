@@ -38,7 +38,7 @@ class Recipe:
 
     @property
     def experiment_year(self):
-        return self.recipe['experiment_year']
+        return self.recipe['experiment_date'][0]
 
     def __getattr__(self, k):
         # we don't need a special call to super here because getattr is only
