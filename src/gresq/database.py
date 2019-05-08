@@ -62,10 +62,13 @@ class sample(Base):
     __tablename__ = 'samples'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
     authors = relationship("author")
-    experiment_date = Column(Date,info={'verbose_name':'Experiment Date'})
+    experiment_date = Column(Date,info={
+        'verbose_name':'Experiment Date',
+        'required':True})
     material_name = Column(String(32),info={
         'verbose_name':'Material Name',
-        'choices': ['Graphene']
+        'choices': ['Graphene'],
+        'required': True
         })
     recipe = relationship("recipe",uselist=False)
     properties = relationship("properties",uselist=False)
@@ -87,40 +90,51 @@ class recipe(Base):
     thickness = Column(Float,info=
         {'verbose_name':'Thickness',
         'std_unit':'um',
-        'conversions':{'um':1}
+        'conversions':{'um':1},
+        'required': False
         })
     diameter = Column(Float,info=
         {'verbose_name':'Diameter',
         'std_unit':'um',
-        'conversions':{'um':1}
+        'conversions':{'um':1},
+        'required': False
         })
     length = Column(Float,info=
         {'verbose_name':'Length',
         'std_unit':'um',
-        'conversions':{'um':1}
+        'conversions':{'um':1},
+        'required': False
         })
 
     # EXPERIMENTAL CONDITIONS:
-    catalyst = Column(String(64),info={'verbose_name':'Catalyst', 'choices':[],'std_unit':None})
+    catalyst = Column(String(64),info={
+        'verbose_name':'Catalyst', 
+        'choices':[],
+        'std_unit':None,
+        'required': True})
     tube_diameter = Column(Float(precision=32),info={
         'verbose_name':'Tube Diameter',
         'std_unit':'mm',
-        'conversions': {'mm':1,'inches':25.4}
+        'conversions': {'mm':1,'inches':25.4},
+        'required': False
         })
     cross_sectional_area = Column(Float,info={
         'verbose_name':'Cross Sectional Area',
         'std_unit': 'mm^2',
-        'conversions': {'mm^2':1,'inches^2':25.4**2}
+        'conversions': {'mm^2':1,'inches^2':25.4**2},
+        'required': False
         })
     tube_length = Column(Float,info={
         'verbose_name':'Tube Length',
         'std_unit': 'mm',
-        'conversions': {'mm':1,'inches':25.4}
+        'conversions': {'mm':1,'inches':25.4},
+        'required': False
         })
     base_pressure = Column(Float,info={
         'verbose_name':'Base Pressure',
         'std_unit': 'mTorr',
-        'conversions': {'mTorr':1,'Pa':1/133.322,'mbar':1/1.33322}
+        'conversions': {'mTorr':1,'Pa':1/133.322,'mbar':1/1.33322},
+        'required': True
         })
 
     # PREPARATION STEPS
@@ -140,7 +154,7 @@ class recipe(Base):
         json_dict = {}
         for p in params:
             json_dict[p] = {'value':getattr(self,p),'unit':getattr(recipe,p).info['std_unit']}
-        json_dict['preparation_steps'] = sorted([s.json_encodable() for s in self.preparation_steps if s.timestamp] , key= lambda s: s["timestamp"])
+        json_dict['preparation_steps'] = sorted([s.json_encodable() for s in self.preparation_steps if s.timestamp] , key= lambda s: s["timestamp"]["value"])
 
         return json_dict
 
@@ -150,57 +164,68 @@ class preparation_step(Base):
     name = Column(String(16),primary_key=True,info={
         'verbose_name':'Name',
         'choices': ['Annealing','Growing','Cooling'],
-        'std_unit': None
+        'std_unit': None,
+        'required': True
         })
     timestamp = Column(Float,primary_key=True,info={
         'verbose_name':'Timestamp',
         'std_unit': 'min',
-        'conversions': {'min':1,'sec':1/60.,'hrs':60}
+        'conversions': {'min':1,'sec':1/60.,'hrs':60},
+        'required': True
         })
     furnace_temperature = Column(Float,info={
         'verbose_name':'Furnace Temperature',
         'std_unit': 'C',
-        'conversions': {'C':1}
+        'conversions': {'C':1},
+        'required': True
         })
     furnace_pressure = Column(Float,info={
         'verbose_name':'Furnace Pressure',
         'std_unit': 'mTorr',
-        'conversions': {'mTorr':1,'Pa':1/133.322,'mbar':1/1.33322}
+        'conversions': {'mTorr':1,'Pa':1/133.322,'mbar':1/1.33322},
+        'required': True
         })
     sample_location = Column(Float,info={
         'verbose_name':'Sample Location',
         'std_unit':'mm',
-        'conversions': {'inches':25.4,'mm':1}
+        'conversions': {'inches':25.4,'mm':1},
+        'required': False
         })
     helium_flow_rate = Column(Float,info={
         'verbose_name':'Helium Flow Rate',
         'std_unit': 'sccm',
-        'conversions': {'sccm':1}
+        'conversions': {'sccm':1},
+        'required': False
         })
     hydrogen_flow_rate = Column(Float,info={
         'verbose_name':'Hydrogen Flow Rate',
         'std_unit': 'sccm',
-        'conversions': {'sccm':1}
+        'conversions': {'sccm':1},
+        'required': False
         })
     carbon_source = Column(String(16),info={
         'verbose_name':'Carbon Source',
         'std_unit': None,
-        'choices': ['CH4','C2H4','C2H2','C6H6']
+        'choices': ['CH4','C2H4','C2H2','C6H6'],
+        'required': True
         })
     carbon_source_flow_rate = Column(Float,info={
         'verbose_name':'Carbon Source Flow Rate',
         'std_unit': 'sccm',
-        'conversions': {'sccm':1}
+        'conversions': {'sccm':1},
+        'required': True
         })
     argon_flow_rate = Column(Float,info={
         'verbose_name':'Argon Flow Rate',
         'std_unit': 'sccm',
-        'conversions': {'sccm':1}
+        'conversions': {'sccm':1},
+        'required': False
         })
     cooling_rate = Column(Float,info={
         'verbose_name':'Cooling Rate',
         'std_unit': 'C/min',
-        'conversions': {'C/min':1}
+        'conversions': {'C/min':1},
+        'required': False
         })
 
     #sample = relationship("sample", back_populates="preparation_steps")
@@ -231,8 +256,12 @@ class preparation_step(Base):
 class author(Base):
     __tablename__ = 'authors'
     sample_id = Column(Integer,ForeignKey(sample.id),primary_key=True,info={'verbose_name':'Sample ID'})
-    first_name = Column(String(64), primary_key=True, info={'verbose_name':'First Name'})
-    last_name = Column(String(64), primary_key=True, info={'verbose_name':'Last Name'})
+    first_name = Column(String(64), primary_key=True, info={
+        'verbose_name':'First Name',
+        'required': False})
+    last_name = Column(String(64), primary_key=True, info={
+        'verbose_name':'Last Name',
+        'required': False})
     institution = Column(String(64), info={'verbose_name':'Institution'})
 
     def json_encodable(self):
@@ -249,28 +278,36 @@ class properties(Base):
     average_thickness_of_growth = Column(Float(precision=32),info={
         'verbose_name':'Average Thickness of Growth',
         'std_unit': 'nm',
-        'conversions':{'nm':1}
+        'conversions':{'nm':1},
+        'required': False
         })
     standard_deviation_of_growth = Column(Float,info={
         'verbose_name':'St. Dev. of Growth',
         'std_unit': 'nm',
-        'conversions':{'nm':1}
+        'conversions':{'nm':1},
+        'required': False
         })
-    number_of_layers = Column(Integer,info={'verbose_name':'Number of Layers','std_unit':None})
+    number_of_layers = Column(Integer,info={
+        'verbose_name':'Number of Layers',
+        'std_unit':None,
+        'required': False})
     growth_coverage = Column(Float,info={
         'verbose_name':'Growth Coverage',
         'std_unit': '%',
-        'conversions':{'%':1}
+        'conversions':{'%':1},
+        'required': False
         })
     domain_size = Column(Float,info={
         'verbose_name':'Domain Size',
         'std_unit': 'um^2',
-        'conversions':{'um^2':1}
+        'conversions':{'um^2':1},
+        'required': False
         })
     shape = Column(String(32),info={
         'verbose_name':'Shape',
-        'choices': ['Hexagonal','Square','Circle','Nondescript'],
-        'std_unit':None
+        'choices': ['Nondescript','Hexagonal','Square','Circle'],
+        'std_unit':None,
+        'required': False
         })
 
     def json_encodable(self):
@@ -294,39 +331,56 @@ class raman_spectrum(Base):
     wavelength = Column(Float,info={
         'verbose_name':'Wavelength',
         'std_unit': 'nm',
-        'conversions': {'nm':1}
+        'conversions': {'nm':1},
+        'required': True
         })
     percent = Column(Float,info={
         'verbose_name':'Characteristic Percent',
         'std_unit': '%',
-        'conversions': {'%':1}
+        'conversions': {'%':1},
+        'required': True
         })
     d_peak_shift = Column(Float,info={
         'verbose_name':'D Peak Shift',
-        'std_unit': 'cm^-1'
+        'std_unit': 'cm^-1',
+        'required': False
         })
-    d_peak_amplitude = Column(Float,info={'verbose_name':'D Peak Amplitude','std_unit':None})
+    d_peak_amplitude = Column(Float,info={
+        'verbose_name':'D Peak Amplitude',
+        'std_unit':None,
+        'required': False})
     d_fwhm = Column(Float,info={
         'verbose_name':"D FWHM",
-        'std_unit': 'cm^-1'
+        'std_unit': 'cm^-1',
+        'required': False
         })
     g_peak_shift = Column(Float,primary_key=True,info={
         'verbose_name':'G Peak Shift',
-        'std_unit': 'cm^-1'
+        'std_unit': 'cm^-1',
+        'required': False
         })
-    g_peak_amplitude = Column(Float,primary_key=True,info={'verbose_name':'G Peak Amplitude','std_unit':None})
+    g_peak_amplitude = Column(Float,primary_key=True,info={
+        'verbose_name':'G Peak Amplitude',
+        'std_unit':None,
+        'required': False})
     g_fwhm = Column(Float,primary_key=True,info={
         'verbose_name':'G FWHM',
-        'std_unit': 'cm^-1'
+        'std_unit': 'cm^-1',
+        'required': False
         })
     g_prime_peak_shift = Column(Float,info={
         'verbose_name':'G\' Peak Shift',
-        'std_unit': 'cm^-1'
+        'std_unit': 'cm^-1',
+        'required': False
         })
-    g_prime_peak_amplitude = Column(Float, info={'verbose_name':'G\' Peak Amplitude','std_unit':None})
+    g_prime_peak_amplitude = Column(Float, info={
+        'verbose_name':'G\' Peak Amplitude',
+        'std_unit':None,
+        'required': False})
     g_prime_fwhm = Column(Float,info={
         'verbose_name':'G\' FWHM',
-        'std_unit': 'cm^-1'
+        'std_unit': 'cm^-1',
+        'required': False
         })
 
     def json_encodable(self):
