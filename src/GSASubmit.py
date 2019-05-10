@@ -157,6 +157,8 @@ class FieldsFormWidget(QtGui.QWidget):
 					self.input_widgets[field].activated[str].connect(
 						lambda x, other_input = self.other_input[field]: other_input.show() if x == 'Other' else other_input.hide())
 					self.layout.addWidget(self.other_input[field],row,3*col+2)
+					self.input_widgets[field].activated[str].emit(self.input_widgets[field].currentText())
+
 				else:
 					self.input_widgets[field] = QtGui.QLineEdit()
 				self.layout.addWidget(self.input_widgets[field],row,3*col+1)	
@@ -195,8 +197,8 @@ class FieldsFormWidget(QtGui.QWidget):
 			info = getattr(self.model,field).info
 			response[field] = {}
 			if isinstance(self.input_widgets[field],QtGui.QComboBox):
-				if self.input_widgets[field] == 'Other':
-					response[field]['value'] = self.other_input[field]
+				if self.input_widgets[field].currentText() == 'Other':
+					response[field]['value'] = self.other_input[field].text()
 				else:
 					response[field]['value'] = self.input_widgets[field].currentText()
 				response[field]['unit'] = ''
@@ -789,7 +791,6 @@ class ReviewTab(QtGui.QScrollArea):
 			list_of_flows = [step["carbon_source_flow_rate"]["value"] for step
 						  in preparation_response['preparation_step']
 						  if step["carbon_source_flow_rate"]["value"] and step["name"]["value"]=='Growing']
-			print(list_of_flows)
 			if len(list_of_sources) == 0:
 				return "You must have at least one carbon source."
 			if len(list_of_flows) != len(list_of_sources):
