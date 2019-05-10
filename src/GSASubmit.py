@@ -788,7 +788,8 @@ class ReviewTab(QtGui.QScrollArea):
 						  if step["carbon_source"]["value"] and step["name"]["value"]=='Growing']
 			list_of_flows = [step["carbon_source_flow_rate"]["value"] for step
 						  in preparation_response['preparation_step']
-						  if step["carbon_source"]["value"] and step["name"]["value"]=='Growing']
+						  if step["carbon_source_flow_rate"]["value"] and step["name"]["value"]=='Growing']
+			print(list_of_flows)
 			if len(list_of_sources) == 0:
 				return "You must have at least one carbon source."
 			if len(list_of_flows) != len(list_of_sources):

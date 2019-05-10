@@ -20,8 +20,7 @@ class Recipe:
 
         list_of_sources = [step["carbon_source"]["value"] for step
                           in self.preparation_steps
-                          if step["carbon_source"]["value"] and step["name"]=='Growing']
-
+                          if step["carbon_source"]["value"] and step["name"]["value"]=='Growing']
         if len(list_of_sources):
             return list_of_sources[0]
         else:
