@@ -1,5 +1,6 @@
 from mdf_connect_client import MDFConnectClient
 from datetime import datetime
+import uuid
 
 class MDFAdaptor:
     def __init__(self):
@@ -18,7 +19,7 @@ class MDFAdaptor:
         # Don't publish specific recipes. Later on, we will bundle datasets and
         # and publish an omnibus dataset
         # mdfcc.add_service("globus_publish")
-        self.mdfcc.set_source_name("TBD")
+        self.mdfcc.set_source_name(str(uuid.uuid4()))
 
         submission = self.mdfcc.get_submission()
 
