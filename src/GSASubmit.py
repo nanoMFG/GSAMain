@@ -97,7 +97,7 @@ class GSASubmit(QtGui.QTabWidget):
 			provenance_response = self.provenance.getResponse()) if x == self.indexOf(self.review) else None,
 		)
 
-		self.review.submitButton.clicked.connect(lambda: self.review.fullResponse(
+		self.review.submitButton.clicked.connect(lambda: self.review.submitResponse(
 			properties_response = self.properties.getResponse(),
 			preparation_response = self.preparation.getResponse(),
 			files_response = self.file_upload.getResponse(),
@@ -108,6 +108,120 @@ class GSASubmit(QtGui.QTabWidget):
 		self.preparation.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.properties))
 		self.properties.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.file_upload))
 		self.file_upload.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.review))
+
+class FieldsFormWidget(QtGui.QWidget):
+	"""
+	Generic widget that creates a form from the selected fields from a particular model. Automatically
+	determines whether to use a combo box or line edit widget. Applies appropriate validators and 
+	allows users to select the appropriate unit as defined in the model. If the field is a String 
+	field and 'choices' is not in the model 'info' dictionary, a line edit is used instead of combo box.
+
+	fields:	The fields from the model to generate the form. Note: fields must exist in the model.
+	model:	The model to base the form on. The model is used to determine data type of each field
+			and appropriate ancillary information found in the field's 'info' dictionary.
+	"""
+	def __init__(self,fields,model,parent=None):
+		super(FieldsFormWidget,self).__init__(parent=parent)
+		self.layout = QtGui.QGridLayout(self)
+		self.layout.setAlignment(QtCore.Qt.AlignTop)
+		self.fields = fields
+		self.model = model
+		
+		self.input_widgets = {}
+		self.other_input = {}
+		self.units_input = {}
+
+		for f,field in enumerate(fields):
+			row = f%9
+			col = f//9
+			info = getattr(model,field).info
+			self.layout.addWidget(QtGui.QLabel(info['verbose_name']),row,3*col)
+			if sql_validator['str'](getattr(model,field)):
+				input_set = []
+				with dal.session_scope() as session:
+					if hasattr(mdf_forge,field):
+						for v in session.query(getattr(mdf_forge,field)).distinct():
+							if getattr(v,field) not in input_set:
+								input_set.append(getattr(v,field))
+				if 'choices' in info.keys():	
+					input_set.extend(info['choices'])
+					self.input_widgets[field] = QtGui.QComboBox()
+					self.input_widgets[field].addItems(input_set)
+					self.input_widgets[field].addItem('Other')
+
+					self.other_input[field] = QtGui.QLineEdit()
+					self.other_input[field].setPlaceholderText('Enter other input here.')
+					self.other_input[field].setFixedHeight(self.other_input[field].sizeHint().height())
+					self.other_input[field].hide()
+					
+					self.input_widgets[field].activated[str].connect(
+						lambda x, other_input = self.other_input[field]: other_input.show() if x == 'Other' else other_input.hide())
+					self.layout.addWidget(self.other_input[field],row,3*col+2)
+				else:
+					self.input_widgets[field] = QtGui.QLineEdit()
+				self.layout.addWidget(self.input_widgets[field],row,3*col+1)	
+
+			elif sql_validator['date'](getattr(model,field)):
+				self.input_widgets[field] = QtGui.QDateEdit()
+				self.input_widgets[field].setCalendarPopup(True)
+				self.input_widgets[field].setDate(QtCore.QDate.currentDate())
+				self.layout.addWidget(self.input_widgets[field],row,3*col+1)
+
+			else:
+				self.input_widgets[field] = QtGui.QLineEdit()
+				if sql_validator['int'](getattr(model,field)):
+					self.input_widgets[field].setValidator(QtGui.QIntValidator())
+				elif sql_validator['float'](getattr(model,field)):
+					self.input_widgets[field].setValidator(QtGui.QDoubleValidator())
+				
+				if 'conversions' in info.keys():
+					self.units_input[field] = QtGui.QComboBox()
+					self.units_input[field].addItems(info['conversions'])					
+
+				self.layout.addWidget(self.input_widgets[field],row,3*col+1)
+				if field in self.units_input.keys():
+					self.layout.addWidget(self.units_input[field],row,3*col+2)
+
+	def getResponse(self):
+		"""
+		Returns a dictionary response of the form fields. Dictionary, D, is defined as:
+			D[field] = {
+				'value':	output of the input widget for 'field'. If empty, it is None.
+				'unit':		output of the units widget for 'field'. If empty or nonexistent, it is None.
+			}
+		"""
+		response = {}
+		for field in self.fields:
+			info = getattr(self.model,field).info
+			response[field] = {}
+			if isinstance(self.input_widgets[field],QtGui.QComboBox):
+				if self.input_widgets[field] == 'Other':
+					response[field]['value'] = self.other_input[field]
+				else:
+					response[field]['value'] = self.input_widgets[field].currentText()
+				response[field]['unit'] = ''
+			elif isinstance(self.input_widgets[field],QtGui.QDateTimeEdit):
+				response[field]['value'] = self.input_widgets[field].date().toPyDate()
+			else:
+				if sql_validator['int'](getattr(self.model,field)):
+					response[field]['value'] = self.input_widgets[field].text() if self.input_widgets[field].text() != '' else None
+				else:
+					response[field]['value'] = self.input_widgets[field].text() if self.input_widgets[field].text() != '' else None
+				if field in self.units_input.keys():
+					response[field]['unit'] = self.units_input[field].currentText()
+				else:
+					response[field]['unit'] = ''
+
+		return response
+
+	def clear(self):
+		for widget in list(self.input_widgets.values())+list(self.other_input.values()):
+			if isinstance(widget,QtGui.QComboBox):
+				widget.setCurrentIndex(0)
+			elif isinstance(widget,QtGui.QLineEdit):
+				widget.setText('')
+			elif isinstance(widget,QtGui.QDateTimeEdit):
+				widget.setDate(QtCore.QDate.currentDate())
 
 class ProvenanceTab(QtGui.QWidget):
 	"""
@@ -312,121 +426,7 @@ class PreparationTab(QtGui.QWidget):
 			self.steps_list.setCurrentRow(0)
 			self.removeStep()
 		self.recipeParams.clear()
-			
-
-class FieldsFormWidget(QtGui.QWidget):
-	"""
-	Generic widget that creates a form from the selected fields from a particular model. Automatically
-	determines whether to use a combo box or line edit widget. Applies appropriate validators and 
-	allows users to select the appropriate unit as defined in the model. If the field is a String 
-	field and 'choices' is not in the model 'info' dictionary, a line edit is used instead of combo box.
-
-	fields:	The fields from the model to generate the form. Note: fields must exist in the model.
-	model:	The model to base the form on. The model is used to determine data type of each field
-			and appropriate ancillary information found in the field's 'info' dictionary.
-	"""
-	def __init__(self,fields,model,parent=None):
-		super(FieldsFormWidget,self).__init__(parent=parent)
-		self.layout = QtGui.QGridLayout(self)
-		self.layout.setAlignment(QtCore.Qt.AlignTop)
-		self.fields = fields
-		self.model = model
-		
-		self.input_widgets = {}
-		self.other_input = {}
-		self.units_input = {}
-
-		for f,field in enumerate(fields):
-			row = f%9
-			col = f//9
-			info = getattr(model,field).info
-			self.layout.addWidget(QtGui.QLabel(info['verbose_name']),row,3*col)
-			if sql_validator['str'](getattr(model,field)):
-				input_set = []
-				with dal.session_scope() as session:
-					if hasattr(mdf_forge,field):
-						for v in session.query(getattr(mdf_forge,field)).distinct():
-							if getattr(v,field) not in input_set:
-								input_set.append(getattr(v,field))
-				if 'choices' in info.keys():	
-					input_set.extend(info['choices'])
-					self.input_widgets[field] = QtGui.QComboBox()
-					self.input_widgets[field].addItems(input_set)
-					self.input_widgets[field].addItem('Other')
-
-					self.other_input[field] = QtGui.QLineEdit()
-					self.other_input[field].setPlaceholderText('Enter other input here.')
-					self.other_input[field].setFixedHeight(self.other_input[field].sizeHint().height())
-					self.other_input[field].hide()
-					
-					self.input_widgets[field].activated[str].connect(
-						lambda x, other_input = self.other_input[field]: other_input.show() if x == 'Other' else other_input.hide())
-					self.layout.addWidget(self.other_input[field],row,3*col+2)
-				else:
-					self.input_widgets[field] = QtGui.QLineEdit()
-				self.layout.addWidget(self.input_widgets[field],row,3*col+1)	
-
-			elif sql_validator['date'](getattr(model,field)):
-				self.input_widgets[field] = QtGui.QDateEdit()
-				self.input_widgets[field].setCalendarPopup(True)
-				self.input_widgets[field].setDate(QtCore.QDate.currentDate())
-				self.layout.addWidget(self.input_widgets[field],row,3*col+1)
-
-			else:
-				self.input_widgets[field] = QtGui.QLineEdit()
-				if sql_validator['int'](getattr(model,field)):
-					self.input_widgets[field].setValidator(QtGui.QIntValidator())
-				elif sql_validator['float'](getattr(model,field)):
-					self.input_widgets[field].setValidator(QtGui.QDoubleValidator())
-				
-				if 'conversions' in info.keys():
-					self.units_input[field] = QtGui.QComboBox()
-					self.units_input[field].addItems(info['conversions'])					
-
-				self.layout.addWidget(self.input_widgets[field],row,3*col+1)
-				if field in self.units_input.keys():
-					self.layout.addWidget(self.units_input[field],row,3*col+2)
-
-	def getResponse(self):
-		"""
-		Returns a dictionary response of the form fields. Dictionary, D, is defined as:
-			D[field] = {
-				'value':	output of the input widget for 'field'. If empty, it is None.
-				'unit':		output of the units widget for 'field'. If empty or nonexistent, it is None.
-			}
-		"""
-		response = {}
-		for field in self.fields:
-			info = getattr(self.model,field).info
-			response[field] = {}
-			if isinstance(self.input_widgets[field],QtGui.QComboBox):
-				if self.input_widgets[field] == 'Other':
-					response[field]['value'] = self.other_input[field]
-				else:
-					response[field]['value'] = self.input_widgets[field].currentText()
-				response[field]['unit'] = ''
-			elif isinstance(self.input_widgets[field],QtGui.QDateTimeEdit):
-				response[field]['value'] = self.input_widgets[field].date().toPyDate()
-			else:
-				if sql_validator['int'](getattr(self.model,field)):
-					response[field]['value'] = self.input_widgets[field].text() if self.input_widgets[field].text() != '' else None
-				else:
-					response[field]['value'] = self.input_widgets[field].text() if self.input_widgets[field].text() != '' else None
-				if field in self.units_input.keys():
-					response[field]['unit'] = self.units_input[field].currentText()
-				else:
-					response[field]['unit'] = ''
-
-		return response
-
-	def clear(self):
-		for widget in list(self.input_widgets.values())+list(self.other_input.values()):
-			if isinstance(widget,QtGui.QComboBox):
-				widget.setCurrentIndex(0)
-			elif isinstance(widget,QtGui.QLineEdit):
-				widget.setText('')
-			elif isinstance(widget,QtGui.QDateTimeEdit):
-				widget.setDate(QtCore.QDate.currentDate())
+	
 	
 class FileUploadTab(QtGui.QWidget):
 	"""
@@ -571,12 +571,12 @@ class ReviewTab(QtGui.QScrollArea):
 
 	def zipdir(self, path, ziph):
 		"""
-        Create a zipfile from a nested directory. Make the paths in the zip file
-        relative to the root directory
-        :param path: Path to the root directory
-        :param ziph: zipfile handler
-        :return:
-        """
+		Create a zipfile from a nested directory. Make the paths in the zip file
+		relative to the root directory
+		:param path: Path to the root directory
+		:param ziph: zipfile handler
+		:return:
+		"""
 		for root, dirs, files in os.walk(path):
 			for file in files:
 				ziph.write(os.path.join(root, file),
@@ -732,7 +732,7 @@ class ReviewTab(QtGui.QScrollArea):
 		self.setWidget(self.contentWidget)
 		self.setWidgetResizable(True)
 
-	def fullResponse(self,properties_response,preparation_response,files_response, provenance_response):
+	def submitResponse(self,properties_response,preparation_response,files_response, provenance_response):
 		"""
 		Checks and validates responses. If invalid, displays message box with problems. 
 		Otherwise, it submits the full, validated response and returns the output response dictionary.
@@ -782,6 +782,20 @@ class ReviewTab(QtGui.QScrollArea):
 						%(preparation_step.timestamp.info['verbose_name'],s,step['name']['value'])
 			return True
 
+		def validate_carbon_source(preparation_response):
+			list_of_sources = [step["carbon_source"]["value"] for step
+						  in preparation_response['preparation_step']
+						  if step["carbon_source"]["value"] and step["name"]["value"]=='Growing']
+			list_of_flows = [step["carbon_source_flow_rate"]["value"] for step
+						  in preparation_response['preparation_step']
+						  if step["carbon_source"]["value"] and step["name"]["value"]=='Growing']
+			if len(list_of_sources) == 0:
+				return "You must have at least one carbon source."
+			if len(list_of_flows) != len(list_of_sources):
+				return "You must have a flow rate for each carbon source."
+			return True
+
+
 		def validate_percentages(files_response):
 			if len(files_response['Raman Files'])>0:
 				try:
@@ -801,16 +815,23 @@ class ReviewTab(QtGui.QScrollArea):
 		def validate_authors(provenance_response):
 			if len(provenance_response['author'])==0:
 				return "You must have at least one author."
+			for a,auth in enumerate(provenance_response['author']):
+				if len(auth['last_name']['value'])==0 or len(auth['first_name']['value'])==0:
+					return "Author %s (input: %s, %s) must have a valid first and last name"%(a,auth['last_name']['value'],auth['first_name']['value'])
+				if len(auth['institution'])==0:
+					return "Author [%s, %s] must have a valid institution"%(auth['last_name']['value'],auth['first_name']['value'])
 			return True
 
-		if len(preparation_response)>0:
+		if len(preparation_response["preparation_step"])>0:
 			validator_response = [
 				validate_temperature(preparation_response),
 				validate_pressure(preparation_response),
 				validate_timestamp(preparation_response),
 				validate_base_pressure(preparation_response),
 				validate_percentages(files_response),
-				validate_authors(provenance_response)]
+				validate_authors(provenance_response),
+				validate_carbon_source(preparation_response)
+				]
 				
 			if any([v!=True for v in validator_response]):
 				error_dialog = QtGui.QMessageBox(self)
@@ -933,7 +954,15 @@ class ReviewTab(QtGui.QScrollArea):
 
 		def upload_wrapper(btn):
 			if btn.text() == "OK":
-				self.upload_to_mdf(full_response)
+				error = self.upload_to_mdf(full_response)
+				if error:
+					error_dialog = QtGui.QMessageBox(self)
+					error_dialog.setWindowModality(QtCore.Qt.WindowModal)
+					error_dialog.setText("Submission Error!")
+					error_dialog.setInformativeText(str(error))
+					error_dialog.exec()
+					return
+
 		confirmation_dialog.buttonClicked.connect(upload_wrapper)
 		confirmation_dialog.exec()
 
