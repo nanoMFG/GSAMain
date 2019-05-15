@@ -7,7 +7,7 @@ from PyQt5 import QtGui, QtCore
 import pyqtgraph as pg
 
 from box_adaptor import BoxAdaptor
-from gresq.database import sample, preparation_step, dal, Base, mdf_forge, author, raman_spectrum, recipe, properties
+from gresq.database import sample, preparation_step, dal, Base, mdf_forge, author, raman_spectrum, recipe, properties, sem_file, raman_file, raman_set
 from sqlalchemy import String, Integer, Float, Numeric, Date
 from gresq.config import config
 from gresq.csv2db import build_db
@@ -863,6 +863,38 @@ class ReviewTab(QtGui.QScrollArea):
 			session.add(s)
 			session.commit()
 
+			for f in response_dict['SEM Image Files']:
+				sf = sem_file()
+				sf.sample_id = s.id
+				sf.filename = os.path.basename(f)
+				session.add(sf)
+				session.commit()
+			
+			### RAMAN IS A SEPARATE DATASETS FROM SAMPLE ###
+			rs = raman_set()
+			for ri,ram in enumerate(files_response['Raman Files']):
+				rf = raman_file()
+				rf.sample_id = s.id
+				rf.filename = os.path.basename(ram)
+				
+				# params = GSARaman.autofitting(GSARaman.checkflnm(ram))
+				r = raman_spectrum()
+				r.set_id = rs.id
+				# for peak in params.keys():
+				# 	for v in params[peak].keys():
+				# 		setattr(r,p+v,params[peak][v])
+				if files_response['Raman Wavength'] != None:
+					r.wavelength = files_response['Raman Wavength']
+					rf.wavelength = files_response['Raman Wavength']
+				if files_response['Characteristic Percentage'] != None:
+					rf.percent = float(files_response['Characteristic Percentage'][ri]) 
+					r.percent = float(files_response['Characteristic Percentage'][ri])
+				session.add(rf)
+				# session.add(r)
+				session.commit()
+			session.add(rs)
+			session.commit()
+
 			# Recipe
 			c = recipe()
 			c.sample_id = s.id
@@ -927,22 +959,6 @@ class ReviewTab(QtGui.QScrollArea):
 						setattr(a,field,value)
 				session.add(a)
 				session.commit()
-
-			### RAMAN IS A SEPARATE DATASETS FROM SAMPLE ###
-
-			# for ri,ram in enumerate(files_response['Raman Files']):
-			# 	params = GSARaman.autofitting(GSARaman.checkflnm(ram))
-			# 	r = raman_spectrum()
-			# 	for peak in params.keys():
-			# 		for v in params[peak].keys():
-			# 			setattr(r,p+v,params[peak][v])
-			# 	if files_response['Raman Wavength'] != None:
-			# 		r.wavelength = files_response['Raman Wavength']
-			# 	if files_response['Characteristic Percentage'] != None:
-			# 		r.percent = float(files_response['Characteristic Percentage'][ri])
-			# 	session.add(r)
-			# 	session.commit()
-
 
 			json_file = s.json_encodable()
 		full_response = {'json':json_file}

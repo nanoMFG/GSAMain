@@ -2,32 +2,44 @@ from __future__ import division
 import pandas as pd
 import sys, operator, os
 from PyQt5 import QtGui, QtCore
+import pyqtgraph as pg
+import cv2
 from models import ResultsTableModel
 from GSAImage import GSAImage
 from GSAStats import TSNEWidget, PlotWidget
-from gresq.csv2db import build_db
+from gresq.csv2db2 import build_db
 from gresq.database import sample, preparation_step, dal, Base, mdf_forge
 from sqlalchemy import String, Integer, Float, Numeric
 from gresq.config import config
 
-graphene_fields = [
+"""
+Each primary field will correspond to an mdf schema:
+	mdf_forge_fields:			mdf_forge schema
+	raman_spectrum_fields:		raman_spectrum schema
+	sem_postprocess_fields		sem_postprocess schema
+"""
+mdf_forge_fields = [
+	'title',
 	'grain_size',
-	'orientation'
-]
-conditions_fields = [
-	'sample_surface_area',
-	'sample_thickness',
+	'orientation',
 	'catalyst',
-	'base_pressure'
-]
-
-furnace_fields = [
-    'title',
+	'base_pressure',
     'max_temperature',
-    'carbon_source'
+    'carbon_source',
+    'sample_surface_area',
+	'sample_thickness'
 ]
+raman_spectrum_fields = []
 
-results_fields = graphene_fields+conditions_fields+furnace_fields
+sem_postprocess_fields = []
+
+results_fields = mdf_forge_fields+raman_spectrum_fields+sem_postprocess_fields
+
+selection_list = {
+	'Sample Fields': mdf_forge_fields,
+	'Raman Analysis Fields': raman_spectrum_fields,
+	'SEM Analysis Fields': sem_postprocess_fields
+	}
 
 sql_validator = {
 	'int': lambda x: isinstance(x.property.columns[0].type,Integer),
@@ -54,17 +66,14 @@ class GSAQuery(QtGui.QWidget):
 		self.filter_fields.setMaximumHeight(50)
 		self.filter_fields.setSizePolicy(QtGui.QSizePolicy.Maximum,QtGui.QSizePolicy.Preferred)
 		self.filters_dict = {}
-		for field in graphene_fields+conditions_fields+furnace_fields:
+		for field in mdf_forge_fields+raman_spectrum_fields+sem_postprocess_fields:
 			widget = self.generate_field(field)
 			widget.setSizePolicy(QtGui.QSizePolicy.Maximum,QtGui.QSizePolicy.Preferred)
 			self.filters_dict[getattr(mdf_forge,field).info['verbose_name']] = widget
 			self.filter_fields.addWidget(widget)
 
-		self.layout = QtGui.QGridLayout(self)
-		self.layout.setAlignment(QtCore.Qt.AlignTop)
-
 		self.primary_selection = QtGui.QComboBox()
-		self.primary_selection.addItems(['Growth Conditions','Furnace Conditions','Graphene Characteristics'])
+		self.primary_selection.addItems(sorted(selection_list.keys()))
 		self.primary_selection.activated[str].connect(self.populate_secondary)
 
 		self.secondary_selection = QtGui.QComboBox()
@@ -82,10 +91,10 @@ class GSAQuery(QtGui.QWidget):
 		self.filter_table.verticalHeader().setVisible(False)
 
 		self.results = ResultsWidget()
-		self.results.setMinimumWidth(500)
+		# self.results.setFixedHeight(300)
 
 		self.preview = PreviewWidget()
-		self.results.results_table.activated.connect(lambda x: self.preview.select(self.results.results_model,x))
+		self.results.results_table.clicked.connect(lambda x: self.preview.select(self.results.results_model,x))
 		# self.results.plot.scatter_plot.sigClicked.connect(lambda x: self.preview.select(self.results.results_model,x[0]))
 
 		self.addFilterBtn = QtGui.QPushButton('Add Filter')
@@ -97,23 +106,33 @@ class GSAQuery(QtGui.QWidget):
 		searchLabel = QtGui.QLabel('Query')
 		searchLabel.setFont(label_font)
 
-		previewLabel = QtGui.QLabel('Preview')
-		previewLabel.setFont(label_font)
+		# previewLabel = QtGui.QLabel('Preview')
+		# previewLabel.setFont(label_font)
 
 		resultsLabel = QtGui.QLabel('Results')
 		resultsLabel.setFont(label_font)
 
-		self.layout.addWidget(searchLabel,0,0,1,1)
-		self.layout.addWidget(self.primary_selection,1,0,1,1)
-		self.layout.addWidget(self.secondary_selection,2,0,1,1)
-		self.layout.addWidget(self.filter_fields,3,0,1,1)
-		self.layout.addWidget(self.addFilterBtn,4,0,1,1)
-		self.layout.addWidget(self.filter_table,5,0,4,1)
-		self.layout.addWidget(resultsLabel,0,1,1,1)
-		self.layout.addWidget(self.results,1,1,8,1)
-		self.layout.addWidget(previewLabel,0,2,1,1)
-		self.layout.addWidget(self.preview,1,2,8,1)
+		searchLayout = QtGui.QGridLayout() 
+		searchLayout.setAlignment(QtCore.Qt.AlignTop)
+		searchLayout.addWidget(self.primary_selection,1,0)
+		searchLayout.addWidget(self.secondary_selection,2,0)
+		searchLayout.addWidget(self.filter_fields,3,0)
+		searchLayout.addWidget(self.addFilterBtn,4,0)
+		searchLayout.addWidget(self.filter_table,5,0,4,1)
 
+		resultsLayout = QtGui.QSplitter(QtCore.Qt.Vertical)
+		# resultsLayout.setAlignment(QtCore.Qt.AlignTop)
+		resultsLayout.addWidget(self.results)
+		resultsLayout.addWidget(self.preview)
+
+		self.layout = QtGui.QGridLayout(self)
+		self.layout.setAlignment(QtCore.Qt.AlignTop)
+		self.layout.addWidget(searchLabel,0,0)
+		self.layout.addLayout(searchLayout,1,0)
+		self.layout.addWidget(resultsLabel,0,1)
+		self.layout.addWidget(resultsLayout,1,1)
+		
+	
 	def generate_field(self,field):
 		cla = mdf_forge
 		if sql_validator['int'](getattr(cla,field)) == True:
@@ -135,9 +154,9 @@ class GSAQuery(QtGui.QWidget):
 
 	def populate_secondary(self,selection):
 		selection_list = {
-			'Growth Conditions': conditions_fields,
-			'Furnace Conditions': furnace_fields,
-			'Graphene Characteristics': graphene_fields
+			'Sample Fields': mdf_forge_fields,
+			'Raman Analysis Fields': raman_spectrum_fields,
+			'SEM Analysis Fields': sem_postprocess_fields
 			}
 
 		cla = mdf_forge
@@ -256,47 +275,50 @@ class ClassFilter(QtGui.QWidget):
 class PreviewWidget(QtGui.QTabWidget):
 	def __init__(self,parent=None):
 		super(PreviewWidget,self).__init__(parent=parent)
-		self.detail_tab = GrapheneWidget()
+		self.detail_tab = FieldsDisplayWidget(fields=mdf_forge_fields,model=mdf_forge)
+		# self.provenance_tab = FieldsDisplayWidget()
 		self.setTabPosition(QtGui.QTabWidget.South)
 
 		self.addTab(self.detail_tab,'Details')
 		self.addTab(QtGui.QWidget(),'SEM')
 		self.addTab(QtGui.QWidget(),'Raman')
 		self.addTab(QtGui.QWidget(),'Recipe')
+		self.addTab(QtGui.QWidget(),'Provenance')
 
 	def select(self,model,index):
+		print(index.row())
 		self.detail_tab.setData(model,index)
 
-class GrapheneWidget(QtGui.QWidget):
-	def __init__(self,parent=None):
-		super(GrapheneWidget,self).__init__(parent=parent)
-		self.layout = QtGui.QGridLayout(self)
-		self.layout.setAlignment(QtCore.Qt.AlignTop)
-		self.fields = {}
+# class GrapheneWidget(QtGui.QWidget):
+# 	def __init__(self,parent=None):
+# 		super(GrapheneWidget,self).__init__(parent=parent)
+# 		self.layout = QtGui.QGridLayout(self)
+# 		self.layout.setAlignment(QtCore.Qt.AlignTop)
+# 		self.fields = {}
 
-		elements_per_row = 30
-		for f,field in enumerate(graphene_fields):
-			self.fields[field] = {}
-			self.fields[field]['label'] = QtGui.QLabel(getattr(mdf_forge,field).info['verbose_name'])
-			self.fields[field]['label'].setWordWrap(True)
-			self.fields[field]['label'].setMinimumWidth(120)
-			self.fields[field]['value'] = QtGui.QLabel()
-			self.fields[field]['value'].setMinimumWidth(50)
-			self.fields[field]['value'].setAlignment(QtCore.Qt.AlignRight)
-			self.layout.addWidget(self.fields[field]['label'],f%elements_per_row,2*(f//elements_per_row))
-			self.layout.addWidget(self.fields[field]['value'],f%elements_per_row,2*(f//elements_per_row)+1)
+# 		elements_per_row = 6
+# 		for f,field in enumerate(mdf_forge_fields):
+# 			self.fields[field] = {}
+# 			self.fields[field]['label'] = QtGui.QLabel(getattr(mdf_forge,field).info['verbose_name'])
+# 			self.fields[field]['label'].setWordWrap(True)
+# 			self.fields[field]['label'].setMinimumWidth(120)
+# 			self.fields[field]['value'] = QtGui.QLabel()
+# 			self.fields[field]['value'].setMinimumWidth(50)
+# 			self.fields[field]['value'].setAlignment(QtCore.Qt.AlignRight)
+# 			self.layout.addWidget(self.fields[field]['label'],f%elements_per_row,2*(f//elements_per_row))
+# 			self.layout.addWidget(self.fields[field]['value'],f%elements_per_row,2*(f//elements_per_row)+1)
 
-	def setData(self,model,index):
-		for field in graphene_fields:
-			value = model.df[field].iloc[index.row()]
-			if pd.isnull(value):
-				value = ''
-			self.fields[field]['value'].setText(str(value))
+# 	def setData(self,model,index):
+# 		for field in mdf_forge_fields:
+# 			value = model.df[field].iloc[index.row()]
+# 			if pd.isnull(value):
+# 				value = ''
+# 			self.fields[field]['value'].setText(str(value))
 
 class ResultsWidget(QtGui.QTabWidget):
 	def __init__(self,parent=None):
 		super(ResultsWidget,self).__init__(parent=parent)
-		self.setTabPosition(QtGui.QTabWidget.South)
+		self.setTabPosition(QtGui.QTabWidget.North)
 		self.results_model = ResultsTableModel()
 		self.results_table = QtGui.QTableView()
 		self.results_table.setMinimumWidth(400)
@@ -326,12 +348,85 @@ class ResultsWidget(QtGui.QTabWidget):
 		self.plot.setModel(self.results_model)
 		self.tsne.setModel(self.results_model)
 
+class FieldsDisplayWidget(QtGui.QScrollArea):
+	def __init__(self,fields,model,elements_per_col=100,parent=None):
+		super(FieldsDisplayWidget,self).__init__(parent=parent)
+		self.contentWidget = QtGui.QWidget()
+		self.layout = QtGui.QGridLayout(self.contentWidget)
+		self.layout.setAlignment(QtCore.Qt.AlignTop)
+		self.fields = {}
+
+		for f,field in enumerate(fields):
+			self.fields[field] = {}
+			self.fields[field]['label'] = QtGui.QLabel(getattr(model,field).info['verbose_name'])
+			self.fields[field]['label'].setWordWrap(True)
+			# self.fields[field]['label'].setMaximumWidth(120)
+			# self.fields[field]['label'].setMinimumHeight(self.fields[field]['label'].sizeHint().height())
+			self.fields[field]['value'] = QtGui.QLabel()
+			self.fields[field]['value'].setMinimumWidth(50)
+			self.fields[field]['value'].setAlignment(QtCore.Qt.AlignRight)
+			self.layout.addWidget(self.fields[field]['label'],f%elements_per_col,2*(f//elements_per_col))
+			self.layout.addWidget(self.fields[field]['value'],f%elements_per_col,2*(f//elements_per_col)+1)
+
+		self.setWidgetResizable(True)
+		self.setWidget(self.contentWidget)
+
+	def setData(self,model,index):
+		for field in self.fields.keys():
+			if field in model.df.columns:
+				value = model.df[field].iloc[index.row()]
+				if pd.isnull(value):
+					value = ''
+				self.fields[field]['value'].setText(str(value))		
+
+class SEMDisplayTab(QtGui.QScrollArea):
+	def __init__(self,parent=None):
+		super(SEMDisplayTab,self).__init__(parent=parent)
+		self.contentWidget = QtGui.QWidget()
+		self.layout = QtGui.QGridLayout(self.contentWidget)
+		self.layout.setAlignment(QtCore.Qt.AlignTop)
+		
+		self.file_list = QtGui.QListWidget()
+		self.sem_tabs = QtGui.QTabWidget()
+		self.sem_info = QtGui.QStackedWidget()
+
+		self.setWidgetResizable(True)
+		self.setWidget(self.contentWidget)
+
+	def update(self,sample_json=None,postprocess_json=None):
+		if sample_model != None:
+			for s,sem in enumerate(sample_model.sem_files,1):
+				self.file_list.addItem("SEM Image %d"%s)
+				image_tab = pg.GraphicsLayoutWidget()
+				wImgBox_VB = self.wImgBox.addViewBox(row=1,col=1)
+				wImgItem = pg.ImageItem()
+				wImgItem.setImage(fpath)
+				wImgBox_VB.addItem(wImgItem)
+				wImgBox_VB.setAspectLocked(True)
+
+				self.sem_tabs.addTab(image_tab,"Raw Data")
+				self.file_list.currentRowChanged.connect(self.sem_tabs.setCurrentIndex)
+
+
+class RamanDisplayTab(QtGui.QScrollArea):
+	def __init__(self,parent=None):
+		super(RamanDisplayTab,self).__init__(parent=parent)
+		self.contentWidget = QtGui.QWidget()
+		self.layout = QtGui.QGridLayout(self.contentWidget)
+		self.layout.setAlignment(QtCore.Qt.AlignTop)
+
+		self.setWidgetResizable(True)
+		self.setWidget(self.contentWidget)
+
+	def update(self,sample_json=None):
+		pass
+
 if __name__ == '__main__':
 	dal.init_db(config['development'])
 	Base.metadata.drop_all(bind=dal.engine)
 	Base.metadata.create_all(bind=dal.engine)
 	with dal.session_scope() as session:
-		build_db(session,os.path.join(os.getcwd(),'data'))
+		build_db(session,os.path.join(os.getcwd(),'../data'))
 	app = QtGui.QApplication([])
 	query = GSAQuery()
 	query.show()

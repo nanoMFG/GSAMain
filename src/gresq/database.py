@@ -62,7 +62,7 @@ class sample(Base):
     __tablename__ = 'samples'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
     authors = relationship("author")
-    experiment_date = Column(Date,info={
+    experiment_date = Column(Date,default=datetime.date.today,info={
         'verbose_name':'Experiment Date',
         'required':True})
     material_name = Column(String(32),info={
@@ -72,6 +72,8 @@ class sample(Base):
         })
     recipe = relationship("recipe",uselist=False)
     properties = relationship("properties",uselist=False)
+    sem_files = relationship("sem_file")
+    raman_files = relationship("raman_file")
 
     def json_encodable(self):
         return {
@@ -324,10 +326,15 @@ class properties(Base):
             json_dict[p] = {'value':getattr(self,p),'unit':getattr(properties,p).info['std_unit']}
         return json_dict
 
+class raman_set(Base):
+    __tablename__ = 'raman_set'
+    id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
+    raman_spectra = relationship("raman_spectrum")
+
 class raman_spectrum(Base):
     __tablename__ = 'raman_spectrum'
-    id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    # sample_id = Column(Integer,ForeignKey(sample.id),primary_key=True,info={'verbose_name':'Sample ID'})
+    set_id = Column(Integer,ForeignKey(raman_set.id),primary_key=True,info={'verbose_name':'Sample ID'})
+    filename = Column(String(64),primary_key=True)
     wavelength = Column(Float,info={
         'verbose_name':'Wavelength',
         'std_unit': 'nm',
@@ -398,6 +405,7 @@ class raman_spectrum(Base):
             "g_prime_fwhm",
         ]
         json_dict = {}
+        json_dict["filename"] = self.filename
         for p in params:
             json_dict[p] = {'value':getattr(self,p),'unit':getattr(raman_spectrum,p).info['std_unit']}
 
@@ -412,13 +420,40 @@ class image(Base):
     size = Column(Integer)
     hash = Column(String(128))
 
+class sem_file(Base):
+    __tablename__ = 'sem_file'
+    sample_id = Column(Integer,ForeignKey(sample.id),primary_key=True)
+    filename = Column(String(64),primary_key=True)
+
+    def json_encodable(self):
+        return {'filename': self.filename}
+
+class raman_file(Base):
+    __tablename__ = 'raman_file'
+    sample_id = Column(Integer,ForeignKey(sample.id),primary_key=True)
+    filename = Column(String(64),primary_key=True)
+    percent = Column(Float,info={
+        'verbose_name':'Characteristic Percent',
+        'std_unit': '%',
+        'conversions': {'%':1},
+        'required': True
+        })
+    wavelength = Column(Float,info={
+        'verbose_name':'Wavelength',
+        'std_unit': 'nm',
+        'conversions': {'nm':1},
+        'required': True
+        })
+
+    def json_encodable(self):
+        return {'filename': self.filename, 'percent': self.percent, 'wavelength': self.wavelength}
 
 class mdf_forge(Base):
     __tablename__ = 'mdf_forge'
     mdf_id = Column(String(32),primary_key=True,info={'verbose_name':'MDF ID'})
     title = Column(String(64), info={'verbose_name':'Title'})
     catalyst = Column(String(32),info={'verbose_name':'Catalyst'})
-    max_temperature = Column(Integer,info={'verbose_name':'Maximum Temperature'})
+    max_temperature = Column(Float,info={'verbose_name':'Maximum Temperature'})
     carbon_source = Column(String(32),info={'verbose_name':'Carbon Source'})
     base_pressure = Column(Float,info={'verbose_name':'Base Pressure'})
 
