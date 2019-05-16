@@ -262,9 +262,9 @@ class ProvenanceTab(QtGui.QWidget):
 		self.layout.addWidget(self.author_list,3,0,1,2)
 		self.layout.addItem(spacer,5,0)
 		self.layout.addWidget(self.clearButton,4,0,1,2)
-		self.layout.addWidget(self.nextButton,6,0,1,2)
 		self.mainLayout.addLayout(self.layout,0,0)
 		self.mainLayout.addItem(hspacer,0,1)
+		self.mainLayout.addWidget(self.nextButton,1,0,1,2)
 
 		self.add_author_btn.clicked.connect(self.addAuthor)
 		self.remove_author_btn.clicked.connect(self.removeAuthor)
@@ -863,7 +863,7 @@ class ReviewTab(QtGui.QScrollArea):
 			session.add(s)
 			session.commit()
 
-			for f in response_dict['SEM Image Files']:
+			for f in files_response['SEM Image Files']:
 				sf = sem_file()
 				sf.sample_id = s.id
 				sf.filename = os.path.basename(f)
@@ -874,22 +874,23 @@ class ReviewTab(QtGui.QScrollArea):
 			rs = raman_set()
 			for ri,ram in enumerate(files_response['Raman Files']):
 				rf = raman_file()
-				rf.sample_id = s.id
 				rf.filename = os.path.basename(ram)
-				
+
 				# params = GSARaman.autofitting(GSARaman.checkflnm(ram))
 				r = raman_spectrum()
 				r.set_id = rs.id
 				# for peak in params.keys():
 				# 	for v in params[peak].keys():
-				# 		setattr(r,p+v,params[peak][v])
+				# 		setattr(r,peak+v,params[peak][v])
 				if files_response['Raman Wavength'] != None:
-					r.wavelength = files_response['Raman Wavength']
 					rf.wavelength = files_response['Raman Wavength']
 				if files_response['Characteristic Percentage'] != None:
 					rf.percent = float(files_response['Characteristic Percentage'][ri]) 
-					r.percent = float(files_response['Characteristic Percentage'][ri])
-				session.add(rf)
+				# rf_r = copy.deepcopy(rf)
+				# rf_r.super_id = r.id
+				# rf.super_id = s.id
+				# session.add(rf)
+				# session.add(rf_r)
 				# session.add(r)
 				session.commit()
 			session.add(rs)
