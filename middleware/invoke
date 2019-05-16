@@ -3,6 +3,4 @@
 /usr/bin/invoke_app "$@" -C "python @tool/bin/GSADashboard.pyc nanohub /data/tools/gresq/box_config.json 2>&1 | tee ${SESSIONDIR}/gresq.log" \
                          -u anaconda3-5.1 \
                          -u pyqtgraph-0.10.0 \
-                         -t gresq \
-                         -w captive \
-                         -c filexfer
+                         -t gresq 
