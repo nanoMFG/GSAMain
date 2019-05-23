@@ -73,14 +73,11 @@ Provide links to any user surveys, questionnaires, interviews, feedback or other
 ### 4.1 Data Dictionary
 <!--Summarize inputs and outputs for the application.-->
 
-### 4.2 Usability
-<!--Summarize usability requirements such as easy of adoption for new users (eg example data),  inline documentation, avoiding errors, efficient interaction, etc.  Note you can reference user requirements from above if needed. -->
-
-### 4.2 Usability and Performacne
+### 4.2 Usability and Performance
 <!--Summarize usability requirements such as easy of adoption for new users (eg example data),  inline documentation, avoiding errors, efficient interaction, etc.  Describe performance expectations  and/or document challenges.  Note you can reference user requirements from above if needed. -->
 
 ### 4.3 Testing, Verification and Validation
-<!--Describe What data is necessary to verify the basic functionality of the application.  Provide a testing planthat includes a list of issues for each planned activity.  Describe data sets that are needed to test validation.-->
+<!--Describe What data is necessary to verify the basic functionality of the application.  Provide a testing plan that includes a list of issues for each planned activity.  Describe data sets that are needed to test validation.-->
 
 ### 4.4 Uncertainty Quantification
 <!--Identify and document possible sources of uncertainty. Categorize with standard labels, such as parametric, structural, algorithmic, experimental, interpolation.

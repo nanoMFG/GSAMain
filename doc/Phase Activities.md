@@ -3,18 +3,22 @@
 * [phase: 1](#phase-1)<br/>
   - [Setup your development team on GitHub](#setup-your-development-team-on-github)<br/>
   - [Provide Summary and Team Info for Next Release](#provide-summary-and-team-info-for-next-release)<br/>
-  - [Identify Potential Users (Draft)](#identify-potential-users-draft)<br/>
+  - [Identify Potential Users](#identify-potential-users)<br/>
   - [Draft User Requirements (Draft)](#draft-user-requirements-draft)<br/>
   - [Determine Software License (Draft)](#determine-software-license-draft)<br/>
-  - [Draft a Testing Validation and Verification Plan (Draft)](#draft-a-testing-validation-and-verification-plan-draft)<br/>
   - [Complete Phase 1 Planning (Draft)](#complete-phase-1-planning-draft)<br/>
-  - [Develop Project Goals and Mission Statement (Draft)](#develop-project-goals-and-mission-statement-draft)<br/>
+  - [Update Project Goals and Mission Statement](#update-project-goals-and-mission-statement)<br/>
 * [phase: 2](#phase-2)<br/>
-  - [Propose Required Software and Architecture Components (Draft)](#propose-required-software-and-architecture-components-draft)<br/>
-  - [Document System Environment and Known Constraints (Draft)](#document-system-environment-and-known-constraints-draft)<br/>
-  - [Develop or Revise your Developer Code of Conduct (Draft)](#develop-or-revise-your-developer-code-of-conduct-draft)<br/>
-  - [Develop Unit and Validation Testing Plan (Draft)](#develop-unit-and-validation-testing-plan-draft)<br/>
+  - [Document Software and Architecture Components](#document-software-and-architecture-components)<br/>
+  - [Document System Environment and Known Constraints](#document-system-environment-and-known-constraints)<br/>
+  - [Develop Contributer Guidelines and Procedures (Draft)](#develop-contributer-guidelines-and-procedures-draft)<br/>
+  - [Develop a Testing, Verification and Validation Plan (Draft)](#develop-a-testing,-verification-and-validation-plan-draft)<br/>
   - [Develop a Documentation Plan (Draft)](#develop-a-documentation-plan-draft)<br/>
+  - [Complete Phase 2 Planning (Draft)](#complete-phase-2-planning-draft)<br/>
+  - [Develop Functional Requirements (Draft)](#develop-functional-requirements-draft)<br/>
+* [phase: 3](#phase-3)<br/>
+  - [Create Issues for Planned Activities (Draft)](#create-issues-for-planned-activities-draft)<br/>
+  - [Complete Phase 3 Activities (Draft)](#complete-phase-3-activities-draft)<br/>
 
 # phase: 1
 ## Setup your development team on GitHub
@@ -66,12 +70,12 @@ Once a pull request is opened, the nanoMFG `@dev-review` team will review the do
 [Submitting SPD Updates for Review](https://github.com/nanoMFG/GSAMain/tree/planning/doc/SPD#submitting-spd-updates-for-review)
 
 
-## Identify Potential Users (Draft)
+## Identify Potential Users
 Phase | Activity Type | Work Estimate
 ---|---|---
 phase: 1 | None | 3 
 ### Summary
-Identify classes (types) of users that you anticipate will use the product.  Provide any relevant context about each class that may influence how the product is used.  Document user classes in section 3.1 of the SPD
+Identify classes (types) of users that you anticipate will use the product and document them in section 3.1 of the SPD.  Provide any relevant context about each class that may influence how the product is used.
 
 ### Details
 Consider the following criteria when classifying potential users:
@@ -84,55 +88,72 @@ Consider the following criteria when classifying potential users:
 Provide links to and/or summaries of any user surveys, questionnaires, interviews, feedback or other relevant information.
 
 ### References
+
 ## Draft User Requirements (Draft)
 Phase | Activity Type | Work Estimate
 ---|---|---
 phase: 1 | None | 8 
 ### Summary
-Document a set of user requirements to be considered for this release .  Templates to describe a user requirement or “user story” are offered below.  A well written user requirement should be easy to justify (Rational) and should be testable.  
+Develop and/or revise the set of user requirement issues for your project.  List links to the issues in sec. 3.3 of the SPD.  A template to [create a user requirement issue]() has been added to your repository.   A well written user requirement should be easy to justify (Rational) and should be testable.  
 
 ### Details
+User requirements should be "user facing" and serve as top-level drivers for other development your project.  Not all iterations through the development phases will generate additional user requirements.  A good strategy for the first planning pass is to determine a set of user requirements that comprises a _minimum viable product_ (MVP) and label them as `must have`.
+
 - [ ] Create issues for each use case using the [User Requirement]() issue template.
 - [ ] Review draft use case with your team and refine their descriptions.
-- [ ] Indicate the priority as must have, should have or nice to have for each use case.
+- [ ] Label each issue to indicate the priority as either: `must have`, `should have` or `nice to have`.
 - [ ] Update section 3.3 of your SPD with a list of links to each issue.
 
+**Note:** If no user-facing updates are planned for this iteration indicate as such in Sec 3.3.
+
+When planning specific development activities, refer back to user requirements when appropriate.
+
 ### References
+[Requirements Checklist](https://github.com/nanoMFG/DevTeam/wiki/Requirements-Checklist)
 
 ## Determine Software License (Draft)
 Phase | Activity Type | Work Estimate
 ---|---|---
 phase: 1 | None | 2 
 ### Summary
-The nanoMFG node encourages contributions to the open source community. Open source contribution give our project a chance to have a larger impact and build a community of users and contributers.  A first step in preparing for an open source release is to get some of the basic pieces in place.
+The nanoMFG node encourages contributions to the open source community. Open source contribution give our project a chance to have a larger impact and build a community of users and contributors.  A first step in preparing for an open source release is to choose a license add the necessary documentation to your project.
 
 ### Details
-
+Apache 2 is the default license choice for nanoMFG projects.  
 - [ ] Choose an open source license. Add a LICENSE file to your project using the GitHub interface.
 - [ ] Add a COPYRIGHT file.
 - [ ] Add an AUTHORS file
+- [ ] Update License section of Project README.md
 
 ### References
 [starting and open source project](https://opensource.guide/starting-a-project/)
-
-## Draft a Testing Validation and Verification Plan (Draft)
-Phase | Activity Type | Work Estimate
----|---|---
-phase: 1 | None | 13 
+[adding a license to a repository](https://help.github.com/en/articles/adding-a-license-to-a-repository)
 
 ## Complete Phase 1 Planning (Draft)
 Phase | Activity Type | Work Estimate
 ---|---|---
 phase: 1 | None | None 
+### Summary
+Track progress on Phase 1 activities here.   Submit SPD for review when completed
 
-## Develop Project Goals and Mission Statement (Draft)
+### Details
+Note, To see enhanced features for this (and other) issues refer to the Zenhub documentation link below.
+- [ ] Submit SPD draft with all phase 1 activities.
+
+### References
+
+ [Instructions to Create SPD from Template](https://github.com/nanoMFG/GSAMain/tree/planning/doc/SPD#create-a-draft-spd-from-template)
+[Submitting SPD Updates for Review](https://github.com/nanoMFG/GSAMain/tree/planning/doc/SPD#submitting-spd-updates-for-review)
+[Adding ZenHub Extensions](https://github.com/nanoMFG/DevTeam/wiki/Reference-Material-and-Links-for-Developers#zenhub-extensions-to-github)
+## Update Project Goals and Mission Statement
 Phase | Activity Type | Work Estimate
 ---|---|---
 phase: 1 | None | None 
 ### Summary
-Add a concise mission statement and summarize your project goals in 1.1 of your SPD draft.
-
+Develop or review your project goals and mission statement in sec 1.1 of your SPD draft.
+.
 ### Details
+Add a concise mission statement and summarize your project goals 
 * Why are we building this tool? 
 * What is the key benefit? 
 * How does this tool relate to existing tools and existing software? 
@@ -140,56 +161,83 @@ Add a concise mission statement and summarize your project goals in 1.1 of your 
 * Who will use it?
 
 ### References
+
 # phase: 2
-## Propose Required Software and Architecture Components (Draft)
+## Document Software and Architecture Components
 Phase | Activity Type | Work Estimate
 ---|---|---
 phase: 2 | None | None 
 ### Summary
-Identify the major components of your system whether they be fuctions, databases, models, etc.
+Identify the major components of your system whether they be functions, databases, models, etc.  Provide and overview as an introduction to section 2 of the SPD
 
 ### Details
-A good way to document this is with a flowchart or high level diagram
+A good way to document this is with a flowchart or high level diagram.  Add a brief synopsis of how that major planned activities fit into this architecture.
 
 ### References
-## Document System Environment and Known Constraints (Draft)
+## Document System Environment and Known Constraints
 Phase | Activity Type | Work Estimate
 ---|---|---
 phase: 2 | None | None 
 ### Summary
-Identify the relevant factors that will affect your software on in the target environment
+Identify the relevant factors that will affect your software on in the target environment.  Update section 2.3 with any new constraints.
 
 ### Details
+Use this activity to review and accumulate knowledge about the target environment.
+- [ ] Known constraints of the target operation environment (nanoHUB)
+- [ ] Factors affecting installation, runtime behavior etc.
 
 ### References
-## Develop or Revise your Developer Code of Conduct (Draft)
+None yet.
+## Develop Contributer Guidelines and Procedures (Draft)
 Phase | Activity Type | Work Estimate
 ---|---|---
 phase: 2 | None | None 
 ### Summary
+Develop or revise your project's set of Contribution guidelines, standards and procedures. Update policies and guidelines in a file named : CONTRIBUTING.md and link to this document somewhere in README.md
+
+Indicate any applicable activities as comments below,  and/or reference this issue in any relevant commits before closing this issue.
 
 ### Details
-Version control practices [Default: git on GitHub, public repository]
-•Convention for using issue tracking
-•Coding conventions
+* Version control practices
+  - Conventions on using branches and pull requests
+  - Issues and issue tracking for your project
+
+•Conventions for using issue tracking
+  - Explanation of use of labels
+  - Description of Issue Templates or kind of issues to submit
+•Coding conventions including style guidelines for each relevant programming language
+* Conventions for writing tests
+
 
 ### References
-  Activities: Review public docs: github flow, into to git.  Then…
+More to come...
 
-## Develop Unit and Validation Testing Plan (Draft)
+## Develop a Testing, Verification and Validation Plan (Draft)
 Phase | Activity Type | Work Estimate
 ---|---|---
 phase: 2 | None | None 
 ### Summary
+Develop or revise a set of planned activities for testing validation and verification of the application in sec 4.3 of the SPD.  If no testing activities are planned for this release, indicate as such in sec 4.3 and provide any context/status and/or future plans/timelines.
 
 ### Details
+**Each tool is required to (at a minimum) develop tests to verify the correct functionality of core functions and/or the entire application and provide documentation on how to run them.**
 
-Unit test activity ( automate the test)
-Travis CI activity
-Require documentation on validating core functions and/or entire application. (test case) -- Instruction/activity on submitting test data to repo.
+**Create an issue** for each planned activity in your repository and provide a list of links to them in sec 4.3 of the SPD along with any other relevant context and/or explanation.  Use [task lists](https://help.github.com/en/articles/about-task-lists) in the issue to list more granular sub-tasks.
 
+Planned activities may include (but are not limited to):
+* Identify data sets to serve as validation and/or verification
+* Identify critical functions to be tested
+* Implement specific tests
+* Refactor application code to allow testing
+* Collect validation data
+* Document inputs and expected outputs for validation
+* Adopt a unit test framework
+* Integrate Travis CI automation
 
-### Referenes
+### References
+[PyUnit](https://wiki.python.org/moin/PyUnit)
+[python testing style guidelines](https://jrsmith3.github.io/python-testing-style-guidelines.html)
+
 ## Develop a Documentation Plan (Draft)
 Phase | Activity Type | Work Estimate
 ---|---|---
@@ -206,3 +254,52 @@ List the planned components of the documentation for your project
   - other webpage (github pages etc.)
 
 Create issues for each documentation task using the documentation issue template.
+
+## Complete Phase 2 Planning (Draft)
+Phase | Activity Type | Work Estimate
+---|---|---
+phase: 2 | None | None 
+### Summary
+Track progress on Phase 1 activities here.   Submit SPD for review when completed
+
+### Details
+Note, To see enhanced features for this (and other) issues refer to the Zenhub documentation link below.
+- [ ] Submit SPD draft with all phase 2 activities.
+
+### References
+
+ [Instructions to Create SPD from Template](https://github.com/nanoMFG/Testing/tree/planning/doc/SPD#create-a-draft-spd-from-template)
+[Submitting SPD Updates for Review](https://github.com/nanoMFG/Testing/tree/planning/doc/SPD#submitting-spd-updates-for-review)
+[Adding ZenHub Extensions](https://github.com/nanoMFG/DevTeam/wiki/Reference-Material-and-Links-for-Developers#zenhub-extensions-to-github)
+## Develop Functional Requirements (Draft)
+Phase | Activity Type | Work Estimate
+---|---|---
+phase: 2 | None | None 
+
+# phase: 3
+## Create Issues for Planned Activities (Draft)
+Phase | Activity Type | Work Estimate
+---|---|---
+phase: 3 | None | 8 
+### Summary
+Develop a set of issues needed to complete the activities planned in Phases 1 and 2.
+
+### Details
+Document the work that needs to be done including:
+* Code development
+* Writing Tests
+* User outreach
+* Documentation
+* Other
+Add finishing touches to your issues:
+* Apply appropriate labels for each issue (create new ones for your project if needed). 
+  - This could include a "help wanted" label and/or `@mentions` to solicit help from others in the node.
+* Assign issues to the right people
+* Use a milestone to set target completion dates
+* Use task lists to detail more granular steps to complete the issue
+
+### References
+## Complete Phase 3 Activities (Draft)
+Phase | Activity Type | Work Estimate
+---|---|---
+phase: 3 | None | None 
