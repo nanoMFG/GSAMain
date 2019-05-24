@@ -26,7 +26,7 @@ sample_fields = [
 
 preparation_fields = [
 	'name',
-	'timestamp',
+	'duration',
 	'furnace_temperature',
 	'furnace_pressure',
 	'sample_location',
@@ -336,10 +336,10 @@ class PropertiesTab(QtGui.QWidget):
 		self.layout.addWidget(QtGui.QLabel("NOTE:\nThis section optional. Please input any properties data you may have."),2,0)
 		self.layout.addWidget(self.clearButton,1,0)
 		self.layout.addItem(spacer,3,0)
-		self.layout.addWidget(self.nextButton,4,0)
 
 		self.mainLayout.addLayout(self.layout,0,0)
 		self.mainLayout.addItem(hspacer,0,1)
+		self.mainLayout.addWidget(self.nextButton,1,0,1,2)
 
 		self.clearButton.clicked.connect(self.clear)
 
@@ -378,10 +378,10 @@ class PreparationTab(QtGui.QWidget):
 		self.miniLayout.addWidget(self.steps_list,1,0)
 		self.miniLayout.addWidget(self.removeStepButton,2,0)
 		self.recipeParams = FieldsFormWidget(fields=recipe_fields,model=recipe)
-		self.layout.addLayout(self.miniLayout,0,0,2,1)
+		self.layout.addLayout(self.miniLayout,0,0,3,1)
 		self.layout.addWidget(self.recipeParams,0,1,1,1)
 		self.layout.addWidget(self.stackedFormWidget,1,1,1,1)
-		self.layout.addWidget(self.clearButton,2,0,1,2)
+		self.layout.addWidget(self.clearButton,2,1,1,1)
 		self.layout.addWidget(self.nextButton,3,0,1,2)
 
 	def addStep(self):
@@ -413,8 +413,9 @@ class PreparationTab(QtGui.QWidget):
 	def getResponse(self):
 		"""
 		Returns a response dictionary containing:
-			preparation_step:		A list of dictionary responses, as defined in FieldsFormWidget.getResponse() for each step.
-			recipe:					A dictionary containing response from recipe input widget.
+		
+		reparation_step:		A list of dictionary responses, as defined in FieldsFormWidget.getResponse() for each step.
+		recipe:					A dictionary containing response from recipe input widget.
 		"""
 		prep_response = []
 		for i in range(self.stackedFormWidget.count()):
@@ -453,7 +454,7 @@ class FileUploadTab(QtGui.QWidget):
 		self.remove_sem = QtGui.QPushButton('Remove SEM Image')
 		self.remove_raman = QtGui.QPushButton('Remove Raman Spectroscopy')
 		self.clearButton = QtGui.QPushButton('Clear Fields')
-		self.wavelength_input = FieldsFormWidget(fields=['wavelength'],model=raman_spectrum)
+		self.wavelength_input = FieldsFormWidget(fields=['wavelength'],model=raman_file)
 
 		self.nextButton = QtGui.QPushButton('Next >>>')
 		spacer = QtGui.QSpacerItem(
@@ -777,11 +778,11 @@ class ReviewTab(QtGui.QScrollArea):
 			else:
 				return True
 
-		def validate_timestamp(preparation_response):
+		def validate_duration(preparation_response):
 			for s,step in enumerate(preparation_response['preparation_step']):
-				if step['timestamp']['value'] == None:
+				if step['duration']['value'] == None:
 					return "Missing input for field '%s' for preparation Step %s (%s)."\
-						%(preparation_step.timestamp.info['verbose_name'],s,step['name']['value'])
+						%(preparation_step.duration.info['verbose_name'],s,step['name']['value'])
 			return True
 
 		def validate_carbon_source(preparation_response):
@@ -828,7 +829,7 @@ class ReviewTab(QtGui.QScrollArea):
 			validator_response = [
 				validate_temperature(preparation_response),
 				validate_pressure(preparation_response),
-				validate_timestamp(preparation_response),
+				validate_duration(preparation_response),
 				validate_base_pressure(preparation_response),
 				validate_percentages(files_response),
 				validate_authors(provenance_response),
@@ -875,25 +876,23 @@ class ReviewTab(QtGui.QScrollArea):
 			for ri,ram in enumerate(files_response['Raman Files']):
 				rf = raman_file()
 				rf.filename = os.path.basename(ram)
-
-				# params = GSARaman.autofitting(GSARaman.checkflnm(ram))
-				r = raman_spectrum()
-				r.set_id = rs.id
-				# for peak in params.keys():
-				# 	for v in params[peak].keys():
-				# 		setattr(r,peak+v,params[peak][v])
+				rf.sample_id = s.id
 				if files_response['Raman Wavength'] != None:
 					rf.wavelength = files_response['Raman Wavength']
 				if files_response['Characteristic Percentage'] != None:
 					rf.percent = float(files_response['Characteristic Percentage'][ri]) 
-				# rf_r = copy.deepcopy(rf)
-				# rf_r.super_id = r.id
-				# rf.super_id = s.id
-				# session.add(rf)
-				# session.add(rf_r)
+
+				# params = GSARaman.autofitting(GSARaman.checkflnm(ram))
+				r = raman_spectrum()
+				r.raman_file_id = rf.id
+				r.set_id = rs.id
+				# for peak in params.keys():
+				# 	for v in params[peak].keys():
+				# 		setattr(r,peak+v,params[peak][v])
 				# session.add(r)
+				session.add(rf)
 				session.commit()
-			session.add(rs)
+			# session.add(rs)
 			session.commit()
 
 			# Recipe
@@ -933,9 +932,10 @@ class ReviewTab(QtGui.QScrollArea):
 			session.commit()
 
 			# Preparation Step
-			for step in preparation_response['preparation_step']:
+			for step_idx, step in enumerate(preparation_response['preparation_step']):
 				p = preparation_step()
 				p.recipe_id = c.id
+				p.step = step_idx
 				for field,item in step.items():
 					value = item['value']
 					unit = item['unit']

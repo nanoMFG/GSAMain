@@ -156,21 +156,22 @@ class recipe(Base):
         json_dict = {}
         for p in params:
             json_dict[p] = {'value':getattr(self,p),'unit':getattr(recipe,p).info['std_unit']}
-        json_dict['preparation_steps'] = sorted([s.json_encodable() for s in self.preparation_steps if s.timestamp] , key= lambda s: s["timestamp"]["value"])
+        json_dict['preparation_steps'] = sorted([s.json_encodable() for s in self.preparation_steps if s.step] , key= lambda s: s["step"])
 
         return json_dict
 
 class preparation_step(Base):
     __tablename__ = 'preparation_steps'
     recipe_id = Column(Integer,ForeignKey(recipe.id),primary_key=True,info={'verbose_name':'Recipe ID'})
+    step = Column(Integer,primary_key=True)
     name = Column(String(16),primary_key=True,info={
         'verbose_name':'Name',
         'choices': ['Annealing','Growing','Cooling'],
         'std_unit': None,
         'required': True
         })
-    timestamp = Column(Float,primary_key=True,info={
-        'verbose_name':'Timestamp',
+    duration = Column(Float,primary_key=True,info={
+        'verbose_name':'Duration',
         'std_unit': 'min',
         'conversions': {'min':1,'sec':1/60.,'hrs':60},
         'required': True
@@ -235,7 +236,7 @@ class preparation_step(Base):
     def json_encodable(self):
         params = [
             "name",
-            "timestamp",
+            "duration",
             "furnace_temperature",
             "furnace_pressure",
             "sample_location",
@@ -250,6 +251,7 @@ class preparation_step(Base):
             params.append('cooling_rate')
 
         json_dict = {}
+        json_dict['step'] = self.step
         for p in params:
             json_dict[p] = {'value':getattr(self,p),'unit':getattr(preparation_step,p).info['std_unit']}
 
@@ -330,23 +332,85 @@ class raman_set(Base):
     __tablename__ = 'raman_set'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
     raman_spectra = relationship("raman_spectrum")
-
-class raman_spectrum(Base):
-    __tablename__ = 'raman_spectrum'
-    set_id = Column(Integer,ForeignKey(raman_set.id),primary_key=True,info={'verbose_name':'Sample ID'})
-    filename = Column(String(64),primary_key=True)
-    wavelength = Column(Float,info={
-        'verbose_name':'Wavelength',
-        'std_unit': 'nm',
-        'conversions': {'nm':1},
-        'required': True
+    d_to_g = Column(Float,info={'verbose_name':'Weighted D/G'})
+    gp_to_g = Column(Float,info={'verbose_name':'Weighted G\'/G'})
+    d_peak_shift = Column(Float,info={
+        'verbose_name':'Weighted D Peak Shift',
+        'std_unit': 'cm^-1',
+        'required': False
         })
+    d_peak_amplitude = Column(Float,info={
+        'verbose_name':'Weighted D Peak Amplitude',
+        'std_unit':None,
+        'required': False})
+    d_fwhm = Column(Float,info={
+        'verbose_name':"Weighted D FWHM",
+        'std_unit': 'cm^-1',
+        'required': False
+        })
+    g_peak_shift = Column(Float,primary_key=True,info={
+        'verbose_name':'Weighted G Peak Shift',
+        'std_unit': 'cm^-1',
+        'required': False
+        })
+    g_peak_amplitude = Column(Float,primary_key=True,info={
+        'verbose_name':'Weighted G Peak Amplitude',
+        'std_unit':None,
+        'required': False})
+    g_fwhm = Column(Float,primary_key=True,info={
+        'verbose_name':'Weighted G FWHM',
+        'std_unit': 'cm^-1',
+        'required': False
+        })
+    g_prime_peak_shift = Column(Float,info={
+        'verbose_name':'Weighted G\' Peak Shift',
+        'std_unit': 'cm^-1',
+        'required': False
+        })
+    g_prime_peak_amplitude = Column(Float, info={
+        'verbose_name':'Weighted G\' Peak Amplitude',
+        'std_unit':None,
+        'required': False})
+    g_prime_fwhm = Column(Float,info={
+        'verbose_name':'Weighted G\' FWHM',
+        'std_unit': 'cm^-1',
+        'required': False
+        })
+
+class raman_file(Base):
+    __tablename__ = 'raman_file'
+    id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
+    sample_id = Column(Integer,ForeignKey(sample.id),primary_key=True)
+    filename = Column(String(64),primary_key=True)
     percent = Column(Float,info={
         'verbose_name':'Characteristic Percent',
         'std_unit': '%',
         'conversions': {'%':1},
         'required': True
         })
+    wavelength = Column(Float,info={
+        'verbose_name':'Wavelength',
+        'std_unit': 'nm',
+        'conversions': {'nm':1},
+        'required': True
+        })
+
+    def json_encodable(self):
+        params = [
+            'percent',
+            'wavelength'
+        ]
+        json_dict = {}
+        json_dict['filename'] = self.filename
+        for p in params:
+            json_dict[p] = {'value':getattr(self,p),'unit':getattr(raman_spectrum,p).info['std_unit']}
+        return json_dict
+
+class raman_spectrum(Base):
+    __tablename__ = 'raman_spectrum'
+    set_id = Column(Integer,ForeignKey(raman_set.id),primary_key=True,info={'verbose_name':'Sample ID'})
+    raman_file_id = Column(Integer,ForeignKey(raman_file.id),primary_key=True)
+    raman_file = relationship("raman_file",uselist=False)
     d_peak_shift = Column(Float,info={
         'verbose_name':'D Peak Shift',
         'std_unit': 'cm^-1',
@@ -392,8 +456,6 @@ class raman_spectrum(Base):
 
     def json_encodable(self):
         params = [
-            "wavelength",
-            "percent",
             "d_peak_shift",
             "d_peak_amplitude",
             "d_fwhm",
@@ -405,7 +467,7 @@ class raman_spectrum(Base):
             "g_prime_fwhm",
         ]
         json_dict = {}
-        json_dict["filename"] = self.filename
+        json_dict['raman_file'] = self.raman_file.json_encodable()
         for p in params:
             json_dict[p] = {'value':getattr(self,p),'unit':getattr(raman_spectrum,p).info['std_unit']}
 
@@ -427,26 +489,6 @@ class sem_file(Base):
 
     def json_encodable(self):
         return {'filename': self.filename}
-
-class raman_file(Base):
-    __tablename__ = 'raman_file'
-    sample_id = Column(Integer,ForeignKey(sample.id),primary_key=True)
-    filename = Column(String(64),primary_key=True)
-    percent = Column(Float,info={
-        'verbose_name':'Characteristic Percent',
-        'std_unit': '%',
-        'conversions': {'%':1},
-        'required': True
-        })
-    wavelength = Column(Float,info={
-        'verbose_name':'Wavelength',
-        'std_unit': 'nm',
-        'conversions': {'nm':1},
-        'required': True
-        })
-
-    def json_encodable(self):
-        return {'filename': self.filename, 'percent': self.percent, 'wavelength': self.wavelength}
 
 class mdf_forge(Base):
     __tablename__ = 'mdf_forge'

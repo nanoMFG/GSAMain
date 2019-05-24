@@ -13,10 +13,16 @@ from sqlalchemy import String, Integer, Float, Numeric
 from gresq.config import config
 
 """
-Each primary field will correspond to an mdf schema:
-	mdf_forge_fields:			mdf_forge schema
-	raman_spectrum_fields:		raman_spectrum schema
-	sem_postprocess_fields		sem_postprocess schema
+Each primary field will correspond to an MDF schema. Each of these are models 
+(whose schema is in gresq/database.py) that are stored as separate datasets on MDF
+so when a user selects a primary field, they are searching a particular group
+of datasets on MDF.
+	mdf_forge_fields:			mdf_forge schema. This corresponds to the raw data.
+	raman_spectrum_fields:		raman_spectrum schema. This corresponds the Raman postprocessing (peaks, fwhm, etc.)
+	sem_postprocess_fields		sem_postprocess schema. This corresponds to SEM postprocessing 
+								like coverage, orientation, etc. The raw data may contain some
+								of this information as well if the user inputs it during submission. 
+								However, that information is stored in the mdf_forge model.
 """
 mdf_forge_fields = [
 	'title',
@@ -59,6 +65,9 @@ operators = {
 label_font = QtGui.QFont("Helvetica", 28, QtGui.QFont.Bold) 
 
 class GSAQuery(QtGui.QWidget):
+	"""
+	Main query widget.
+	"""
 	def __init__(self,parent=None):
 		super(GSAQuery,self).__init__(parent=parent)
 		self.filters = []
@@ -66,8 +75,8 @@ class GSAQuery(QtGui.QWidget):
 		self.filter_fields.setMaximumHeight(50)
 		self.filter_fields.setSizePolicy(QtGui.QSizePolicy.Maximum,QtGui.QSizePolicy.Preferred)
 		self.filters_dict = {}
-		for field in mdf_forge_fields+raman_spectrum_fields+sem_postprocess_fields:
-			widget = self.generate_field(field)
+		for field in mdf_forge_fields:
+			widget = self.generate_field(model=mdf_forge,field=field)
 			widget.setSizePolicy(QtGui.QSizePolicy.Maximum,QtGui.QSizePolicy.Preferred)
 			self.filters_dict[getattr(mdf_forge,field).info['verbose_name']] = widget
 			self.filter_fields.addWidget(widget)
@@ -94,7 +103,6 @@ class GSAQuery(QtGui.QWidget):
 		# self.results.setFixedHeight(300)
 
 		self.preview = PreviewWidget()
-		self.results.results_table.clicked.connect(lambda x: self.preview.select(self.results.results_model,x))
 		# self.results.plot.scatter_plot.sigClicked.connect(lambda x: self.preview.select(self.results.results_model,x[0]))
 
 		self.addFilterBtn = QtGui.QPushButton('Add Filter')
@@ -133,8 +141,14 @@ class GSAQuery(QtGui.QWidget):
 		self.layout.addWidget(resultsLayout,1,1)
 		
 	
-	def generate_field(self,field):
-		cla = mdf_forge
+	def generate_field(self,model,field):
+		"""
+		Generates an input selected field of selected model.
+
+		model:			sqlalchemy model to which the field corresponds
+		field:			column within the sqlalchemy model
+		"""
+		cla = model
 		if sql_validator['int'](getattr(cla,field)) == True:
 			vf = ValueFilter(model=cla,field=field,validate=int)
 			vf.input.returnPressed.connect(lambda: self.addFilter(self.filter_fields.currentWidget()))
@@ -153,17 +167,25 @@ class GSAQuery(QtGui.QWidget):
 			raise ValueError('Field %s data type (%s) not recognized.'%(field,getattr(cla,field).property.columns[0].type))
 
 	def populate_secondary(self,selection):
+		"""
+		Populates secondary selection combo box with fields corresponding to the primary selection model.
+		"""
 		selection_list = {
-			'Sample Fields': mdf_forge_fields,
-			'Raman Analysis Fields': raman_spectrum_fields,
-			'SEM Analysis Fields': sem_postprocess_fields
+			'Sample Fields': {'fields':mdf_forge_fields,'model':mdf_forge},
+			'Raman Analysis Fields': {'fields':raman_spectrum_fields,'model':None},
+			'SEM Analysis Fields': {'fields':sem_postprocess_fields,'model':None}
 			}
 
-		cla = mdf_forge
 		self.secondary_selection.clear()
-		self.secondary_selection.addItems([getattr(cla,v).info['verbose_name'] for v in selection_list[selection]])
+		self.secondary_selection.addItems([getattr(selection_list[selection]['model'],v).info['verbose_name'] for v in selection_list[selection]['fields']])
 
 	def addFilter(self,widget):
+		"""
+		Adds filter to search query. Three actions take place:
+			- A row is added to filter_table
+			- A sqlalchemy filter object is appended to the filters list
+			- A SQL query is performed using new filters list.
+		"""
 		if widget.valid():
 			self.filters.append(widget.sqlalchemy_filter())
 			row = self.filter_table.rowCount()
@@ -177,16 +199,36 @@ class GSAQuery(QtGui.QWidget):
 			delRowBtn.clicked.connect(self.deleteRow)
 			self.filter_table.setCellWidget(row,3,delRowBtn)
 			widget.clear()
-			self.results.query(self.filters)
+			self.query(self.filters)
 
 	def deleteRow(self):
+		"""
+		Deletes filter associated with row in filter_table when delete button is activated. Three actions take place:
+			- The row is deleted from filter_table
+			- The corresponding sqlalchemy filter object is removed from the filters list
+			- A SQL query is performed using new filters list. 
+		"""
 		row = self.filter_table.indexAt(self.sender().parent().pos()).row()
 		if row >= 0:
 			self.filter_table.removeRow(row)
 			del self.filters[row]
-			self.results.query(self.filters)
+			self.query(self.filters)
+
+	def query(self,filters):
+		"""
+		Runs query on results widget. This is a separate function so as to make the selection signal work properly.
+		This is because the model must be set before selection signalling can be connected.
+		"""
+		self.results.query(self.filters)
+		self.results.results_table.selectionModel().currentChanged.connect(lambda x: self.preview.select(self.results.results_model,x))
 
 class ValueFilter(QtGui.QWidget):
+	"""
+	Creates new filter input for numeric fields.
+
+	model:			sqlalchemy model to which the field corresponds
+	field:			column within the sqlalchemy model
+	"""
 	def __init__(self,model,field,validate=None,parent=None):
 		super(ValueFilter,self).__init__(parent=parent)
 		self.field = field
@@ -234,6 +276,12 @@ class ValueFilter(QtGui.QWidget):
 		self.input.clear()
 
 class ClassFilter(QtGui.QWidget):
+	"""
+	Creates new filter input for class (string) fields.
+
+	model:			sqlalchemy model to which the field corresponds
+	field:			column within the sqlalchemy model
+	"""
 	def __init__(self,model,field,validate=None,classes=[],parent=None):
 		super(ClassFilter,self).__init__(parent=parent)
 		self.field = field
@@ -273,6 +321,14 @@ class ClassFilter(QtGui.QWidget):
 		pass
 
 class PreviewWidget(QtGui.QTabWidget):
+	"""
+	Widget for displaying data associated with selected sample. Contains tabs for:
+		-Graphene details
+		-SEM data (raw and postprocessed)
+		-Raman data (raw and postprocessed)
+		-Recipe visualization
+		-Provenance information
+	"""
 	def __init__(self,parent=None):
 		super(PreviewWidget,self).__init__(parent=parent)
 		self.detail_tab = FieldsDisplayWidget(fields=mdf_forge_fields,model=mdf_forge)
@@ -286,36 +342,22 @@ class PreviewWidget(QtGui.QTabWidget):
 		self.addTab(QtGui.QWidget(),'Provenance')
 
 	def select(self,model,index):
-		print(index.row())
+		"""
+		Select index from ResultsTableModel model.
+
+		model:				ResultsTableModel object
+		index:				Index from ResultsWidget table.
+		"""
 		self.detail_tab.setData(model,index)
 
-# class GrapheneWidget(QtGui.QWidget):
-# 	def __init__(self,parent=None):
-# 		super(GrapheneWidget,self).__init__(parent=parent)
-# 		self.layout = QtGui.QGridLayout(self)
-# 		self.layout.setAlignment(QtCore.Qt.AlignTop)
-# 		self.fields = {}
-
-# 		elements_per_row = 6
-# 		for f,field in enumerate(mdf_forge_fields):
-# 			self.fields[field] = {}
-# 			self.fields[field]['label'] = QtGui.QLabel(getattr(mdf_forge,field).info['verbose_name'])
-# 			self.fields[field]['label'].setWordWrap(True)
-# 			self.fields[field]['label'].setMinimumWidth(120)
-# 			self.fields[field]['value'] = QtGui.QLabel()
-# 			self.fields[field]['value'].setMinimumWidth(50)
-# 			self.fields[field]['value'].setAlignment(QtCore.Qt.AlignRight)
-# 			self.layout.addWidget(self.fields[field]['label'],f%elements_per_row,2*(f//elements_per_row))
-# 			self.layout.addWidget(self.fields[field]['value'],f%elements_per_row,2*(f//elements_per_row)+1)
-
-# 	def setData(self,model,index):
-# 		for field in mdf_forge_fields:
-# 			value = model.df[field].iloc[index.row()]
-# 			if pd.isnull(value):
-# 				value = ''
-# 			self.fields[field]['value'].setText(str(value))
-
 class ResultsWidget(QtGui.QTabWidget):
+	"""
+	Widget for displaying results associated with a query. Contains tabs:
+		- Results:				Each row associated with a sample and column corresponding to 
+								a field. Clicking a row selects that sample for the PreviewWidget.
+		- t-SNE:				Allows users to conduct t-SNE visualization on queried data.
+		- Plot:					Allows users to scatter plot queried data.
+	"""
 	def __init__(self,parent=None):
 		super(ResultsWidget,self).__init__(parent=parent)
 		self.setTabPosition(QtGui.QTabWidget.North)
@@ -334,6 +376,11 @@ class ResultsWidget(QtGui.QTabWidget):
 		self.addTab(self.tsne,'t-SNE')
 
 	def query(self,filters):
+		"""
+		Queries SQL database using list of sqlalchemy filters.
+
+		filters:				list of sqlalchemy filters
+		"""
 		self.results_model = ResultsTableModel()
 		if len(filters)>0:
 			with dal.session_scope() as session:
@@ -349,6 +396,12 @@ class ResultsWidget(QtGui.QTabWidget):
 		self.tsne.setModel(self.results_model)
 
 class FieldsDisplayWidget(QtGui.QScrollArea):
+	"""
+	Generic widget that creates a display from the selected fields from a particular model. 
+
+	fields:	The fields from the model to generate the form. Note: fields must exist in the model.
+	model:	The model to base the display on.
+	"""
 	def __init__(self,fields,model,elements_per_col=100,parent=None):
 		super(FieldsDisplayWidget,self).__init__(parent=parent)
 		self.contentWidget = QtGui.QWidget()
@@ -369,9 +422,16 @@ class FieldsDisplayWidget(QtGui.QScrollArea):
 			self.layout.addWidget(self.fields[field]['value'],f%elements_per_col,2*(f//elements_per_col)+1)
 
 		self.setWidgetResizable(True)
+		self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
 		self.setWidget(self.contentWidget)
 
 	def setData(self,model,index):
+		"""
+		Update data displayed in the FieldsDisplayWidget for selected index in ResultsTableModel.
+
+		model:				ResultsTableModel object
+		index:				Index from ResultsWidget table.
+		"""
 		for field in self.fields.keys():
 			if field in model.df.columns:
 				value = model.df[field].iloc[index.row()]

@@ -69,8 +69,9 @@ def build_db(session,filepath):
         session.add(pr)
         session.add(r)
         session.commit()
+
+        total_steps = 0
         # Annealing
-        time = 0
         for step,j in enumerate(range(31,109,13)):
             prep = preparation_step()
             prep.name = "Annealing"
@@ -79,11 +80,10 @@ def build_db(session,filepath):
                 value = data.iloc[i,j+p]
                 dbkey = var_map[col_names[j+p]][0]
                 if pd.isnull(value) == False:
-                    if dbkey == "timestamp":
-                        time += float(value)
-                        value = time
-                    setattr(prep,dbkey,time)
-            if prep.timestamp != None:
+                    setattr(prep,dbkey,value)
+            if prep.duration != None:
+                prep.step = total_steps
+                total_steps += 1
                 session.add(prep)
         # Growing
         for step,j in enumerate(range(109,188,13)):
@@ -94,11 +94,10 @@ def build_db(session,filepath):
                 value = data.iloc[i,j+p]
                 dbkey = var_map[col_names[j+p]][0]
                 if pd.isnull(value) == False:
-                    if dbkey == "timestamp":
-                        time += float(value)
-                        value = time
                     setattr(prep,dbkey,value)
-            if prep.timestamp != None:
+            if prep.duration != None:
+                prep.step = total_steps
+                total_steps += 1
                 session.add(prep)
         # Cooling
         for step,j in enumerate(range(190,268,13)):
@@ -110,11 +109,10 @@ def build_db(session,filepath):
                 value = data.iloc[i,j+p]
                 dbkey = var_map[col_names[j+p]][0]
                 if pd.isnull(value) == False:
-                    if dbkey == "timestamp":
-                        time += float(value)
-                        value = time
                     setattr(prep,dbkey,value)
-            if prep.timestamp != None:
+            if prep.duration != None:
+                prep.step = total_steps
+                total_steps += 1
                 session.add(prep)
         session.commit()
 
