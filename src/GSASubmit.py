@@ -981,6 +981,11 @@ class ReviewTab(QtGui.QScrollArea):
 					error_dialog.setInformativeText(str(error))
 					error_dialog.exec()
 					return
+				else:
+					success_dialog = QtGui.QMessageBox(self)
+					success_dialog.setText("Recipe successfully submitted.")
+					success_dialog.setWindowModality(QtCore.Qt.WindowModal)
+					success_dialog.exec()
 
 		confirmation_dialog.buttonClicked.connect(upload_wrapper)
 		confirmation_dialog.exec()
