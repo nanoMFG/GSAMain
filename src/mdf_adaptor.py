@@ -2,6 +2,9 @@ from mdf_connect_client import MDFConnectClient
 from datetime import datetime
 import uuid
 
+class MDFException(Exception):
+    """Exceptions related to the MDF Service"""
+
 class MDFAdaptor:
     def __init__(self):
         self.mdfcc = MDFConnectClient(test=True, service_instance="prod")
@@ -38,12 +41,17 @@ class MDFAdaptor:
 
         print("\n\n\n\n------>",submission)
 
-        mdf_result = self.mdfcc.submit_dataset(submission=submission)
+        try:
+            mdf_result = self.mdfcc.submit_dataset(submission=submission)
+        except Exception as e:
+            print("Exception submitting dataset to mdf ", str(e))
+            raise MDFException(e)
+
         if not mdf_result["success"]:
             self.mdfcc.reset_submission()
             print("\n\n\n--->Error-----> "+mdf_result['error'])
-            return mdf_result["error"]
+            raise MDFException(mdf_result['error'])
 
         print("Submitted to MDF -----> "+str(mdf_result))
         self.mdfcc.reset_submission()
-        return None
+        return mdf_result['source_id']

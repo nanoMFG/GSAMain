@@ -15,7 +15,7 @@ from GSAQuery import GSAQuery
 from GSAImage import GSAImage
 # import GSARaman
 from gresq.recipe import Recipe
-from mdf_adaptor import MDFAdaptor
+from mdf_adaptor import MDFAdaptor, MDFException
 import pyqtgraph as pg
 
 
@@ -973,19 +973,21 @@ class ReviewTab(QtGui.QScrollArea):
 
 		def upload_wrapper(btn):
 			if btn.text() == "OK":
-				error = self.upload_to_mdf(full_response)
-				if error:
-					error_dialog = QtGui.QMessageBox(self)
-					error_dialog.setWindowModality(QtCore.Qt.WindowModal)
-					error_dialog.setText("Submission Error!")
-					error_dialog.setInformativeText(str(error))
-					error_dialog.exec()
-					return
-				else:
+				try:
+					dataset_id = self.upload_to_mdf(full_response)
 					success_dialog = QtGui.QMessageBox(self)
 					success_dialog.setText("Recipe successfully submitted.")
 					success_dialog.setWindowModality(QtCore.Qt.WindowModal)
 					success_dialog.exec()
+
+				except MDFException as e:
+					error_dialog = QtGui.QMessageBox(self)
+					error_dialog.setWindowModality(QtCore.Qt.WindowModal)
+					error_dialog.setText("Submission Error!")
+					error_dialog.setInformativeText(str(e))
+					error_dialog.exec()
+					return
+
 
 		confirmation_dialog.buttonClicked.connect(upload_wrapper)
 		confirmation_dialog.exec()
