@@ -9,7 +9,7 @@ class MDFAdaptor:
     def __init__(self):
         self.mdfcc = MDFConnectClient(test=True, service_instance="prod")
 
-    def upload(self, recipe, box_file):
+    def upload_recipe(self, recipe, box_file):
         experiment_date = datetime.now()
 
         self.mdfcc.create_dc_block(title="Graphene Synthesis Sample " + "TBD",
