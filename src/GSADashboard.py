@@ -14,6 +14,7 @@ from gresq.forge2db import build_db
 from GSAQuery import GSAQuery
 from GSAImage import GSAImage
 from GSASubmit import GSASubmit
+# from GSARaman import GSARaman
 
 class GSADashboard(QtGui.QTabWidget):
 	def __init__(self,parent=None,mode='local', box_config_path=None):
@@ -22,11 +23,11 @@ class GSADashboard(QtGui.QTabWidget):
 		self.query_tab = GSAQuery()
 		self.image_tab = GSAImage(mode=mode).widget()
 		self.submit_tab =  GSASubmit(mode=mode,box_config_path=box_config_path)
-		self.raman_tab =  QtGui.QWidget()
+		self.raman_tab = QtGui.QWidget()
 
 		self.addTab(self.query_tab,'Query')
 		self.addTab(self.image_tab,'SEM Analysis')
-		self.addTab(self.raman_tab,'Raman Analysis')
+		# self.addTab(self.raman_tab,'Raman Analysis')
 		self.addTab(self.submit_tab,'Submit')
 
 if __name__ == '__main__':
