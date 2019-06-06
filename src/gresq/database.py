@@ -259,7 +259,9 @@ class preparation_step(Base):
 
 class author(Base):
     __tablename__ = 'authors'
-    sample_id = Column(Integer,ForeignKey(sample.id),primary_key=True,info={'verbose_name':'Sample ID'})
+    id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
+    sample_id = Column(Integer,ForeignKey(sample.id),info={'verbose_name':'Sample ID'})
+    raman_id = Column(Integer,ForeignKey(raman_set.id),info={'verbose_name':'Raman Set ID'})
     first_name = Column(String(64), primary_key=True, info={
         'verbose_name':'First Name',
         'required': False})
@@ -332,6 +334,7 @@ class raman_set(Base):
     __tablename__ = 'raman_set'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
     raman_spectra = relationship("raman_spectrum")
+    authors = relationship("author")
     d_to_g = Column(Float,info={'verbose_name':'Weighted D/G'})
     gp_to_g = Column(Float,info={'verbose_name':'Weighted G\'/G'})
     d_peak_shift = Column(Float,info={
@@ -376,6 +379,27 @@ class raman_set(Base):
         'std_unit': 'cm^-1',
         'required': False
         })
+
+    def json_encodable(self):
+        params = [
+            "d_to_g",
+            "gp_to_g",
+            "d_peak_shift",
+            "d_peak_amplitude",
+            "d_fwhm",
+            "g_peak_shift",
+            "g_peak_amplitude",
+            "g_fwhm",
+            "g_prime_peak_shift",
+            "g_prime_peak_amplitude",
+            "g_prime_fwhm"
+        ]
+        json_dict = {}
+        json_dict["authors"] = [s.json_encodable() for s in self.authors]
+        for p in params:
+            json_dict[p] = {'value':getattr(self,p),'unit':getattr(raman_spectrum,p).info['std_unit']}
+
+        return json_dict
 
 class raman_file(Base):
     __tablename__ = 'raman_file'
@@ -464,7 +488,7 @@ class raman_spectrum(Base):
             "g_fwhm",
             "g_prime_peak_shift",
             "g_prime_peak_amplitude",
-            "g_prime_fwhm",
+            "g_prime_fwhm"
         ]
         json_dict = {}
         json_dict['raman_file'] = self.raman_file.json_encodable()
