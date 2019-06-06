@@ -41,6 +41,8 @@ pg.mkPen('k')
 class GSARaman(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(GSARaman,self).__init__(parent=parent)
+        self.singleSpect=SingleSpect()
+        self.mapFit=MapFit()
         self.resize(1100,600)
         self.spect_type=''
         self.data=[]
@@ -49,8 +51,8 @@ class GSARaman(QtWidgets.QWidget):
         self.layout.setAlignment(QtCore.Qt.AlignTop)
 
         self.displayWidget=QtWidgets.QStackedWidget()
-        self.displayWidget.addWidget(SingleSpect)
-        self.displayWidget.addWidget(MapFit)
+        self.displayWidget.addWidget(self.singleSpect)
+        self.displayWidget.addWidget(self.mapFit)
         self.layout.addWidget(self.displayWidget,2,0,1,3)
 
         self.flbut=QtWidgets.QPushButton('Upload File')
@@ -145,7 +147,7 @@ class GSARaman(QtWidgets.QWidget):
                     sing_i+=1
                 shutil.copy2(flnm,self.newpath)
 
-                self.widget=SingleSpect
+                self.widget=self.singleSpect
                 self.displayWidget.setCurrentWidget(self.widget)
 
                 x=np.array(self.data.iloc[:,0])
@@ -162,7 +164,7 @@ class GSARaman(QtWidgets.QWidget):
                     map_i+=1
                 shutil.copy2(flnm[0],self.newpath)
 
-                self.widget=MapFit
+                self.widget=self.mapFit
                 self.displayWidget.setCurrentWidget(self.widget)
 
                 self.widget.mapLoop(self.data)
@@ -966,9 +968,8 @@ def auto_fitting(flnm):
     #    else:
     #            return
 
-app=QtWidgets.QApplication([])
-SingleSpect=SingleSpect()
-MapFit=MapFit()
-raman=GSARaman()
-raman.show()
-app.exec_()
+if __name__=='__main__':
+    app=QtWidgets.QApplication([])
+    raman=GSARaman()
+    raman.show()
+    app.exec_()

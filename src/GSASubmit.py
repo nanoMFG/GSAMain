@@ -882,17 +882,17 @@ class ReviewTab(QtGui.QScrollArea):
 				if files_response['Characteristic Percentage'] != None:
 					rf.percent = float(files_response['Characteristic Percentage'][ri]) 
 
-				# params = GSARaman.autofitting(GSARaman.checkflnm(ram))
+				params = GSARaman.autofitting(GSARaman.checkflnm(ram))
 				r = raman_spectrum()
 				r.raman_file_id = rf.id
 				r.set_id = rs.id
-				# for peak in params.keys():
-				# 	for v in params[peak].keys():
-				# 		setattr(r,peak+v,params[peak][v])
-				# session.add(r)
+				for peak in params.keys():
+					for v in params[peak].keys():
+						setattr(r,peak+v,params[peak][v])
+				session.add(r)
 				session.add(rf)
 				session.commit()
-			# session.add(rs)
+			session.add(rs)
 			session.commit()
 
 			# Recipe
