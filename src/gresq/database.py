@@ -59,7 +59,7 @@ from sqlalchemy.orm import relationship, backref
 # Declarative classes to define GresQ DB schema
 
 class sample(Base):
-    __tablename__ = 'samples'
+    __tablename__ = 'sample'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
     authors = relationship("author")
     experiment_date = Column(Date,default=datetime.date.today,info={
@@ -85,7 +85,7 @@ class sample(Base):
         }
 
 class recipe(Base):
-    __tablename__ = 'recipes'
+    __tablename__ = 'recipe'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
     sample_id = Column(Integer,ForeignKey(sample.id),info={'verbose_name':'Sample ID'})
     # SUBSTRATE
@@ -161,7 +161,7 @@ class recipe(Base):
         return json_dict
 
 class preparation_step(Base):
-    __tablename__ = 'preparation_steps'
+    __tablename__ = 'preparation_step'
     recipe_id = Column(Integer,ForeignKey(recipe.id),primary_key=True,info={'verbose_name':'Recipe ID'})
     step = Column(Integer,primary_key=True)
     name = Column(String(16),primary_key=True,info={
@@ -258,14 +258,14 @@ class preparation_step(Base):
         return json_dict
 
 class author(Base):
-    __tablename__ = 'authors'
+    __tablename__ = 'author'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    sample_id = Column(Integer,ForeignKey(sample.id),info={'verbose_name':'Sample ID'})
-    raman_id = Column(Integer,ForeignKey(raman_set.id),info={'verbose_name':'Raman Set ID'})
-    first_name = Column(String(64), primary_key=True, info={
+    sample_id = Column(Integer,ForeignKey('sample.id'),info={'verbose_name':'Sample ID'})
+    raman_id = Column(Integer,ForeignKey('raman_set.id'),info={'verbose_name':'Raman Set ID'})
+    first_name = Column(String(64), info={
         'verbose_name':'First Name',
         'required': False})
-    last_name = Column(String(64), primary_key=True, info={
+    last_name = Column(String(64), info={
         'verbose_name':'Last Name',
         'required': False})
     institution = Column(String(64), info={'verbose_name':'Institution'})
@@ -351,16 +351,16 @@ class raman_set(Base):
         'std_unit': 'cm^-1',
         'required': False
         })
-    g_peak_shift = Column(Float,primary_key=True,info={
+    g_peak_shift = Column(Float,info={
         'verbose_name':'Weighted G Peak Shift',
         'std_unit': 'cm^-1',
         'required': False
         })
-    g_peak_amplitude = Column(Float,primary_key=True,info={
+    g_peak_amplitude = Column(Float,info={
         'verbose_name':'Weighted G Peak Amplitude',
         'std_unit':None,
         'required': False})
-    g_fwhm = Column(Float,primary_key=True,info={
+    g_fwhm = Column(Float,info={
         'verbose_name':'Weighted G FWHM',
         'std_unit': 'cm^-1',
         'required': False
@@ -404,14 +404,8 @@ class raman_set(Base):
 class raman_file(Base):
     __tablename__ = 'raman_file'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    sample_id = Column(Integer,ForeignKey(sample.id),primary_key=True)
-    filename = Column(String(64),primary_key=True)
-    percent = Column(Float,info={
-        'verbose_name':'Characteristic Percent',
-        'std_unit': '%',
-        'conversions': {'%':1},
-        'required': True
-        })
+    sample_id = Column(Integer,ForeignKey(sample.id))
+    filename = Column(String(64))
     wavelength = Column(Float,info={
         'verbose_name':'Wavelength',
         'std_unit': 'nm',
@@ -421,7 +415,6 @@ class raman_file(Base):
 
     def json_encodable(self):
         params = [
-            'percent',
             'wavelength'
         ]
         json_dict = {}
@@ -432,9 +425,15 @@ class raman_file(Base):
 
 class raman_spectrum(Base):
     __tablename__ = 'raman_spectrum'
-    set_id = Column(Integer,ForeignKey(raman_set.id),primary_key=True,info={'verbose_name':'Sample ID'})
+    set_id = Column(Integer,ForeignKey(raman_set.id),info={'verbose_name':'Sample ID'})
     raman_file_id = Column(Integer,ForeignKey(raman_file.id),primary_key=True)
     raman_file = relationship("raman_file",uselist=False)
+    percent = Column(Float,info={
+        'verbose_name':'Characteristic Percent',
+        'std_unit': '%',
+        'conversions': {'%':1},
+        'required': True
+        })
     d_peak_shift = Column(Float,info={
         'verbose_name':'D Peak Shift',
         'std_unit': 'cm^-1',
@@ -449,16 +448,16 @@ class raman_spectrum(Base):
         'std_unit': 'cm^-1',
         'required': False
         })
-    g_peak_shift = Column(Float,primary_key=True,info={
+    g_peak_shift = Column(Float,info={
         'verbose_name':'G Peak Shift',
         'std_unit': 'cm^-1',
         'required': False
         })
-    g_peak_amplitude = Column(Float,primary_key=True,info={
+    g_peak_amplitude = Column(Float,info={
         'verbose_name':'G Peak Amplitude',
         'std_unit':None,
         'required': False})
-    g_fwhm = Column(Float,primary_key=True,info={
+    g_fwhm = Column(Float,info={
         'verbose_name':'G FWHM',
         'std_unit': 'cm^-1',
         'required': False
@@ -480,6 +479,7 @@ class raman_spectrum(Base):
 
     def json_encodable(self):
         params = [
+            "percent",
             "d_peak_shift",
             "d_peak_amplitude",
             "d_fwhm",

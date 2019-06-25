@@ -898,8 +898,8 @@ def checkFileType(flnm):
     else:
         data=pd.read_table(flnm[0])
 
-    cols=self.data.shape[1]        
-    rows=self.data.shape[0]
+    cols=data.shape[1]        
+    rows=data.shape[0]
 
     if cols == 1:
         data=pd.DataFrame(data.iloc[0:rows/2,0],data.iloc[rows/2:rows,0])
@@ -911,14 +911,14 @@ def checkFileType(flnm):
     return data
 
 def auto_fitting(flnm):
-    data=checkFileType(flnm)
+    data=checkFileType([flnm])
 
     x=np.array(data.iloc[:,0])
     y=np.array(data.iloc[:,1])
 
     y_norm=[]
     for i in y:
-            y_norm.append((i-np.min(y))/(np.max(y)-np.min(y)))
+        y_norm.append((i-np.min(y))/(np.max(y)-np.min(y)))
 
     I=backgroundFit(x,y_norm)
 
