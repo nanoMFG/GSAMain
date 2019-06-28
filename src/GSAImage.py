@@ -965,10 +965,11 @@ class FilterPattern(Modification):
 		self.wLayout.addWidget(self.wImgBox,9,0,4,4)
 		self.wLayout.addWidget(self.wFilterList,4,0,5,3)
 		self.wLayout.addWidget(self.wAdd,4,3)
-		self.wLayout.addWidget(self.wRemove,7,3)
 		self.wLayout.addWidget(self.wErase,5,3)
-		self.wLayout.addWidget(self.wExportMask,6,3)
-		self.wLayout.addWidget(self.wCustom, 8, 3)
+		self.wLayout.addWidget(self.wCustom, 6, 3)
+		self.wLayout.addWidget(self.wRemove,7,3)
+		self.wLayout.addWidget(self.wExportMask,8,3)
+		
 
 		self.wThreshSlider.valueChanged.connect(self.update_view)
 		self.wComboBox.currentIndexChanged.connect(self.update_view)

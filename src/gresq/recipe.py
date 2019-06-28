@@ -1,6 +1,7 @@
 class Recipe:
     def __init__(self, recipe_dict):
         self.recipe = recipe_dict
+        self.preparation_steps = recipe_dict['recipe']['preparation_steps']
 
     def max_temp(self):
         """

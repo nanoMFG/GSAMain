@@ -13,7 +13,7 @@ from gresq.config import config
 from gresq.csv2db import build_db
 from GSAQuery import GSAQuery
 from GSAImage import GSAImage
-# import GSARaman
+import GSARaman
 from gresq.recipe import Recipe
 from mdf_adaptor import MDFAdaptor, MDFException
 import pyqtgraph as pg
@@ -803,7 +803,7 @@ class ReviewTab(QtGui.QScrollArea):
 			if len(files_response['Raman Files'])>0:
 				try:
 					sm = []
-					for i in files['Characteristic Percentage']:
+					for i in files_response['Characteristic Percentage']:
 						if i != '':
 							sm.append(float(i))
 					sm = sum(sm)
@@ -873,26 +873,47 @@ class ReviewTab(QtGui.QScrollArea):
 			
 			### RAMAN IS A SEPARATE DATASETS FROM SAMPLE ###
 			rs = raman_set()
+			session.add(rs)
+			session.commit()
 			for ri,ram in enumerate(files_response['Raman Files']):
 				rf = raman_file()
 				rf.filename = os.path.basename(ram)
 				rf.sample_id = s.id
 				if files_response['Raman Wavength'] != None:
 					rf.wavelength = files_response['Raman Wavength']
-				if files_response['Characteristic Percentage'] != None:
-					rf.percent = float(files_response['Characteristic Percentage'][ri]) 
+				session.add(rf)
+				session.commit()
 
-				params = GSARaman.autofitting(GSARaman.checkflnm(ram))
+				params = GSARaman.auto_fitting(ram)
 				r = raman_spectrum()
 				r.raman_file_id = rf.id
 				r.set_id = rs.id
+				if files_response['Characteristic Percentage'] != None:
+					r.percent = float(files_response['Characteristic Percentage'][ri]) 
+				else:
+					r.percent = 0.
 				for peak in params.keys():
 					for v in params[peak].keys():
-						setattr(r,peak+v,params[peak][v])
+						key = "%s_%s"%(peak,v)
+						setattr(r,key,params[peak][v])
 				session.add(r)
-				session.add(rf)
 				session.commit()
-			session.add(rs)
+			
+			rs_fields = [
+			"d_peak_shift",
+			"d_peak_amplitude",
+			"d_fwhm",
+			"g_peak_shift",
+			"g_peak_amplitude",
+			"g_fwhm",
+			"g_prime_peak_shift",
+			"g_prime_peak_amplitude",
+			"g_prime_fwhm"
+			]
+			for field in rs_fields:
+				setattr(rs,field,sum([getattr(spect,field)*getattr(spect,'percent')/100. for spect in rs.raman_spectra]))
+			rs.d_to_g = sum([getattr(spect,'d_peak_amplitude')/getattr(spect,'g_peak_amplitude')*getattr(spect,'percent')/100. for spect in rs.raman_spectra])
+			rs.gp_to_g = sum([getattr(spect,'g_prime_peak_amplitude')/getattr(spect,'g_peak_amplitude')*getattr(spect,'percent')/100. for spect in rs.raman_spectra])
 			session.commit()
 
 			# Recipe
