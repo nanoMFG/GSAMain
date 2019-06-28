@@ -14,7 +14,7 @@ class MDFAdaptor:
                                    affiliations=[auth['institution'] for auth in recipe.authors],
                                    publication_year=recipe.experiment_year
                                    )
-        self.mdfcc.add_data(box_file.get_shared_link_download_url(access='open'))
+        self.mdfcc.add_data_source(box_file.get_shared_link_download_url(access='open'))
 
         # Don't publish specific recipes. Later on, we will bundle datasets and
         # and publish an omnibus dataset
