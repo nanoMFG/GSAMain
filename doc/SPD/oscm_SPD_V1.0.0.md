@@ -46,7 +46,7 @@ The OSCM client for Gr-resQ tool is divided into 3 parts: OSCM Client python pac
 
 The OSCM client for Gr-resQ is just one component of OSCM stack. This component is not essential for the OSCM platform, but it provides an alternative front end tool to OSCM. The current OSCM front end is web-based (https://oscm-il.mechse.illinois.edu). The idea is that this new client will provide an alternative front end to OSCM, while allowing nanoHUB users to get process data from different graphene experiments. The following figure provides details of the current and proposed implementation.    
 
-Figure goes here ... ![OSCM_implementation](https://user-images.githubusercontent.com/49960802/60469606-f5e8b300-9c22-11e9-998e-6c8e24767266.png)
+![OSCM_implementation](https://user-images.githubusercontent.com/49960802/60469606-f5e8b300-9c22-11e9-998e-6c8e24767266.png)
 
 ### 2.2 Scope and Limitations for Current Release
 <!--List the all planned goals/features for this release.  These should be links to issues.  Add a new subsection for each release.  Equally important, document feature you explicity are not doing at this time-->
