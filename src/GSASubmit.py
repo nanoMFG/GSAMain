@@ -58,6 +58,8 @@ properties_fields = [
 	"shape"
 ]
 
+author_fields = ["first_name","last_name","institution"]
+
 sql_validator = {
 	'int': lambda x: isinstance(x.property.columns[0].type,Integer),
 	'float': lambda x: isinstance(x.property.columns[0].type,Float),
@@ -982,8 +984,9 @@ class ReviewTab(QtGui.QScrollArea):
 				session.add(a)
 				session.commit()
 
-			json_file = s.json_encodable()
-		full_response = {'json':json_file}
+			sample_json = s.json_encodable()
+			raman_json = rs.json_encodable()
+		full_response = {'json':sample_json}
 		full_response.update(files_response)
 
 		confirmation_dialog = QtGui.QMessageBox(self)
@@ -1012,6 +1015,119 @@ class ReviewTab(QtGui.QScrollArea):
 		confirmation_dialog.exec()
 
 		return full_response	
+
+
+def make_test_dict(test_sem_file=None,test_raman_file=None):
+	dal.init_db(config['development'])
+	Base.metadata.drop_all(bind=dal.engine)
+	Base.metadata.create_all(bind=dal.engine)
+	def random_fill(field_name,model):
+		import random, string, datetime
+		field = getattr(model,field_name)
+		if sql_validator['str'](field):
+			return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+		elif sql_validator['int'](field):
+			return np.random.randint(100)
+		elif sql_validator['float'](field):
+			return np.random.randn()
+		elif sql_validator['date'](field):
+			return datetime.datetime.today()
+		else:
+			return None
+
+	with dal.session_scope() as session:
+		s = sample()
+		for field in sample_fields:
+			setattr(s,field,random_fill(field,sample))
+		session.add(s)
+		session.commit()
+
+		if test_sem_file:
+			sf = sem_file()
+			sf.sample_id = s.id
+			sf.filename = os.path.basename(test_sem_file)
+			session.add(sf)
+			session.commit()
+
+		c = recipe()
+		c.sample_id = s.id
+		for field in recipe_fields:
+			setattr(c,field,random_fill(field,recipe))
+		session.add(c)
+		session.commit()
+
+		for n, name in enumerate(["Annealing","Growing","Cooling"]):
+			p = preparation_step()
+			p.recipe_id = c.id
+			p.step = n
+			p.name = name
+			for field in preparation_fields:
+				if field != "name":
+					setattr(p,field,random_fill(field,preparation_step))
+			session.add(p)
+			session.commit()
+
+		pr = properties()
+		pr.sample_id = s.id
+		for field in properties_fields:
+			setattr(pr,field,random_fill(field,properties))
+		session.add(pr)
+		session.commit()
+
+		for _ in range(3):
+			a = author()
+			a.sample_id = s.id
+			for field in author_fields:
+				setattr(a,field,random_fill(field,author))
+			session.add(a)
+			session.commit()
+
+		if test_raman_file:
+			rs = raman_set()
+			session.add(rs)
+			session.commit()
+			for ri,ram in enumerate([test_raman_file]):
+				rf = raman_file()
+				rf.filename = os.path.basename(ram)
+				rf.sample_id = s.id
+				if files_response['Raman Wavength'] != None:
+					rf.wavelength = 800
+				session.add(rf)
+				session.commit()
+
+				params = GSARaman.auto_fitting(ram)
+				r = raman_spectrum()
+				r.raman_file_id = rf.id
+				r.set_id = rs.id
+				r.percent = 100.
+				for peak in params.keys():
+					for v in params[peak].keys():
+						key = "%s_%s"%(peak,v)
+						setattr(r,key,params[peak][v])
+				session.add(r)
+				session.commit()
+			
+			rs_fields = [
+			"d_peak_shift",
+			"d_peak_amplitude",
+			"d_fwhm",
+			"g_peak_shift",
+			"g_peak_amplitude",
+			"g_fwhm",
+			"g_prime_peak_shift",
+			"g_prime_peak_amplitude",
+			"g_prime_fwhm"
+			]
+			for field in rs_fields:
+				setattr(rs,field,sum([getattr(spect,field)*getattr(spect,'percent')/100. for spect in rs.raman_spectra]))
+			rs.d_to_g = sum([getattr(spect,'d_peak_amplitude')/getattr(spect,'g_peak_amplitude')*getattr(spect,'percent')/100. for spect in rs.raman_spectra])
+			rs.gp_to_g = sum([getattr(spect,'g_prime_peak_amplitude')/getattr(spect,'g_peak_amplitude')*getattr(spect,'percent')/100. for spect in rs.raman_spectra])
+			session.commit()
+
+		if test_raman_file:
+			return s.json_encodable, rs.json_encodable()
+		else:
+			return s.json_encodable(), None
 
 
 if __name__ == '__main__':
