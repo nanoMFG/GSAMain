@@ -312,7 +312,7 @@ class CreateTransaction(QtWidgets.QWidget):
             'end': None,
             'processing': None,
             'quantity': self.quantity.text(),
-            'instructions': self.instructions.text() if self.instructions.text() else 'no special instructions for this job'
+            'instructions': self.instructions.toPlainText() if self.instructions.toPlainText() else 'no special instructions for this job'
         }
 
         # validate form. If validation does no pass, show msg with corresponding warning
