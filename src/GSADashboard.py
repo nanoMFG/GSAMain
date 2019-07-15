@@ -3,7 +3,7 @@ import numpy as np
 import scipy as sc
 import cv2, sys, time, json, copy, subprocess, os
 from skimage import transform
-from PyQt5 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore, QtWidgets
 import pyqtgraph as pg
 from gresq.database import sample, preparation_step, dal, Base
 from sqlalchemy import String, Integer, Float, Numeric
@@ -15,6 +15,7 @@ from GSAQuery import GSAQuery
 from GSAImage import GSAImage
 from GSASubmit import GSASubmit
 # from GSARaman import GSARaman
+from GSAOscm import GSAOscm
 
 class GSADashboard(QtGui.QTabWidget):
 	def __init__(self,parent=None,mode='local', box_config_path=None):
@@ -24,11 +25,14 @@ class GSADashboard(QtGui.QTabWidget):
 		self.image_tab = GSAImage(mode=mode).widget()
 		self.submit_tab =  GSASubmit(mode=mode,box_config_path=box_config_path)
 		self.raman_tab = QtGui.QWidget()
+        #self.oscm_tab = GSAOscm(server_instance='dev')
 
 		self.addTab(self.query_tab,'Query')
 		self.addTab(self.image_tab,'SEM Analysis')
 		# self.addTab(self.raman_tab,'Raman Analysis')
 		self.addTab(self.submit_tab,'Submit')
+        #self.addTab(self.oscm_tab, 'OSCM')
+
 
 if __name__ == '__main__':
 	dal.init_db(config['development'])

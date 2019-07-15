@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.sparse import vstack
-from scipy.misc import toimage
+#from scipy.misc import toimage
 from scipy.interpolate import griddata
 from PIL.ImageQt import ImageQt
 from multiprocessing import Pool
