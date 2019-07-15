@@ -31,12 +31,11 @@ class GSADashboard(QtGui.QTabWidget):
         self.query_tab = GSAQuery()
         self.image_tab = GSAImage(mode=mode).widget()
         self.submit_tab = GSASubmit(mode=mode, box_config_path=box_config_path)
-        self.raman_tab = QtGui.QWidget()
         self.oscm_tab = GSAOscm(server_instance='dev')
+        self.submit_tab.preparation.oscm_signal.connect(lambda: self.setCurrentWidget(self.oscm_tab))
 
         self.addTab(self.query_tab, 'Query')
-        self.addTab(self.image_tab, 'SEM Analysis')
-        # self.addTab(self.raman_tab,'Raman Analysis')
+        # self.addTab(self.image_tab, 'SEM Analysis')
         self.addTab(self.submit_tab, 'Submit')
         self.addTab(self.oscm_tab, 'OSCM')
 

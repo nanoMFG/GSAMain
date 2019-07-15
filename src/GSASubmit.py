@@ -99,12 +99,12 @@ class GSASubmit(QtGui.QTabWidget):
 			provenance_response = self.provenance.getResponse()) if x == self.indexOf(self.review) else None,
 		)
 
-		self.review.submitButton.clicked.connect(lambda: self.review.submitResponse(
+		self.review.submitButton.clicked.connect(lambda: self.review.submit(self.review.getFullResponse(
 			properties_response = self.properties.getResponse(),
 			preparation_response = self.preparation.getResponse(),
 			files_response = self.file_upload.getResponse(),
 			provenance_response = self.provenance.getResponse()
-			))
+			)))
 
 		self.provenance.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.review))
 		self.preparation.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.properties))
@@ -355,13 +355,12 @@ class PreparationTab(QtGui.QWidget):
 	"""
 	Preparation tab widget. Users input the recipe preparation steps.
 	"""
+	oscm_signal = QtCore.pyqtSignal()
 	def __init__(self,parent=None):
 		super(PreparationTab,self).__init__(parent=parent)
 		self.layout = QtGui.QGridLayout(self)
 		self.layout.setAlignment(QtCore.Qt.AlignTop)
 		self.layout.setAlignment(QtCore.Qt.AlignRight)
-
-		self.oscm_signal = QtCore.pyqtSignal()
 
 		self.stackedFormWidget = QtGui.QStackedWidget()
 		self.stackedFormWidget.setFrameStyle(QtGui.QFrame.StyledPanel)
@@ -437,30 +436,82 @@ class PreparationTab(QtGui.QWidget):
 			self.removeStep()
 		self.recipeParams.clear()
 
+	def getRecipeDict(self,preparation_response):
+		with dal.session_scope() as session: 
+			c = recipe()
+			for field,item in preparation_response["recipe"].items():
+				value = item['value']
+				unit = item['unit']
+				if value != None:
+					if sql_validator['str'](getattr(recipe,field)) or sql_validator['int'](getattr(recipe,field)):
+						setattr(c,field,value)
+					elif sql_validator['float'](getattr(recipe,field)):
+						value = float(value)
+						setattr(c,field,value*getattr(recipe,field).info['conversions'][unit])
+					else:
+						value = int(value)
+						setattr(c,field,value)
+			session.add(c)
+			session.commit()
+
+			for step_idx, step in enumerate(preparation_response['preparation_step']):
+				p = preparation_step()
+				p.recipe_id = c.id
+				p.step = step_idx
+				for field,item in step.items():
+					value = item['value']
+					unit = item['unit']
+					if value != None:
+						if sql_validator['str'](getattr(preparation_step,field)) or sql_validator['int'](getattr(preparation_step,field)):
+							setattr(p,field,value)
+						elif sql_validator['float'](getattr(preparation_step,field)):
+							value = float(value)
+							setattr(p,field,value*getattr(preparation_step,field).info['conversions'][unit])
+						else:
+							value = int(value)
+							setattr(p,field,value)
+				session.add(p)
+				session.commit()
+
+			return c.json_encodable()
+
 	def handle_send_to_oscm(self):
+		preparation_response = self.getResponse()
 
-	    # build oscm path
-	    oscm_dir = 'oscm_files'
-	    oscm_path = os.path.abspath(oscm_dir)
+		validator_response = [
+			ReviewTab.validate_preparation(preparation_response),
+			ReviewTab.validate_temperature(preparation_response),
+			ReviewTab.validate_pressure(preparation_response),
+			ReviewTab.validate_duration(preparation_response),
+			ReviewTab.validate_base_pressure(preparation_response),
+			ReviewTab.validate_carbon_source(preparation_response)
+			]
+			
+		if any([v!=True for v in validator_response]):
+			error_dialog = QtGui.QMessageBox(self)
+			error_dialog.setWindowModality(QtCore.Qt.WindowModal)
+			error_dialog.setText("Input Error!")
+			error_dialog.setInformativeText("\n\n".join([v for v in validator_response if v != True]))
+			error_dialog.exec()
+			return
 
-	    # define filename
-	    filename = 'recipe.json'
+		# build oscm path
+		oscm_dir = 'oscm_files'
+		oscm_path = os.path.abspath(oscm_dir)
 
-	    # preparation data. Here I just have JSON data for the example
-	    recipe_dict = {
-	        'json': {
-	            'name': 'Ricardo',
-	            'last': 'Toro'
-	        }
-	    }
+		# define filename
+		filename = 'recipe.json'
 
-	    # create file
-	    dump_file = open(os.path.join(oscm_path, filename), 'w')
-	    json.dump(recipe_dict['json'],dump_file)
-	    dump_file.close()
+		# preparation data. Here I just have JSON data for the example
+		recipe_dict = self.getRecipeDict(preparation_response)
 
-	    # Stop preparing recipe and go to oscm widget (not sure if this work!!!)
-	    self.oscm_signal.emit()
+		# create file
+		dump_file = open(os.path.join(oscm_path, filename), 'w')
+		json.dump(recipe_dict,dump_file)
+		dump_file.close()
+
+		# Stop preparing recipe and go to oscm widget (not sure if this work!!!)
+		self.oscm_signal.emit()
 	
 	
 class FileUploadTab(QtGui.QWidget):
@@ -767,7 +818,87 @@ class ReviewTab(QtGui.QScrollArea):
 		self.setWidget(self.contentWidget)
 		self.setWidgetResizable(True)
 
-	def submitResponse(self,properties_response,preparation_response,files_response, provenance_response):
+	@staticmethod
+	def validate_temperature(preparation_response):
+		for s,step in enumerate(preparation_response['preparation_step']):
+			if step['furnace_temperature']['value'] == None:
+				return "Missing input for field '%s' for Preparation Step %s (%s)."\
+					%(preparation_step.furnace_temperature.info['verbose_name'],s,step['name']['value'])
+		return True
+
+	@staticmethod
+	def validate_pressure(preparation_response):
+		for s,step in enumerate(preparation_response['preparation_step']):
+			if step['furnace_pressure']['value'] == None:
+				return "Missing input for field '%s' for Preparation Step %s (%s)."\
+					%(preparation_step.furnace_pressure.info['verbose_name'],s,step['name']['value'])
+		return True
+
+	@staticmethod
+	def validate_base_pressure(preparation_response):
+		if preparation_response['recipe']['base_pressure']['value'] == None:
+			return "Missing input for field '%s' in Preparation."%(recipe.base_pressure.info['verbose_name'])
+		else:
+			return True
+
+	@staticmethod
+	def validate_duration(preparation_response):
+		for s,step in enumerate(preparation_response['preparation_step']):
+			if step['duration']['value'] == None:
+				return "Missing input for field '%s' for preparation Step %s (%s)."\
+					%(preparation_step.duration.info['verbose_name'],s,step['name']['value'])
+		return True
+
+	@staticmethod
+	def validate_carbon_source(preparation_response):
+		list_of_sources = [step["carbon_source"]["value"] for step
+					  in preparation_response['preparation_step']
+					  if step["carbon_source"]["value"] and step["name"]["value"]=='Growing']
+		list_of_flows = [step["carbon_source_flow_rate"]["value"] for step
+					  in preparation_response['preparation_step']
+					  if step["carbon_source_flow_rate"]["value"] and step["name"]["value"]=='Growing']
+		if len(list_of_sources) == 0:
+			return "You must have at least one carbon source."
+		if len(list_of_flows) != len(list_of_sources):
+			return "You must have a flow rate for each carbon source."
+		return True
+
+	@staticmethod
+	def validate_percentages(files_response):
+		if len(files_response['Raman Files'])>0:
+			try:
+				sm = []
+				for i in files_response['Characteristic Percentage']:
+					if i != '':
+						sm.append(float(i))
+				sm = sum(sm)
+			except:
+				return "Please make sure you have input a characteristic percentage for all Raman spectra."
+			if sm != 100:
+				return "Characteristic percentages must sum to 100%. They currently sum to %s."%sm
+			return True
+		else:
+			return True
+
+	@staticmethod
+	def validate_authors(provenance_response):
+		if len(provenance_response['author'])==0:
+			return "You must have at least one author."
+		for a,auth in enumerate(provenance_response['author']):
+			if len(auth['last_name']['value'])==0 or len(auth['first_name']['value'])==0:
+				return "Author %s (input: %s, %s) must have a valid first and last name"%(a,auth['last_name']['value'],auth['first_name']['value'])
+			if len(auth['institution'])==0:
+				return "Author [%s, %s] must have a valid institution"%(auth['last_name']['value'],auth['first_name']['value'])
+		return True
+
+	@staticmethod
+	def validate_preparation(preparation_response):
+		if len(preparation_response['preparation_step'])==0:
+			return "Missing preparation steps."
+		else:
+			return True
+
+	def getFullResponse(self,properties_response,preparation_response,files_response, provenance_response):
 		"""
 		Checks and validates responses. If invalid, displays message box with problems. 
 		Otherwise, it submits the full, validated response and returns the output response dictionary.
@@ -790,96 +921,23 @@ class ReviewTab(QtGui.QScrollArea):
 		**kwargs:		All entries from files_response
 
 		"""
-		def validate_temperature(preparation_response):
-			for s,step in enumerate(preparation_response['preparation_step']):
-				if step['furnace_temperature']['value'] == None:
-					return "Missing input for field '%s' for Preparation Step %s (%s)."\
-						%(preparation_step.furnace_temperature.info['verbose_name'],s,step['name']['value'])
-			return True
 
-		def validate_pressure(preparation_response):
-			for s,step in enumerate(preparation_response['preparation_step']):
-				if step['furnace_pressure']['value'] == None:
-					return "Missing input for field '%s' for Preparation Step %s (%s)."\
-						%(preparation_step.furnace_pressure.info['verbose_name'],s,step['name']['value'])
-			return True
-
-		def validate_base_pressure(preparation_response):
-			if preparation_response['recipe']['base_pressure']['value'] == None:
-				return "Missing input for field '%s' in Preparation."%(recipe.base_pressure.info['verbose_name'])
-			else:
-				return True
-
-		def validate_duration(preparation_response):
-			for s,step in enumerate(preparation_response['preparation_step']):
-				if step['duration']['value'] == None:
-					return "Missing input for field '%s' for preparation Step %s (%s)."\
-						%(preparation_step.duration.info['verbose_name'],s,step['name']['value'])
-			return True
-
-		def validate_carbon_source(preparation_response):
-			list_of_sources = [step["carbon_source"]["value"] for step
-						  in preparation_response['preparation_step']
-						  if step["carbon_source"]["value"] and step["name"]["value"]=='Growing']
-			list_of_flows = [step["carbon_source_flow_rate"]["value"] for step
-						  in preparation_response['preparation_step']
-						  if step["carbon_source_flow_rate"]["value"] and step["name"]["value"]=='Growing']
-			if len(list_of_sources) == 0:
-				return "You must have at least one carbon source."
-			if len(list_of_flows) != len(list_of_sources):
-				return "You must have a flow rate for each carbon source."
-			return True
-
-
-		def validate_percentages(files_response):
-			if len(files_response['Raman Files'])>0:
-				try:
-					sm = []
-					for i in files_response['Characteristic Percentage']:
-						if i != '':
-							sm.append(float(i))
-					sm = sum(sm)
-				except:
-					return "Please make sure you have input a characteristic percentage for all Raman spectra."
-				if sm != 100:
-					return "Characteristic percentages must sum to 100%. They currently sum to %s."%sm
-				return True
-			else:
-				return True
-
-		def validate_authors(provenance_response):
-			if len(provenance_response['author'])==0:
-				return "You must have at least one author."
-			for a,auth in enumerate(provenance_response['author']):
-				if len(auth['last_name']['value'])==0 or len(auth['first_name']['value'])==0:
-					return "Author %s (input: %s, %s) must have a valid first and last name"%(a,auth['last_name']['value'],auth['first_name']['value'])
-				if len(auth['institution'])==0:
-					return "Author [%s, %s] must have a valid institution"%(auth['last_name']['value'],auth['first_name']['value'])
-			return True
-
-		if len(preparation_response["preparation_step"])>0:
-			validator_response = [
-				validate_temperature(preparation_response),
-				validate_pressure(preparation_response),
-				validate_duration(preparation_response),
-				validate_base_pressure(preparation_response),
-				validate_percentages(files_response),
-				validate_authors(provenance_response),
-				validate_carbon_source(preparation_response)
-				]
-				
-			if any([v!=True for v in validator_response]):
-				error_dialog = QtGui.QMessageBox(self)
-				error_dialog.setWindowModality(QtCore.Qt.WindowModal)
-				error_dialog.setText("Input Error!")
-				error_dialog.setInformativeText("\n\n".join([v for v in validator_response if v != True]))
-				error_dialog.exec()
-				return
-		else:
+		validator_response = [
+			validate_preparation(preparation_response),
+			validate_temperature(preparation_response),
+			validate_pressure(preparation_response),
+			validate_duration(preparation_response),
+			validate_base_pressure(preparation_response),
+			validate_percentages(files_response),
+			validate_authors(provenance_response),
+			validate_carbon_source(preparation_response)
+			]
+			
+		if any([v!=True for v in validator_response]):
 			error_dialog = QtGui.QMessageBox(self)
 			error_dialog.setWindowModality(QtCore.Qt.WindowModal)
 			error_dialog.setText("Input Error!")
-			error_dialog.setInformativeText("Missing preparation steps.")
+			error_dialog.setInformativeText("\n\n".join([v for v in validator_response if v != True]))
 			error_dialog.exec()
 			return
 
@@ -1019,6 +1077,11 @@ class ReviewTab(QtGui.QScrollArea):
 		full_response = {'json':sample_json}
 		full_response.update(files_response)
 
+		return full_response
+
+
+
+	def submit(self,full_response):
 		confirmation_dialog = QtGui.QMessageBox(self)
 		confirmation_dialog.setText("Are you sure you want to submit this recipe?")
 		confirmation_dialog.setInformativeText("Note: you will not be able to undo this submission.")
@@ -1034,7 +1097,7 @@ class ReviewTab(QtGui.QScrollArea):
 					error_dialog.setText("Submission Error!")
 					error_dialog.setInformativeText(str(error))
 					error_dialog.exec()
-					return
+					return error
 				else:
 					success_dialog = QtGui.QMessageBox(self)
 					success_dialog.setText("Recipe successfully submitted.")
@@ -1044,7 +1107,7 @@ class ReviewTab(QtGui.QScrollArea):
 		confirmation_dialog.buttonClicked.connect(upload_wrapper)
 		confirmation_dialog.exec()
 
-		return full_response	
+		
 
 
 def make_test_dict(test_sem_file=None,test_raman_file=None):
