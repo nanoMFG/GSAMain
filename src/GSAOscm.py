@@ -1,3 +1,8 @@
+"""
+Author: Ricardo Toro
+Last update: 07/15/2019
+"""
+
 import os, sys, json, re
 from PyQt5 import QtGui, QtCore, QtWidgets
 from oscm_adapter import OSCMAdapter
@@ -69,20 +74,21 @@ class LoginTab(QtWidgets.QWidget):
         }
 
         # form fields
+        max_width = 200
         self.username = QtWidgets.QLineEdit(self)
-        self.username.setMaximumWidth(150)
+        self.username.setMaximumWidth(max_width)
         self.password = QtWidgets.QLineEdit(self)
         self.password.setEchoMode(QtWidgets.QLineEdit.Password)
-        self.password.setMaximumWidth(150)
+        self.password.setMaximumWidth(max_width)
 
         # login button
         buttonLogin = QtWidgets.QPushButton('Login', self)
-        buttonLogin.setMaximumWidth(150)
+        buttonLogin.setMaximumWidth(max_width)
         buttonLogin.clicked.connect(self.handle_login)
 
         # Register button
         buttonRegister = QtWidgets.QPushButton('Register', self)
-        buttonRegister.setMaximumWidth(150)
+        buttonRegister.setMaximumWidth(max_width)
         buttonRegister.clicked.connect(self.handle_register)
 
         # ---------------------------------------------------
@@ -90,7 +96,7 @@ class LoginTab(QtWidgets.QWidget):
         # ---------------------------------------------------
         # main layout
         mainLayout = QtWidgets.QGridLayout(self)
-        mainLayout.setAlignment(QtCore.Qt.AlignTop)
+        mainLayout.setAlignment(QtCore.Qt.AlignCenter)
 
         # set layout
         layout = QtWidgets.QFormLayout()
@@ -101,10 +107,7 @@ class LoginTab(QtWidgets.QWidget):
         layout.addRow('', buttonLogin)
         layout.addRow('', buttonRegister)
 
-        x = layout.sizeHint().width()
-        y = layout.sizeHint().height()
-
-        spacer = QtWidgets.QSpacerItem(x+x/2, y+y/2, vPolicy = QtWidgets.QSizePolicy.Fixed, hPolicy = QtWidgets.QSizePolicy.Fixed)
+        spacer = QtWidgets.QSpacerItem(325, 0, hPolicy = QtWidgets.QSizePolicy.Fixed)
 
         mainLayout.addItem(spacer, 0, 0)
         mainLayout.addLayout(layout, 1, 1)
@@ -201,10 +204,11 @@ class CreateTransaction(QtWidgets.QWidget):
             # ---------------------------------------------------
             # transaction form fields:
             # ---------------------------------------------------
+            max_width = 300
 
             # transaction name
             self.transaction_name = QtWidgets.QLineEdit(self)
-            self.transaction_name.setMaximumWidth(200)
+            self.transaction_name.setMaximumWidth(max_width)
 
             # qty
             self.quantity = QtWidgets.QLineEdit(self)
@@ -212,13 +216,13 @@ class CreateTransaction(QtWidgets.QWidget):
             self.quantity.setValidator(QtGui.QIntValidator(0,2147483647))
 
             # instructions
-            self.instructions = QtWidgets.QLineEdit(self)
+            self.instructions = QtWidgets.QTextEdit(self)
 
             # define dropdonwns
             self.facility_selection = QtWidgets.QComboBox() # facilities
-            self.facility_selection.setMaximumWidth(200)
+            self.facility_selection.setMaximumWidth(max_width)
             self.queue_selection = QtWidgets.QComboBox()    # queues
-            self.queue_selection.setMaximumWidth(200)
+            self.queue_selection.setMaximumWidth(max_width)
 
             # init description
             self.queue_decription = QtWidgets.QLabel('', self) # set default values
@@ -235,6 +239,7 @@ class CreateTransaction(QtWidgets.QWidget):
             # Submit Transaction button
             self.buttonSubmit = QtWidgets.QPushButton('Submit', self)
             self.buttonSubmit.clicked.connect(self.handle_submit)
+            self.buttonSubmit.setMaximumWidth(100)
 
             # loading gif
             self.gif_path = os.path.abspath('img\loader.gif')
@@ -281,7 +286,7 @@ class CreateTransaction(QtWidgets.QWidget):
             row += 1
             self.layout.addItem(vspacer, row , 0)
             row += 1
-            self.layout.addWidget(self.buttonSubmit, row , 1)
+            self.layout.addWidget(self.buttonSubmit, row , 0)
             row += 1
             self.layout.addWidget(self.gif, row, 0 )
 
