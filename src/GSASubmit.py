@@ -377,7 +377,7 @@ class PreparationTab(QtGui.QWidget):
 		self.nextButton = QtGui.QPushButton('Next >>>')
 		self.clearButton = QtGui.QPushButton('Clear Fields')
 		self.clearButton.clicked.connect(self.clear)
-		sel.oscm_button.clicked.connect(self.handle_send_to_oscm)
+		self.oscm_button.clicked.connect(self.handle_send_to_oscm)
 
 		self.miniLayout = QtGui.QGridLayout()
 		self.miniLayout.addWidget(self.addStepButton,0,0)
