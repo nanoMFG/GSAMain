@@ -129,7 +129,7 @@ class LoginTab(QtWidgets.QWidget):
             self.getTransaction = GetTransaction(self.mw, self.session)
 
             self.mw.addTab(self.createTransaction,'Create Transaction')
-            self.mw.addTab(self.getTransaction,'Get Transaction')
+            self.mw.addTab(self.getTransaction,'Completed Transaction')
 
             # Go to OSCM Dashboard Tab
             self.mw.setCurrentWidget(self.createTransaction)
@@ -488,115 +488,123 @@ class GetTransaction(QtWidgets.QWidget):
         # get transactions
         self.get_transactions()
 
-        # define dropdonwns
-        self.type_transaction = QtWidgets.QComboBox() # type transaction
-        self.type_transaction.setMaximumWidth(150)
+        if len(self.transactions_customer) == 0 and len(self.transactions_provider) == 0:
+            self.layout.addWidget(QtWidgets.QLabel("You do not have any transaction completed!!!"), 0, 0)
+            mainLayout.setAlignment(QtCore.Qt.AlignCenter)
+            mainLayout.addLayout(self.layout, 0, 0)
 
-        self.transactions_available = QtWidgets.QComboBox() # list of transactios available for user
-        self.transactions_available.setMaximumWidth(150)
-        self.transactions_available.view().setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
-        self.transactions_available.view().setMaximumHeight(200)
+        else:
 
-        # type of transaction:
-        types_transaction = ['Requested by me', 'Requested on my facility'] 
-        self.type_transaction.addItems(types_transaction)
-        self.type_transaction.activated.connect(self.selected_type_transaction)
+            # define dropdonwns
+            self.type_transaction = QtWidgets.QComboBox() # type transaction
+            self.type_transaction.setMaximumWidth(150)
 
-        # for review transaction:
-        self.list_transactions = []
-        facility_label = QtWidgets.QLabel('Facility:')
-        facility_label.setFont(label_bold)
-        self.facility_text = QtWidgets.QLabel('')
+            self.transactions_available = QtWidgets.QComboBox() # list of transactios available for user
+            self.transactions_available.setMaximumWidth(150)
+            self.transactions_available.view().setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+            self.transactions_available.view().setMaximumHeight(200)
 
-        submitted_label = QtWidgets.QLabel('Submitted:')
-        submitted_label.setFont(label_bold)
-        self.submitted_text = QtWidgets.QLabel('')
+            # type of transaction:
+            types_transaction = ['Requested by me', 'Requested on my facility'] 
+            self.type_transaction.addItems(types_transaction)
+            self.type_transaction.activated.connect(self.selected_type_transaction)
 
-        status_label = QtWidgets.QLabel('Status:')
-        status_label.setFont(label_bold)
-        self.status_text = QtWidgets.QLabel('')
+            # for review transaction:
+            self.list_transactions = []
+            facility_label = QtWidgets.QLabel('Facility:')
+            facility_label.setFont(label_bold)
+            self.facility_text = QtWidgets.QLabel('')
 
-        qty_label = QtWidgets.QLabel('Quantity:')
-        qty_label.setFont(label_bold)
-        self.qty_text = QtWidgets.QLabel('')
+            submitted_label = QtWidgets.QLabel('Submitted:')
+            submitted_label.setFont(label_bold)
+            self.submitted_text = QtWidgets.QLabel('')
 
-        instructions_label = QtWidgets.QLabel('Instructions:')
-        instructions_label.setFont(label_bold)
-        self.instructions_text = QtWidgets.QLabel('')
+            status_label = QtWidgets.QLabel('Status:')
+            status_label.setFont(label_bold)
+            self.status_text = QtWidgets.QLabel('')
 
-        # for files:
-        files_title_label = QtWidgets.QLabel('Files:')
-        files_title_label.setFont(label_bold)
+            qty_label = QtWidgets.QLabel('Quantity:')
+            qty_label.setFont(label_bold)
+            self.qty_text = QtWidgets.QLabel('')
 
-        # Download all files button
-        self.buttondownload = QtWidgets.QPushButton('Download Files', self)
-        self.buttondownload.clicked.connect(self.handle_download_all)
-        
-        # default transaction to the first in the list
-        self.list_files = []
-        self.selected_type_transaction(0)
-        self.transactions_available.activated.connect(self.get_transaction)
+            instructions_label = QtWidgets.QLabel('Instructions:')
+            instructions_label.setFont(label_bold)
+            self.instructions_text = QtWidgets.QLabel('')
 
-        # list of two options of type of transaction (on my facility or requested by me)
-        self.layout.addWidget(QtWidgets.QLabel("Select Type of Transaction:"), 0, 0)
-        self.layout.addWidget(self.type_transaction, 1, 0)
+            # for files:
+            files_title_label = QtWidgets.QLabel('Files:')
+            files_title_label.setFont(label_bold)
 
-        # list of transacions available for user to select
-        self.layout.addWidget(QtWidgets.QLabel("Select Transaction:"), 2, 0)
-        self.layout.addWidget(self.transactions_available, 3, 0)
+            # Download all files button
+            self.buttondownload = QtWidgets.QPushButton('Download Files', self)
+            self.buttondownload.clicked.connect(self.handle_download_all)
+            
+            # default transaction to the first in the list
+            self.list_files = []
+            self.selected_type_transaction(0)
+            self.transactions_available.activated.connect(self.get_transaction)
 
-        # set review layout data
-        if self.transaction:
-            review_layout.addWidget(facility_label)
-            review_layout.addWidget(self.facility_text)           
+            # list of two options of type of transaction (on my facility or requested by me)
+            self.layout.addWidget(QtWidgets.QLabel("Select Type of Transaction:"), 0, 0)
+            self.layout.addWidget(self.type_transaction, 1, 0)
 
-            review_layout.addWidget(submitted_label)
-            review_layout.addWidget(self.submitted_text)
+            # list of transacions available for user to select
+            self.layout.addWidget(QtWidgets.QLabel("Select Transaction:"), 2, 0)
+            self.layout.addWidget(self.transactions_available, 3, 0)
 
-            review_layout.addWidget(status_label)
-            review_layout.addWidget(self.status_text)
+            # set review layout data
+            if self.transaction:
+                review_layout.addWidget(facility_label)
+                review_layout.addWidget(self.facility_text)           
 
-            review_layout.addWidget(qty_label)
-            review_layout.addWidget(self.qty_text)
+                review_layout.addWidget(submitted_label)
+                review_layout.addWidget(self.submitted_text)
 
-            review_layout.addWidget(instructions_label)
-            review_layout.addWidget(self.instructions_text)
+                review_layout.addWidget(status_label)
+                review_layout.addWidget(self.status_text)
 
-        # create main box
-        hbox = QtWidgets.QHBoxLayout()
-        
-        # Top lelf frame
-        left = QtWidgets.QFrame()
-        left.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        left.setLayout(self.layout)
-        
-        # Top right frame
-        right = QtWidgets.QFrame()
-        right.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        right.setLayout(review_layout)
+                review_layout.addWidget(qty_label)
+                review_layout.addWidget(self.qty_text)
 
-        # Bottom frame
-        bottom = QtWidgets.QFrame()
-        bottom.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        bottom.setLayout(self.files_layout)
+                review_layout.addWidget(instructions_label)
+                review_layout.addWidget(self.instructions_text)
 
-        # split top screen into two parts and add top left and top right frames 
-        splitter1 = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
-        splitter1.addWidget(left)
-        splitter1.addWidget(right)
-        splitter1.setSizes([200,300])
 
-        # split vertically 
-        splitter2 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-        splitter2.addWidget(splitter1)
-        splitter2.addWidget(files_title_label)
-        splitter2.addWidget(bottom)
-        splitter2.addWidget(self.buttondownload)
-        splitter2.setSizes([300, 10, 200, 20])
-		
-        # add box to main layout
-        hbox.addWidget(splitter2)
-        mainLayout.addLayout(hbox, 0, 0)
+            # create main box
+            hbox = QtWidgets.QHBoxLayout()
+            
+            # Top lelf frame
+            left = QtWidgets.QFrame()
+            left.setFrameShape(QtWidgets.QFrame.StyledPanel)
+            left.setLayout(self.layout)
+            
+            # Top right frame
+            right = QtWidgets.QFrame()
+            right.setFrameShape(QtWidgets.QFrame.StyledPanel)
+            right.setLayout(review_layout)
+
+            # Bottom frame
+            bottom = QtWidgets.QFrame()
+            bottom.setFrameShape(QtWidgets.QFrame.StyledPanel)
+            bottom.setLayout(self.files_layout)
+
+            # split top screen into two parts and add top left and top right frames 
+            splitter1 = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+            splitter1.addWidget(left)
+            splitter1.addWidget(right)
+            splitter1.setSizes([200,300])
+
+            # split vertically 
+            splitter2 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+            splitter2.addWidget(splitter1)
+            splitter2.addWidget(files_title_label)
+            splitter2.addWidget(bottom)
+            splitter2.addWidget(self.buttondownload)
+            splitter2.setSizes([300, 10, 200, 20])
+            
+            # add box to main layout
+            hbox.addWidget(splitter2)
+            mainLayout.addLayout(hbox, 0, 0)
 
         self.setLayout(mainLayout)
 
@@ -607,8 +615,21 @@ class GetTransaction(QtWidgets.QWidget):
 
         # save transactions or handle fatal error
         if transactions_response['success']:
-            self.transactions_customer = sorted(transactions_response['data']['customer'], key=lambda k: k['submitted'], reverse=True) if 'customer' in transactions_response['data'].keys() else []
-            self.transactions_provider = sorted(transactions_response['data']['provider'], key=lambda k: k['submitted'], reverse=True) if 'provider' in transactions_response['data'].keys() else []
+
+            # filter customer data:
+            if 'customer' in transactions_response['data'].keys():
+                self.transactions_customer = [transaction for transaction in transactions_response['data']['customer'] if transaction['status'] == 'completed']
+                sorted(self.transactions_customer, key=lambda k: k['submitted'], reverse=True)
+            else:
+                self.transactions_customer = []
+
+            # filter provider data:
+            if 'provider' in transactions_response['data'].keys():
+                self.transactions_provider = [transaction for transaction in transactions_response['data']['provider'] if transaction['status'] == 'completed']
+                sorted(self.transactions_provider, key=lambda k: k['submitted'], reverse=True)
+            else:
+                self.transactions_provider = []
+
         else:
             self.transactions_customer = []
             self.transactions_provider = []
@@ -624,18 +645,21 @@ class GetTransaction(QtWidgets.QWidget):
         self.transactions_available.clear()        
 
         if len(self.list_transactions) == 0:
+            
+            # clear review layout
+            self.facility_text.setText('')
+            self.submitted_text.setText('')
+            self.status_text.setText('')
+            self.qty_text.setText('')
+            self.instructions_text.setText('')
+
             # pop up fatal error msg
-             QtWidgets.QMessageBox.warning(self, 'Error', 'There are no transactions for the selected transaction type!!!')
+            QtWidgets.QMessageBox.warning(self, 'Error', 'There are no transactions for the selected transaction type!!!')
+
         else:
             self.transactions_available.addItems([transaction['name'] for transaction in self.list_transactions])
             self.get_transaction(0)
     
-        ''' # get facility id
-        self.facility_id = self.facilities[i]['_id'] if len(self.facilities) > 0 else None
-
-        # get facility
-        self.get_facility(self.facility_id) '''
-
     def get_transaction(self, i):
 
         # get transaction id
