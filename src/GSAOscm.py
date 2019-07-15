@@ -513,6 +513,11 @@ class GetTransaction(QtWidgets.QWidget):
             self.type_transaction.addItems(types_transaction)
             self.type_transaction.activated.connect(self.selected_type_transaction)
 
+            # Refresh button
+            self.buttonRefresh = QtWidgets.QPushButton('Refresh', self)
+            self.buttonRefresh.clicked.connect(lambda: self.handle_refresh_btn())
+            self.buttonRefresh.setMaximumWidth(80)
+
             # for review transaction:
             self.list_transactions = []
             facility_label = QtWidgets.QLabel('Facility:')
@@ -545,7 +550,8 @@ class GetTransaction(QtWidgets.QWidget):
             
             # default transaction to the first in the list
             self.list_files = []
-            self.selected_type_transaction(0)
+            self.i = 0
+            self.selected_type_transaction(self.i)
             self.transactions_available.activated.connect(self.get_transaction)
 
             # list of two options of type of transaction (on my facility or requested by me)
@@ -555,6 +561,12 @@ class GetTransaction(QtWidgets.QWidget):
             # list of transacions available for user to select
             self.layout.addWidget(QtWidgets.QLabel("Select Transaction:"), 2, 0)
             self.layout.addWidget(self.transactions_available, 3, 0)
+
+            # refresh button
+            hspacer = QtWidgets.QSpacerItem(100, 0, hPolicy = QtWidgets.QSizePolicy.Maximum)
+            self.layout.addItem(hspacer, 1 , 1)
+            self.layout.addWidget(self.buttonRefresh, 1, 2)
+
 
             # set review layout data
             if self.transaction:
@@ -622,15 +634,15 @@ class GetTransaction(QtWidgets.QWidget):
 
             # filter customer data:
             if 'customer' in transactions_response['data'].keys():
-                self.transactions_customer = [transaction for transaction in transactions_response['data']['customer'] if transaction['status'] == 'completed']
-                sorted(self.transactions_customer, key=lambda k: k['submitted'], reverse=True)
+                unsorted_transactions_customer = [transaction for transaction in transactions_response['data']['customer'] if transaction['status'] == 'completed']
+                self.transactions_customer = sorted(unsorted_transactions_customer, key=lambda k: k['submitted'], reverse=True)
             else:
                 self.transactions_customer = []
 
             # filter provider data:
             if 'provider' in transactions_response['data'].keys():
-                self.transactions_provider = [transaction for transaction in transactions_response['data']['provider'] if transaction['status'] == 'completed']
-                sorted(self.transactions_provider, key=lambda k: k['submitted'], reverse=True)
+                unsorted_transactions_provider = [transaction for transaction in transactions_response['data']['provider'] if transaction['status'] == 'completed']
+                self.transactions_provider = sorted(unsorted_transactions_provider, key=lambda k: k['submitted'], reverse=True)
             else:
                 self.transactions_provider = []
 
@@ -641,9 +653,12 @@ class GetTransaction(QtWidgets.QWidget):
 
     def selected_type_transaction(self, i):
 
+        # save current state
+        self.i = i
+
         self.list_transactions.clear()
 
-        self.list_transactions = self.transactions_customer[:] if i == 0 else self.transactions_provider[:]
+        self.list_transactions = self.transactions_customer[:] if self.i == 0 else self.transactions_provider[:]
 
         # list of available transactions. Depends on the transaction type
         self.transactions_available.clear()        
@@ -683,7 +698,7 @@ class GetTransaction(QtWidgets.QWidget):
 
                 # updated review layout
                 self.facility_text.setText(self.transaction['profile']['resource_locator']['name'])
-                self.submitted_text.setText(self.transaction['job']['dates']['submitted'])
+                self.submitted_text.setText(self.transaction['profile']['properties']['submitted'])
                 self.status_text.setText(self.transaction['profile']['properties']['status'])
                 self.qty_text.setText(str(self.transaction['job']['quantity']))
                 self.instructions_text.setText(self.transaction['job']['instructions'])
@@ -736,6 +751,12 @@ class GetTransaction(QtWidgets.QWidget):
         else:
             # pop up fatal error msg
             QtWidgets.QMessageBox.warning(self, 'Error', 'At least one file failed to download')
+
+    def handle_refresh_btn(self):
+        self.transactions_customer.clear()
+        self.transactions_provider.clear()
+        self.get_transactions()
+        self.selected_type_transaction(self.i)
 
 class OscmRegister(QtWidgets.QWidget):
 
