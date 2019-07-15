@@ -16,6 +16,10 @@ class GSAOscm(QtWidgets.QTabWidget):
     def __init__(self, server_instance='dev', parent=None):
         super(GSAOscm,self).__init__(parent=parent)
 
+        # create oscm_files directory if it does not exist
+        if not os.path.exists('oscm_files'):
+            os.mkdir('oscm_files')
+
         # instantiate OSCM adapter
         self.session = OSCMAdapter(server_instance = server_instance)
         
