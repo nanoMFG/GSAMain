@@ -86,10 +86,10 @@ class GSASubmit(QtGui.QTabWidget):
 		self.review = ReviewTab(box_config_path=box_config_path)
 
 		self.setTabPosition(QtGui.QTabWidget.South)
-		self.addTab(self.provenance,"Provenance")
 		self.addTab(self.preparation,'Preparation')
 		self.addTab(self.properties,'Properties')
 		self.addTab(self.file_upload,'File Upload')
+		self.addTab(self.provenance,"Provenance")
 		self.addTab(self.review, 'Review')
 
 		self.currentChanged.connect(lambda x: self.review.refresh(
@@ -106,10 +106,10 @@ class GSASubmit(QtGui.QTabWidget):
 			provenance_response = self.provenance.getResponse()
 			))
 
-		self.provenance.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.preparation))
+		self.provenance.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.review))
 		self.preparation.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.properties))
 		self.properties.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.file_upload))
-		self.file_upload.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.review))
+		self.file_upload.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.provenance))
 
 class FieldsFormWidget(QtGui.QWidget):
 	"""
@@ -361,12 +361,15 @@ class PreparationTab(QtGui.QWidget):
 		self.layout.setAlignment(QtCore.Qt.AlignTop)
 		self.layout.setAlignment(QtCore.Qt.AlignRight)
 
+		self.oscm_signal = QtCore.pyqtSignal()
+
 		self.stackedFormWidget = QtGui.QStackedWidget()
 		self.stackedFormWidget.setFrameStyle(QtGui.QFrame.StyledPanel)
 		self.steps_list = QtGui.QListWidget()
 		self.steps_list.setMaximumWidth(150)
 		self.steps_list.currentRowChanged.connect(self.stackedFormWidget.setCurrentIndex)
 
+		self.oscm_button = QtGui.QPushButton('Submit to OSCM')
 		self.addStepButton = QtGui.QPushButton('Add Step')
 		self.removeStepButton = QtGui.QPushButton('Remove Step')
 		self.addStepButton.clicked.connect(self.addStep)
@@ -374,6 +377,7 @@ class PreparationTab(QtGui.QWidget):
 		self.nextButton = QtGui.QPushButton('Next >>>')
 		self.clearButton = QtGui.QPushButton('Clear Fields')
 		self.clearButton.clicked.connect(self.clear)
+		sel.oscm_button.clicked.connect(self.handle_send_to_oscm)
 
 		self.miniLayout = QtGui.QGridLayout()
 		self.miniLayout.addWidget(self.addStepButton,0,0)
@@ -381,10 +385,11 @@ class PreparationTab(QtGui.QWidget):
 		self.miniLayout.addWidget(self.removeStepButton,2,0)
 		self.recipeParams = FieldsFormWidget(fields=recipe_fields,model=recipe)
 		self.layout.addLayout(self.miniLayout,0,0,3,1)
-		self.layout.addWidget(self.recipeParams,0,1,1,1)
-		self.layout.addWidget(self.stackedFormWidget,1,1,1,1)
+		self.layout.addWidget(self.recipeParams,0,1,1,2)
+		self.layout.addWidget(self.stackedFormWidget,1,1,1,2)
 		self.layout.addWidget(self.clearButton,2,1,1,1)
-		self.layout.addWidget(self.nextButton,3,0,1,2)
+		self.layout.addWidget(self.oscm_button,2,2,1,1)
+		self.layout.addWidget(self.nextButton,3,0,1,3)
 
 	def addStep(self):
 		"""
@@ -431,6 +436,31 @@ class PreparationTab(QtGui.QWidget):
 			self.steps_list.setCurrentRow(0)
 			self.removeStep()
 		self.recipeParams.clear()
+
+	def handle_send_to_oscm(self):
+
+	    # build oscm path
+	    oscm_dir = 'oscm_files'
+	    oscm_path = os.path.abspath(oscm_dir)
+
+	    # define filename
+	    filename = 'recipe.json'
+
+	    # preparation data. Here I just have JSON data for the example
+	    recipe_dict = {
+	        'json': {
+	            'name': 'Ricardo',
+	            'last': 'Toro'
+	        }
+	    }
+
+	    # create file
+	    dump_file = open(os.path.join(oscm_path, filename), 'w')
+	    json.dump(recipe_dict['json'],dump_file)
+	    dump_file.close()
+
+	    # Stop preparing recipe and go to oscm widget (not sure if this work!!!)
+	    self.oscm_signal.emit()
 	
 	
 class FileUploadTab(QtGui.QWidget):
