@@ -1,22 +1,16 @@
 from __future__ import division
 import numpy as np
-import scipy as sc
 import cv2, sys, time, json, copy, subprocess, os
-from skimage import transform
 from PyQt5 import QtGui, QtCore
-import pyqtgraph as pg
 
 from box_adaptor import BoxAdaptor
 from gresq.database import sample, preparation_step, dal, Base, mdf_forge, author, raman_spectrum, recipe, properties, sem_file, raman_file, raman_set
 from sqlalchemy import String, Integer, Float, Numeric, Date
 from gresq.config import config
 from gresq.csv2db import build_db
-from GSAQuery import GSAQuery
-from GSAImage import GSAImage
 import GSARaman
 from gresq.recipe import Recipe
 from mdf_adaptor import MDFAdaptor
-import pyqtgraph as pg
 
 
 sample_fields = [
@@ -110,6 +104,11 @@ class GSASubmit(QtGui.QTabWidget):
 		self.preparation.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.properties))
 		self.properties.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.file_upload))
 		self.file_upload.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.provenance))
+
+	def test(self):
+		self.properties.testFill()
+		self.provenance.testFill()
+		self.preparation.testFill()
 
 class FieldsFormWidget(QtGui.QWidget):
 	"""
@@ -207,16 +206,51 @@ class FieldsFormWidget(QtGui.QWidget):
 			elif isinstance(self.input_widgets[field],QtGui.QDateTimeEdit):
 				response[field]['value'] = self.input_widgets[field].date().toPyDate()
 			else:
-				if sql_validator['int'](getattr(self.model,field)):
-					response[field]['value'] = self.input_widgets[field].text() if self.input_widgets[field].text() != '' else None
-				else:
-					response[field]['value'] = self.input_widgets[field].text() if self.input_widgets[field].text() != '' else None
+				response[field]['value'] = self.input_widgets[field].text() if self.input_widgets[field].text() != '' else None
 				if field in self.units_input.keys():
 					response[field]['unit'] = self.units_input[field].currentText()
 				else:
 					response[field]['unit'] = ''
 
 		return response
+
+	def fillResponse(self,response_dict):
+		for field in self.fields:
+			if response_dict[field]['value']:
+				value = response_dict[field]['value']
+				unit = response_dict[field]['unit']
+				input_widget = self.input_widgets[field]
+				if isinstance(self.input_widgets[field],QtGui.QComboBox):
+					item_list = [input_widget.itemText(i) for i in range(input_widget.count())]
+					if value in item_list:
+						input_widget.setCurrentIndex(item_list.index(value))
+					else:
+						input_widget.setCurrentIndex(item_list.index("Other"))
+						self.other_input[field].setText(value)
+				elif isinstance(self.input_widgets[field],QtGui.QDateTimeEdit):
+					date = QtCore.QDate(value[0],value[1],value[2])
+					self.input_widgets[field].setDate(date)
+				else:
+					input_widget.setText(str(value))
+					if field in self.units_input.keys():
+						units_widget = self.units_input[field]
+						units_list = [units_widget.itemText(i) for i in range(units_widget.count())]
+						units_widget.setCurrentIndex(units_list.index(unit))
+
+	def testFill(self,fields=None):
+		response_dict = {}
+		if fields == None:
+			fields = self.fields
+		for field in fields:
+			response_dict[field] = {}
+			response_dict[field]['value'] = random_fill(field,self.model)
+			if 'std_unit' in getattr(self.model,field).info.keys():
+				response_dict[field]['unit'] = getattr(self.model,field).info['std_unit']
+			else:
+				response_dict[field]['unit'] = None
+
+		self.fillResponse(response_dict)
+
 
 	def clear(self):
 		for widget in list(self.input_widgets.values())+list(self.other_input.values()):
@@ -309,6 +343,10 @@ class ProvenanceTab(QtGui.QWidget):
 			self.removeAuthor()
 		self.sample_input.clear()
 
+	def testFill(self):
+		for _ in range(3):
+			self.addAuthor()
+			self.stackedFormWidget.currentWidget().testFill()
 
 class PropertiesTab(QtGui.QWidget):
 	"""
@@ -351,6 +389,9 @@ class PropertiesTab(QtGui.QWidget):
 	def clear(self):
 		self.properties_form.clear()
 
+	def testFill(self):
+		self.properties_form.testFill()
+
 class PreparationTab(QtGui.QWidget):
 	"""
 	Preparation tab widget. Users input the recipe preparation steps.
@@ -389,6 +430,13 @@ class PreparationTab(QtGui.QWidget):
 		self.layout.addWidget(self.clearButton,2,1,1,1)
 		self.layout.addWidget(self.oscm_button,2,2,1,1)
 		self.layout.addWidget(self.nextButton,3,0,1,3)
+
+	def testFill(self):
+		self.recipeParams.testFill()
+		for step in range(3):
+			self.addStep()
+			self.stackedFormWidget.currentWidget().testFill()
+			self.stackedFormWidget.currentWidget().input_widgets['name'].setCurrentIndex(step)
 
 	def addStep(self):
 		"""
@@ -512,8 +560,7 @@ class PreparationTab(QtGui.QWidget):
 
 		# Stop preparing recipe and go to oscm widget (not sure if this work!!!)
 		self.oscm_signal.emit()
-	
-	
+		
 class FileUploadTab(QtGui.QWidget):
 	"""
 	File upload widget tab. Users upload SEM and Raman files as well as associated input.
@@ -923,14 +970,14 @@ class ReviewTab(QtGui.QScrollArea):
 		"""
 
 		validator_response = [
-			validate_preparation(preparation_response),
-			validate_temperature(preparation_response),
-			validate_pressure(preparation_response),
-			validate_duration(preparation_response),
-			validate_base_pressure(preparation_response),
-			validate_percentages(files_response),
-			validate_authors(provenance_response),
-			validate_carbon_source(preparation_response)
+			ReviewTab.validate_preparation(preparation_response),
+			ReviewTab.validate_temperature(preparation_response),
+			ReviewTab.validate_pressure(preparation_response),
+			ReviewTab.validate_duration(preparation_response),
+			ReviewTab.validate_base_pressure(preparation_response),
+			ReviewTab.validate_percentages(files_response),
+			ReviewTab.validate_authors(provenance_response),
+			ReviewTab.validate_carbon_source(preparation_response)
 			]
 			
 		if any([v!=True for v in validator_response]):
@@ -961,7 +1008,7 @@ class ReviewTab(QtGui.QScrollArea):
 				session.add(sf)
 				session.commit()
 			
-			### RAMAN IS A SEPARATE DATASETS FROM SAMPLE ###
+			### RAMAN IS A SEPARATE DATASET FROM SAMPLE ###
 			rs = raman_set()
 			session.add(rs)
 			session.commit()
@@ -1107,26 +1154,25 @@ class ReviewTab(QtGui.QScrollArea):
 		confirmation_dialog.buttonClicked.connect(upload_wrapper)
 		confirmation_dialog.exec()
 
-		
 
+def random_fill(field_name,model):
+	import random, string, datetime
+	field = getattr(model,field_name)
+	if sql_validator['str'](field):
+		return ''.join(random.choice(string.ascii_uppercase) for _ in range(10))
+	elif sql_validator['int'](field):
+		return np.random.randint(10)
+	elif sql_validator['float'](field):
+		return round(np.random.randn()*5+50,3)
+	elif sql_validator['date'](field):
+		return datetime.datetime.today()
+	else:
+		return None
 
 def make_test_dict(test_sem_file=None,test_raman_file=None):
 	dal.init_db(config['development'])
 	Base.metadata.drop_all(bind=dal.engine)
 	Base.metadata.create_all(bind=dal.engine)
-	def random_fill(field_name,model):
-		import random, string, datetime
-		field = getattr(model,field_name)
-		if sql_validator['str'](field):
-			return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
-		elif sql_validator['int'](field):
-			return np.random.randint(100)
-		elif sql_validator['float'](field):
-			return np.random.randn()
-		elif sql_validator['date'](field):
-			return datetime.datetime.today()
-		else:
-			return None
 
 	with dal.session_scope() as session:
 		s = sample()
@@ -1230,6 +1276,8 @@ if __name__ == '__main__':
 
 	app = QtGui.QApplication([])      
 	submit = GSASubmit(box_config_path='box_config.json')
+	if len(sys.argv) > 1 and sys.argv[1] == 'test':
+		submit.test()
 	submit.show()
 	sys.exit(app.exec_())
 
