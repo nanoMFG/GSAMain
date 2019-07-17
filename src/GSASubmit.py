@@ -419,13 +419,20 @@ class PreparationTab(QtGui.QWidget):
 		self.clearButton.clicked.connect(self.clear)
 		self.oscm_button.clicked.connect(self.handle_send_to_oscm)
 
+		spacer = QtGui.QSpacerItem(
+			self.nextButton.sizeHint().width(),
+			self.nextButton.sizeHint().height(), 
+			vPolicy = QtGui.QSizePolicy.Expanding,
+			hPolicy = QtGui.QSizePolicy.Expanding)
+
 		self.miniLayout = QtGui.QGridLayout()
 		self.miniLayout.addWidget(self.addStepButton,0,0)
 		self.miniLayout.addWidget(self.steps_list,1,0)
 		self.miniLayout.addWidget(self.removeStepButton,2,0)
 		self.recipeParams = FieldsFormWidget(fields=recipe_fields,model=recipe)
 		self.layout.addLayout(self.miniLayout,0,0,3,1)
-		self.layout.addWidget(self.recipeParams,0,1,1,2)
+		self.layout.addWidget(self.recipeParams,0,1,1,1)
+		self.layout.addItem(spacer,0,1,1,2)
 		self.layout.addWidget(self.stackedFormWidget,1,1,1,2)
 		self.layout.addWidget(self.clearButton,2,1,1,1)
 		self.layout.addWidget(self.oscm_button,2,2,1,1)
@@ -749,37 +756,7 @@ class ReviewTab(QtGui.QScrollArea):
 
 	def upload_raman(self,response_dict,raman_dict,box_file,dataset_id):
 		mdf = MDFAdaptor()
-		return mdf.upload_raman_analysis(Recipe(response_dict), dataset_id, raman_dict, box_file)		
-
-	def upload_to_mdf(self,response_dict):
-		import zipfile, time, shutil
-		mdf_dir = 'mdf_%s'%time.time()
-		os.mkdir(mdf_dir)
-		mdf_path = os.path.abspath(mdf_dir)
-		for f in response_dict['Raman Files']:
-			if os.path.isfile(f):
-				shutil.move(f,mdf_path)
-		for f in response_dict['SEM Image Files']:
-			if os.path.isfile(f):
-				shutil.move(f,mdf_path)
-
-		dump_file = open(os.path.join(mdf_path,'recipe.json'), 'w')
-		json.dump(response_dict['json'],dump_file)
-		dump_file.close()
-
-		box_adaptor = BoxAdaptor(self.box_config_path)
-		upload_folder = box_adaptor.create_upload_folder()
-
-		zip_path = mdf_path + ".zip"
-		zipf = zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED)
-		self.zipdir(mdf_path, zipf)
-		zipf.close()
-		print("Uploading ", zip_path, " to box")
-
-		box_file = box_adaptor.upload_file(upload_folder, zip_path, mdf_dir+'.zip')
-
-		mdf = MDFAdaptor()
-		return mdf.upload_recipe(Recipe(response_dict['json']), box_file)
+		return mdf.upload_raman_analysis(Recipe(response_dict), dataset_id, raman_dict, box_file)
 
 
 	def refresh(self,properties_response,preparation_response,files_response,provenance_response):
