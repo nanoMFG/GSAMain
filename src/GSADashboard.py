@@ -35,7 +35,7 @@ class GSADashboard(QtGui.QTabWidget):
         self.submit_tab.preparation.oscm_signal.connect(lambda: self.setCurrentWidget(self.oscm_tab))
 
         self.addTab(self.query_tab, 'Query')
-        # self.addTab(self.image_tab, 'SEM Analysis')
+        self.addTab(self.image_tab, 'SEM Analysis')
         self.addTab(self.submit_tab, 'Submit')
         self.addTab(self.oscm_tab, 'OSCM')
 
