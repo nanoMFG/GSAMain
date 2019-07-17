@@ -72,17 +72,17 @@ class MDFAdaptor:
 
         submission["projects"] = {}
         submission["projects"]["nanomfg"] = {
-            "d_to_g": raman_set.d_to_g,
-            "gp_to_g": raman_set.gp_to_g,
-            "d_peak_shift": raman_set.d_peak_shift,
-            "d_peak_amplitude": raman_set.d_peak_amplitude,
-            "d_fwhm": raman_set.d_fwhm,
-            "g_peak_shift": raman_set.g_peak_shift,
-            "g_peak_amplitude": raman_set.g_peak_amplitude,
-            "g_fwhm": raman_set.g_fwhm,
-            "g_prime_peak_shift": raman_set.g_prime_peak_shift,
-            "g_prime_peak_amplitude": raman_set.g_prime_peak_amplitude,
-            "g_prime_fwhm": raman_set.g_prime_fwhm
+            "d_to_g": raman_set['d_to_g'],
+            "gp_to_g": raman_set['gp_to_g'],
+            "d_peak_shift": raman_set['d_peak_shift'],
+            "d_peak_amplitude": raman_set['d_peak_amplitude'],
+            "d_fwhm": raman_set['d_fwhm'],
+            "g_peak_shift": raman_set['g_peak_shift'],
+            "g_peak_amplitude": raman_set['g_peak_amplitude'],
+            "g_fwhm": raman_set['g_fwhm'],
+            "g_prime_peak_shift": raman_set['g_prime_peak_shift'],
+            "g_prime_peak_amplitude": raman_set['g_prime_peak_amplitude'],
+            "g_prime_fwhm": raman_set['g_prime_fwhm']
         }
 
         print("\n\n\n\n------>",submission)

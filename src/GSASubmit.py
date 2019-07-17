@@ -717,6 +717,40 @@ class ReviewTab(QtGui.QScrollArea):
 												file))
 
 
+	def stage_upload(self,response_dict,response_files=[],json_name='mdf'):
+		import zipfile, time, shutil
+		mdf_dir = 'mdf_%s'%time.time()
+		os.mkdir(mdf_dir)
+		mdf_path = os.path.abspath(mdf_dir)
+		for f in response_files:
+			if os.path.isfile(f):
+				shutil.move(f,mdf_path)
+
+		dump_file = open(os.path.join(mdf_path,'%s.json'%json_name), 'w')
+		json.dump(response_dict,dump_file)
+		dump_file.close()
+
+		box_adaptor = BoxAdaptor(self.box_config_path)
+		upload_folder = box_adaptor.create_upload_folder()
+
+		zip_path = mdf_path + ".zip"
+		zipf = zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED)
+		self.zipdir(mdf_path, zipf)
+		zipf.close()
+		print("Uploading ", zip_path, " to box")
+
+		box_file = box_adaptor.upload_file(upload_folder, zip_path, mdf_dir+'.zip')
+
+		return box_file
+
+	def upload_recipe(self,response_dict,box_file):
+		mdf = MDFAdaptor()
+		return mdf.upload_recipe(Recipe(response_dict), box_file)
+
+	def upload_raman(self,response_dict,raman_dict,box_file,dataset_id):
+		mdf = MDFAdaptor()
+		return mdf.upload_raman_analysis(Recipe(response_dict), dataset_id, raman_dict, box_file)		
+
 	def upload_to_mdf(self,response_dict):
 		import zipfile, time, shutil
 		mdf_dir = 'mdf_%s'%time.time()
@@ -1010,6 +1044,7 @@ class ReviewTab(QtGui.QScrollArea):
 			
 			### RAMAN IS A SEPARATE DATASET FROM SAMPLE ###
 			rs = raman_set()
+			rs.experiment_date = provenance_response['sample']['experiment_date']['value']
 			session.add(rs)
 			session.commit()
 			for ri,ram in enumerate(files_response['Raman Files']):
@@ -1121,7 +1156,7 @@ class ReviewTab(QtGui.QScrollArea):
 
 			sample_json = s.json_encodable()
 			raman_json = rs.json_encodable()
-		full_response = {'json':sample_json}
+		full_response = {'json':sample_json,'raman':raman_json}
 		full_response.update(files_response)
 
 		return full_response
@@ -1138,7 +1173,21 @@ class ReviewTab(QtGui.QScrollArea):
 		def upload_wrapper(btn):
 			if btn.text() == "OK":
 				try:
-					dataset_id = self.upload_to_mdf(full_response)
+					response_dict = full_response['json']
+					box_file = self.stage_upload(
+						response_dict,
+						response_files=full_response['Raman Files']+full_response['SEM Image Files'],
+						json_name='recipe'
+						)
+					dataset_id = self.upload_recipe(response_dict,box_file)
+
+					raman_dict = full_response['raman']
+					box_file = self.stage_upload(
+						raman_dict,
+						json_name='raman'
+						)
+					dataset_id = self.upload_raman(response_dict,raman_dict,box_file,dataset_id)
+
 					success_dialog = QtGui.QMessageBox(self)
 					success_dialog.setText("Recipe successfully submitted.")
 					success_dialog.setWindowModality(QtCore.Qt.WindowModal)
@@ -1151,6 +1200,7 @@ class ReviewTab(QtGui.QScrollArea):
 					error_dialog.setInformativeText(str(e))
 					error_dialog.exec()
 					return
+
 
 		confirmation_dialog.buttonClicked.connect(upload_wrapper)
 		confirmation_dialog.exec()
