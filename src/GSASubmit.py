@@ -10,7 +10,7 @@ from gresq.config import config
 from gresq.csv2db import build_db
 import GSARaman
 from gresq.recipe import Recipe
-from mdf_adaptor import MDFAdaptor
+from mdf_adaptor import MDFAdaptor, MDFException
 
 
 sample_fields = [
@@ -745,7 +745,7 @@ class ReviewTab(QtGui.QScrollArea):
 		box_file = box_adaptor.upload_file(upload_folder, zip_path, mdf_dir+'.zip')
 
 		mdf = MDFAdaptor()
-		return mdf.upload(Recipe(response_dict['json']), box_file)
+		return mdf.upload_recipe(Recipe(response_dict['json']), box_file)
 
 
 	def refresh(self,properties_response,preparation_response,files_response,provenance_response):
@@ -1137,19 +1137,20 @@ class ReviewTab(QtGui.QScrollArea):
 
 		def upload_wrapper(btn):
 			if btn.text() == "OK":
-				error = self.upload_to_mdf(full_response)
-				if error:
-					error_dialog = QtGui.QMessageBox(self)
-					error_dialog.setWindowModality(QtCore.Qt.WindowModal)
-					error_dialog.setText("Submission Error!")
-					error_dialog.setInformativeText(str(error))
-					error_dialog.exec()
-					return error
-				else:
+				try:
+					dataset_id = self.upload_to_mdf(full_response)
 					success_dialog = QtGui.QMessageBox(self)
 					success_dialog.setText("Recipe successfully submitted.")
 					success_dialog.setWindowModality(QtCore.Qt.WindowModal)
 					success_dialog.exec()
+
+				except MDFException as e:
+					error_dialog = QtGui.QMessageBox(self)
+					error_dialog.setWindowModality(QtCore.Qt.WindowModal)
+					error_dialog.setText("Submission Error!")
+					error_dialog.setInformativeText(str(e))
+					error_dialog.exec()
+					return
 
 		confirmation_dialog.buttonClicked.connect(upload_wrapper)
 		confirmation_dialog.exec()
