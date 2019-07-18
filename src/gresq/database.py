@@ -335,6 +335,9 @@ class raman_set(Base):
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
     raman_spectra = relationship("raman_spectrum")
     authors = relationship("author")
+    experiment_date = Column(Date,default=datetime.date.today,info={
+        'verbose_name':'Experiment Date',
+        'required':True})
     d_to_g = Column(Float,info={'verbose_name':'Weighted D/G'})
     gp_to_g = Column(Float,info={'verbose_name':'Weighted G\'/G'})
     d_peak_shift = Column(Float,info={
@@ -382,8 +385,6 @@ class raman_set(Base):
 
     def json_encodable(self):
         params = [
-            "d_to_g",
-            "gp_to_g",
             "d_peak_shift",
             "d_peak_amplitude",
             "d_fwhm",
@@ -396,6 +397,10 @@ class raman_set(Base):
         ]
         json_dict = {}
         json_dict["authors"] = [s.json_encodable() for s in self.authors]
+        json_dict["experiment_date"] = self.experiment_date.timetuple()
+        json_dict["raman_spectra"] = [r.json_encodable() for r in self.raman_spectra]
+        json_dict['d_to_g'] = {'value:':getattr(self,'d_to_g'),'unit':None}
+        json_dict['gp_to_g'] = {'value:':getattr(self,'gp_to_g'),'unit':None}
         for p in params:
             json_dict[p] = {'value':getattr(self,p),'unit':getattr(raman_spectrum,p).info['std_unit']}
 
@@ -420,7 +425,7 @@ class raman_file(Base):
         json_dict = {}
         json_dict['filename'] = self.filename
         for p in params:
-            json_dict[p] = {'value':getattr(self,p),'unit':getattr(raman_spectrum,p).info['std_unit']}
+            json_dict[p] = {'value':getattr(self,p),'unit':getattr(raman_file,p).info['std_unit']}
         return json_dict
 
 class raman_spectrum(Base):
