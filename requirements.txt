@@ -4,3 +4,4 @@ boxsdk==2.0.0
 mdf_connect_client>=0.3.1
 mdf_forge>=0.7.2
 qimage2ndarray
+git+https://gitlab.com/torosant/pyclientoscm.git#egg=oscm_client

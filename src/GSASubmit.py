@@ -110,7 +110,7 @@ class GSASubmit(QtGui.QTabWidget):
 		self.provenance.testFill()
 		self.preparation.testFill()
 
-class FieldsFormWidget(QtGui.QWidget):
+class FieldsFormWidget(QtGui.QScrollArea):
 	"""
 	Generic widget that creates a form from the selected fields from a particular model. Automatically
 	determines whether to use a combo box or line edit widget. Applies appropriate validators and 
@@ -123,7 +123,8 @@ class FieldsFormWidget(QtGui.QWidget):
 	"""
 	def __init__(self,fields,model,parent=None):
 		super(FieldsFormWidget,self).__init__(parent=parent)
-		self.layout = QtGui.QGridLayout(self)
+		self.contentWidget = QtGui.QWidget()
+		self.layout = QtGui.QGridLayout(self.contentWidget)
 		self.layout.setAlignment(QtCore.Qt.AlignTop)
 		self.fields = fields
 		self.model = model
@@ -184,6 +185,9 @@ class FieldsFormWidget(QtGui.QWidget):
 				self.layout.addWidget(self.input_widgets[field],row,3*col+1)
 				if field in self.units_input.keys():
 					self.layout.addWidget(self.units_input[field],row,3*col+2)
+
+		self.setWidgetResizable(True)
+		self.setWidget(self.contentWidget)
 
 	def getResponse(self):
 		"""
@@ -1137,8 +1141,6 @@ class ReviewTab(QtGui.QScrollArea):
 		full_response.update(files_response)
 
 		return full_response
-
-
 
 	def submit(self,full_response):
 		confirmation_dialog = QtGui.QMessageBox(self)
