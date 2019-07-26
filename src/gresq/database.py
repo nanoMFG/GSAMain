@@ -1,4 +1,5 @@
 
+from sqlalchemy_utils.types.password import PasswordType
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
@@ -32,7 +33,7 @@ class DataAccessLayer:
             self.engine = create_engine(config.DATABASEURI,connect_args=ast.literal_eval(config.DATABASEARGS))
         Base.metadata.create_all(bind=self.engine)
         self.Session = scoped_session(sessionmaker(autocommit=False,
-                                         autoflush=False,
+                                         autoflush=True,
                                          bind=self.engine))
         Base.query = self.Session.query_property()
 
@@ -53,10 +54,29 @@ class DataAccessLayer:
 
 dal = DataAccessLayer()
 
-from sqlalchemy import Column, String, Integer, Float, Numeric, ForeignKey, Date
+from sqlalchemy import Column, String, Integer, Float, Numeric, ForeignKey, Date, Boolean
 from sqlalchemy.orm import relationship, backref
 
 # Declarative classes to define GresQ DB schema
+class user(Base):
+    id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
+    __tablename__ = 'user'
+    username = Column(String(32),info={'verbose_name':'Username'})
+    password = Column(PasswordType(
+                schemes=[
+                    'pbkdf2_sha512',
+                    'md5_crypt'
+                ],
+                deprecated=['md5_crypt']),
+            info={'verbose_name':'Password'})
+    first_name = Column(String(64), info={
+        'verbose_name':'First Name',
+        'required': False})
+    last_name = Column(String(64), info={
+        'verbose_name':'Last Name',
+        'required': False})
+    institution = Column(String(64), info={'verbose_name':'Institution'})
+
 
 class sample(Base):
     __tablename__ = 'sample'
@@ -74,6 +94,7 @@ class sample(Base):
     properties = relationship("properties",uselist=False)
     sem_files = relationship("sem_file")
     raman_files = relationship("raman_file")
+    validated = Column(Boolean,info={'verbose_name':'Validated'})
 
     def json_encodable(self):
         return {
@@ -156,7 +177,7 @@ class recipe(Base):
         json_dict = {}
         for p in params:
             json_dict[p] = {'value':getattr(self,p),'unit':getattr(recipe,p).info['std_unit']}
-        json_dict['preparation_steps'] = sorted([s.json_encodable() for s in self.preparation_steps if s.step] , key= lambda s: s["step"])
+        json_dict['preparation_steps'] = sorted([s.json_encodable() for s in self.preparation_steps if s.step!=None] , key= lambda s: s["step"])
 
         return json_dict
 

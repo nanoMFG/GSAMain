@@ -511,7 +511,7 @@ class PreparationTab(QtGui.QWidget):
 						value = int(value)
 						setattr(c,field,value)
 			session.add(c)
-			session.commit()
+			session.flush()
 
 			for step_idx, step in enumerate(preparation_response['preparation_step']):
 				p = preparation_step()
@@ -530,7 +530,7 @@ class PreparationTab(QtGui.QWidget):
 							value = int(value)
 							setattr(p,field,value)
 				session.add(p)
-				session.commit()
+				session.flush()
 
 			return c.json_encodable()
 
@@ -960,6 +960,16 @@ class ReviewTab(QtGui.QScrollArea):
 		else:
 			return True
 
+	@staticmethod
+	def validate_raman_files(files_response):
+		for ri,ram in enumerate(files_response['Raman Files']):
+			try:
+				params = GSARaman.auto_fitting(ram) 
+			except:
+				return 'File formatting issue with file: %s'%ram
+		return True
+
+
 	def getFullResponse(self,properties_response,preparation_response,files_response, provenance_response):
 		"""
 		Checks and validates responses. If invalid, displays message box with problems. 
@@ -992,7 +1002,8 @@ class ReviewTab(QtGui.QScrollArea):
 			ReviewTab.validate_base_pressure(preparation_response),
 			ReviewTab.validate_percentages(files_response),
 			ReviewTab.validate_authors(provenance_response),
-			ReviewTab.validate_carbon_source(preparation_response)
+			ReviewTab.validate_carbon_source(preparation_response),
+			ReviewTab.validate_raman_files(files_response)
 			]
 			
 		if any([v!=True for v in validator_response]):
@@ -1014,20 +1025,20 @@ class ReviewTab(QtGui.QScrollArea):
 					elif sql_validator['date'](getattr(sample,field)):
 						setattr(s,field,value)
 			session.add(s)
-			session.commit()
+			session.flush()
 
 			for f in files_response['SEM Image Files']:
 				sf = sem_file()
 				sf.sample_id = s.id
 				sf.filename = os.path.basename(f)
 				session.add(sf)
-				session.commit()
+				session.flush()
 			
 			### RAMAN IS A SEPARATE DATASET FROM SAMPLE ###
 			rs = raman_set()
 			rs.experiment_date = provenance_response['sample']['experiment_date']['value']
 			session.add(rs)
-			session.commit()
+			session.flush()
 			for ri,ram in enumerate(files_response['Raman Files']):
 				rf = raman_file()
 				rf.filename = os.path.basename(ram)
@@ -1035,7 +1046,7 @@ class ReviewTab(QtGui.QScrollArea):
 				if files_response['Raman Wavength'] != None:
 					rf.wavelength = files_response['Raman Wavength']
 				session.add(rf)
-				session.commit()
+				session.flush()
 
 				params = GSARaman.auto_fitting(ram)
 				r = raman_spectrum()
@@ -1050,7 +1061,7 @@ class ReviewTab(QtGui.QScrollArea):
 						key = "%s_%s"%(peak,v)
 						setattr(r,key,params[peak][v])
 				session.add(r)
-				session.commit()
+				session.flush()
 			
 			rs_fields = [
 			"d_peak_shift",
@@ -1067,7 +1078,7 @@ class ReviewTab(QtGui.QScrollArea):
 				setattr(rs,field,sum([getattr(spect,field)*getattr(spect,'percent')/100. for spect in rs.raman_spectra]))
 			rs.d_to_g = sum([getattr(spect,'d_peak_amplitude')/getattr(spect,'g_peak_amplitude')*getattr(spect,'percent')/100. for spect in rs.raman_spectra])
 			rs.gp_to_g = sum([getattr(spect,'g_prime_peak_amplitude')/getattr(spect,'g_peak_amplitude')*getattr(spect,'percent')/100. for spect in rs.raman_spectra])
-			session.commit()
+			session.flush()
 
 			# Recipe
 			c = recipe()
@@ -1085,7 +1096,7 @@ class ReviewTab(QtGui.QScrollArea):
 						value = int(value)
 						setattr(c,field,value)
 			session.add(c)
-			session.commit()
+			session.flush()
 
 			# Properties
 			pr = properties()
@@ -1103,7 +1114,7 @@ class ReviewTab(QtGui.QScrollArea):
 						value = int(value)
 						setattr(pr,field,value)
 			session.add(pr)
-			session.commit()
+			session.flush()
 
 			# Preparation Step
 			for step_idx, step in enumerate(preparation_response['preparation_step']):
@@ -1123,7 +1134,7 @@ class ReviewTab(QtGui.QScrollArea):
 							value = int(value)
 							setattr(p,field,value)
 				session.add(p)
-				session.commit()
+				session.flush()
 
 			for auth in provenance_response['author']:
 				a = author()
@@ -1133,7 +1144,7 @@ class ReviewTab(QtGui.QScrollArea):
 					if value != None:
 						setattr(a,field,value)
 				session.add(a)
-				session.commit()
+				session.flush()
 
 			sample_json = s.json_encodable()
 			raman_json = rs.json_encodable()
@@ -1209,21 +1220,21 @@ def make_test_dict(test_sem_file=None,test_raman_file=None):
 		for field in sample_fields:
 			setattr(s,field,random_fill(field,sample))
 		session.add(s)
-		session.commit()
+		session.flush()
 
 		if test_sem_file:
 			sf = sem_file()
 			sf.sample_id = s.id
 			sf.filename = os.path.basename(test_sem_file)
 			session.add(sf)
-			session.commit()
+			session.flush()
 
 		c = recipe()
 		c.sample_id = s.id
 		for field in recipe_fields:
 			setattr(c,field,random_fill(field,recipe))
 		session.add(c)
-		session.commit()
+		session.flush()
 
 		for n, name in enumerate(["Annealing","Growing","Cooling"]):
 			p = preparation_step()
@@ -1234,14 +1245,14 @@ def make_test_dict(test_sem_file=None,test_raman_file=None):
 				if field != "name":
 					setattr(p,field,random_fill(field,preparation_step))
 			session.add(p)
-			session.commit()
+			session.flush()
 
 		pr = properties()
 		pr.sample_id = s.id
 		for field in properties_fields:
 			setattr(pr,field,random_fill(field,properties))
 		session.add(pr)
-		session.commit()
+		session.flush()
 
 		for _ in range(3):
 			a = author()
@@ -1249,12 +1260,12 @@ def make_test_dict(test_sem_file=None,test_raman_file=None):
 			for field in author_fields:
 				setattr(a,field,random_fill(field,author))
 			session.add(a)
-			session.commit()
+			session.flush()
 
 		if test_raman_file:
 			rs = raman_set()
 			session.add(rs)
-			session.commit()
+			session.flush()
 			for ri,ram in enumerate([test_raman_file]):
 				rf = raman_file()
 				rf.filename = os.path.basename(ram)
@@ -1262,7 +1273,7 @@ def make_test_dict(test_sem_file=None,test_raman_file=None):
 				if files_response['Raman Wavength'] != None:
 					rf.wavelength = 800
 				session.add(rf)
-				session.commit()
+				session.flush()
 
 				params = GSARaman.auto_fitting(ram)
 				r = raman_spectrum()
@@ -1274,7 +1285,7 @@ def make_test_dict(test_sem_file=None,test_raman_file=None):
 						key = "%s_%s"%(peak,v)
 						setattr(r,key,params[peak][v])
 				session.add(r)
-				session.commit()
+				session.flush()
 			
 			rs_fields = [
 			"d_peak_shift",
@@ -1291,7 +1302,7 @@ def make_test_dict(test_sem_file=None,test_raman_file=None):
 				setattr(rs,field,sum([getattr(spect,field)*getattr(spect,'percent')/100. for spect in rs.raman_spectra]))
 			rs.d_to_g = sum([getattr(spect,'d_peak_amplitude')/getattr(spect,'g_peak_amplitude')*getattr(spect,'percent')/100. for spect in rs.raman_spectra])
 			rs.gp_to_g = sum([getattr(spect,'g_prime_peak_amplitude')/getattr(spect,'g_peak_amplitude')*getattr(spect,'percent')/100. for spect in rs.raman_spectra])
-			session.commit()
+			session.flush()
 
 		if test_raman_file:
 			return s.json_encodable, rs.json_encodable()
