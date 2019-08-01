@@ -70,7 +70,7 @@ class GSAOscm(QtWidgets.QTabWidget):
 
 class LoginTab(QtWidgets.QWidget):
     '''
-        Login tab widget. Users input oscm credentials to get authentication token.
+    Login tab widget. Users input oscm credentials to get authentication token.
     '''
 
     def __init__(self, main_widget, session, parent=None):
@@ -173,7 +173,7 @@ class LoginTab(QtWidgets.QWidget):
 
 class CreateTransaction(QtWidgets.QWidget):
     '''
-        Create Transaction tab widget. This Tab allows OSCM users to create transactions 
+    Create Transaction tab widget. This Tab allows OSCM users to create transactions 
     in OSCM from Gr-ResQ tool. User authentication token is required.
     It is required that the user has access to create transaction in the facility.
     If user wants to attach a file (recipe.json), the file must exit in oscm_files directory.
@@ -479,7 +479,7 @@ class CreateTransaction(QtWidgets.QWidget):
 
 class GetTransaction(QtWidgets.QWidget):
     '''
-        Get Transaction tab widget. This Tab allows OSCM users to get transactions 
+    Get Transaction tab widget. This Tab allows OSCM users to get transactions 
     from OSCM. User authentication token is required.
     All files downloaded go temporarily to oscm_files directory. Once, the Gr-resQ tool
     is closed, all files are removed.
