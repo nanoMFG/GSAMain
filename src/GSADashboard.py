@@ -31,7 +31,7 @@ class GSADashboard(QtGui.QTabWidget):
         self.query_tab = GSAQuery()
         self.image_tab = GSAImage(mode=mode).widget()
         self.submit_tab = GSASubmit(mode=mode, box_config_path=box_config_path)
-        self.oscm_tab = GSAOscm(server_instance='dev')
+        self.oscm_tab = GSAOscm(server_instance='prod')
         self.submit_tab.preparation.oscm_signal.connect(lambda: self.setCurrentWidget(self.oscm_tab))
 
         self.addTab(self.query_tab, 'Query')

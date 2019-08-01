@@ -17,8 +17,6 @@ class OSCMAdapter:
             # if there are credentials, then authenticate
             if username is not None and password is not None:
                 self.authenticate(username, password)
-            else:
-                print('Please authenticate before using any function')
     
     # ---------------------------------------------------
     # Authenticate:
