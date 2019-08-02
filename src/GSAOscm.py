@@ -200,7 +200,7 @@ class CreateTransaction(QtWidgets.QWidget):
         # build oscm path
         oscm_dir = 'oscm_files'
         self.oscm_path = os.path.abspath(oscm_dir)
-
+        
         # create list of files available
         self.myfiles = [QtWidgets.QCheckBox(f) for f in os.listdir(
             self.oscm_path) if os.path.isfile(os.path.join(self.oscm_path, f))]
