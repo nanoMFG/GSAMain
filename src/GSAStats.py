@@ -213,7 +213,7 @@ class FeatureSelectionItem(QtGui.QWidget):
 		self.model = ItemsetsTableModel()
 		self.itemsets_view = QtGui.QTableView()
 		self.itemsets_view.verticalHeader().setVisible(False)
-		self.itemsets_view.setMinimumHeight(200)
+		# self.itemsets_view.setMinimumHeight(200)
 		self.itemsets_view.setMinimumWidth(300)
 		self.itemsets_view.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
 		self.itemsets_view.setSortingEnabled(True)

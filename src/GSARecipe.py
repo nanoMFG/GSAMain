@@ -1,6 +1,7 @@
 import numpy as np
 import cv2, sys, time, json, copy, subprocess
 from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5.QtWidgets import QWidget, QScrollArea, QTableWidget, QVBoxLayout, QTableWidgetItem
 import pyqtgraph as pg
 import pandas as pd
 import matplotlib.pyplot as mp
@@ -8,6 +9,7 @@ import matplotlib.lines as mlines
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import random
+from IPython.display import display, HTML
 
 class GSARecipe(QtGui.QWidget):
     def __init__(self,parent=None):
@@ -32,9 +34,26 @@ class GSARecipe(QtGui.QWidget):
         self.layout.addWidget(self.experiment_selection,0,1,1,1)
         self.layout.addWidget(self.recipe_profile,1,0,1,2)
 
+        self.setLayout(self.layout)
+
+        self.errmsg = QtWidgets.QMessageBox()
+
     def getFile(self):
         filepath = QtWidgets.QFileDialog.getOpenFileName()
+        if filepath[0]!=u'':
+            if filepath[0][-3:]!='csv':
+                self.errmsg.setIcon(QtWidgets.QMessageBox.Warning)
+                self.errmsg.setText('Please upload a .csv')
+                self.errmsg.exec_()
+
+                del filepath
+            else:
+                self.readCSV(filepath)
+            
+        else:
+            del filepath
        
+    def readCSV(self, filepath):
         self.df = pd.read_csv(filepath[0])
         
         self.experiment_selection.addItems(['Please Select Exeriment No'])
@@ -50,7 +69,7 @@ class GSARecipe(QtGui.QWidget):
         
         stamp = []
 
-        self.df = series.to_frame()
+        self.df = series.to_frame()       
         
         i = 0
         for n in range(6):
@@ -85,9 +104,13 @@ class GSARecipe(QtGui.QWidget):
                               'Hydrogen Flow Rate (sccm)' : [frame1.iat[0,6]], 'Hydrogen Flow Rate (Torr l/s)' : [frame1.iat[0,7]],
                               'Carbon Source' : [frame1.iat[0,8]],'Carbon Source Flow Rate (sccm)' : [frame1.iat[0,9]],
                               'Carbon Source Flow Rate (Torr l/s)' : [frame1.iat[0,10]],
-                              'Argon Flow Rate (sccm)' : [frame1.iat[0,11]], 'Argon Flow Rate (Torr l/s)' : [frame1.iat[0,12]]})
+                              'Argon Flow Rate (sccm)' : [frame1.iat[0,11]], 
+                              'Argon Flow Rate (Torr l/s)' : [frame1.iat[0,12]]})
         zeroedFrame1 = zeroA.append(frame1)
         zeroedFrame1.index = [0, 1, 2, 3, 4, 5, 6]
+        columns = zeroedFrame1.columns.tolist()
+        columns = columns[::-1]
+        zeroedFrame1 = zeroedFrame1[columns]
         tmp = zeroedFrame1.dropna(axis=0, how='all')
         shrink1 = tmp.dropna(axis=1, how='all')
         Annealing = shrink1.fillna(0)
@@ -101,6 +124,9 @@ class GSARecipe(QtGui.QWidget):
                               'Argon Flow Rate (sccm)' : [frame2.iat[0,11]], 'Argon Flow Rate (Torr l/s)' : [frame2.iat[0,12]]})
         zeroedFrame2 = zeroG.append(frame2)
         zeroedFrame2.index = [0, 1, 2, 3, 4, 5, 6]
+        columns = zeroedFrame2.columns.tolist()
+        columns = columns[::-1]
+        zeroedFrame2 = zeroedFrame2[columns]
         tmp = zeroedFrame2.dropna(axis=0, how='all')
         shrink2 = tmp.dropna(axis=1, how='all')
         Growth = shrink2.fillna(0)
@@ -116,8 +142,11 @@ class GSARecipe(QtGui.QWidget):
         zeroedFrame3.index = [0, 1, 2, 3, 4, 5, 6]
         total = 0
         for i in range(len(zeroedFrame3.index)):
-            total += zeroedFrame3.iloc[i,0]
-            zeroedFrame3.iat[i,0] = total
+            total += zeroedFrame3.iloc[i,-1]
+            zeroedFrame3.iat[i,-1] = total
+        columns = zeroedFrame3.columns.tolist()
+        columns = columns[::-1]
+        zeroedFrame3 = zeroedFrame3[columns]
         tmp = zeroedFrame3.dropna(axis=0, how='all')
         shrink3 = tmp.dropna(axis=1, how='all')
         Cooling = shrink3.fillna(0)
@@ -127,6 +156,7 @@ class GSARecipe(QtGui.QWidget):
     def plotRecipe(self):
         exp = int(self.experiment_selection.currentText())-1
         grapheneRec    = self.df.iloc[exp, 31:269]
+
         Anneal_series  = grapheneRec.iloc[1:79]
         Growth_series  = grapheneRec.iloc[80:159]
         Cooling_series = grapheneRec.iloc[160:269]
@@ -138,10 +168,6 @@ class GSARecipe(QtGui.QWidget):
         Cooling = self.collapse(Cooling_series)
 
         A, G, C = self.finalize(Anneal, Growth, Cooling)
-
-        A = A.astype(str)
-        G = G.astype(str)
-        C = C.astype(str)
 
         self.figure, (A_temp, G_temp, C_temp) = mp.subplots(1, 3, sharey=True)
 
@@ -155,7 +181,7 @@ class GSARecipe(QtGui.QWidget):
         G_gas = G_temp.twinx()   
         G_gas.tick_params(axis='y', direction='in', labelright=False)
 
-        C_temp.plot([10,10,0], C['Temp (degC)'], 'b')
+        C_temp.plot(C['Time (min)'], C['Temp (degC)'], 'b')
         C_temp.tick_params(axis='both', direction='in')
         C_gas = C_temp.twinx()
         C_gas.tick_params(axis='y', direction='in')

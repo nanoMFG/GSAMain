@@ -106,3 +106,6 @@ venv.bak/
 *.pyc
 
 .idea
+output
+
+.vscode

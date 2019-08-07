@@ -3,7 +3,7 @@ The Makefiles are setup to support deployment of the application as a nanoHUB to
 
 ```
 SRCS := GSARaman.py GSADashboard.py GSAImage.py GSAQuery.py \
-        GSARecipe.py GSAStats.py GSASubmit.py models.py
+        GSARecipe.py GSAStats.py GSASubmit.py GSAOscm.py models.py
 ```
 
 ### Testing the Install

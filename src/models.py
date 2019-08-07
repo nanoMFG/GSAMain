@@ -3,6 +3,13 @@ import pandas as pd
 from mlxtend.frequent_patterns import apriori
 
 class ItemsetsTableModel(QtCore.QAbstractTableModel):
+	"""
+	Creates a PyQt TableModel that determines the support for different sets of attributes.
+	If all rows contain data for a set of attributes, the support is '1' and if no rows contain
+	data for a set, the support is '0'. This model is useful for conducting analyses on
+	datasets where some rows are missing data. It can help determine which sets of attributes
+	should be used on the basis of how much support there is for a particular set.
+	"""
 	def __init__(self,parent=None):
 		super(ItemsetsTableModel,self).__init__(parent=parent)
 		self.frequent_itemsets = pd.DataFrame()
@@ -52,6 +59,10 @@ class ItemsetsTableModel(QtCore.QAbstractTableModel):
 		self.endResetModel()
 
 class ResultsTableModel(QtCore.QAbstractTableModel):
+	"""
+	This PyQt TableModel is used for displaying data queried from a SQL query 
+	in a TableView.
+	"""
 	def __init__(self,parent=None):
 		super(ResultsTableModel,self).__init__(parent=parent)
 		self.df = pd.DataFrame()

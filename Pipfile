@@ -1,0 +1,28 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+autopep8 = "*"
+
+[packages]
+pandas = "==0.23.4"
+boxsdk = "==2.0.0"
+mdf-connect-client = ">=0.3.1"
+mdf-forge = ">=0.7.2"
+SQLAlchemy = "==1.2.13"
+scipy = "*"
+opencv-python = "*"
+scikit-image = "*"
+pyqtgraph = "*"
+mlxtend = "*"
+ipython = "*"
+qimage2ndarray = "*"
+PyQt5 = "*"
+oscm-client = {git = "https://gitlab.com/torosant/pyclientoscm.git"}
+sqlalchemy-utils = "*"
+passlib = "*"
+
+[requires]
+python_version = "3.7"
