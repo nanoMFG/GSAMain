@@ -12,7 +12,7 @@ SUBDIRS := gresq
 CPYTHON_SUFFIX = cpython-36
 SRCS := GSARaman.py GSADashboard.py GSAImage.py GSAQuery.py \
         GSARecipe.py GSAStats.py GSASubmit.py GSAOscm.py models.py \
-		box_adaptor.py mdf_adaptor.py oscm_adapter.py \
+		box_adaptor.py mdf_adaptor.py oscm_adapter.py 
 DATAFILES := varmap.csv varmap2.csv recipe_2018_11_08.csv
 
 DATAOBJS := $(patsubst %,${DATADESTDIR}/%,${DATAFILES})
