@@ -21,6 +21,8 @@ ipython = "*"
 qimage2ndarray = "*"
 PyQt5 = "*"
 oscm-client = {git = "https://gitlab.com/torosant/pyclientoscm.git"}
+sqlalchemy-utils = "*"
+passlib = "*"
 
 [requires]
 python_version = "3.7"

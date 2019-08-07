@@ -3,22 +3,32 @@ Author: Ricardo Toro
 Last update: 07/15/2019
 """
 
-import os, sys, json, re
+import os
+import sys
+import json
+import re
+import zipfile
 from PyQt5 import QtGui, QtCore, QtWidgets
 from oscm_adapter import OSCMAdapter
 
 label_bold = QtGui.QFont("Times", 7, QtGui.QFont.Bold)
 
+
 class GSAOscm(QtWidgets.QTabWidget):
     '''
     Main oscm widget
     '''
-    def __init__(self, server_instance='dev', parent=None):
-        super(GSAOscm,self).__init__(parent=parent)
+
+    def __init__(self, server_instance='prod', parent=None):
+        super(GSAOscm, self).__init__(parent=parent)
+
+        # create oscm_files directory if it does not exist
+        if not os.path.exists('oscm_files'):
+            os.mkdir('oscm_files')
 
         # instantiate OSCM adapter
-        self.session = OSCMAdapter(server_instance = server_instance)
-        
+        self.session = OSCMAdapter(server_instance=server_instance)
+
         # set tab positions
         self.setTabPosition(QtWidgets.QTabWidget.North)
 
@@ -27,7 +37,7 @@ class GSAOscm(QtWidgets.QTabWidget):
         self.oscm_register = OscmRegister(self, self.session)
 
         # add log in tab
-        self.addTab(self.login,'Log in')
+        self.addTab(self.login, 'Log in')
 
         # ---------------------------------------------------
         # Set general layout:
@@ -56,17 +66,18 @@ class GSAOscm(QtWidgets.QTabWidget):
 
         # pop up fatal error msg
         QtWidgets.QMessageBox.warning(self, 'Error', msg)
-                           
+
+
 class LoginTab(QtWidgets.QWidget):
     '''
-	Login tab widget. Users input oscm credentials to get authentication token.
+    Login tab widget. Users input oscm credentials to get authentication token.
     '''
 
     def __init__(self, main_widget, session, parent=None):
         super(LoginTab, self).__init__(parent=parent)
 
         self.mw = main_widget
-        
+
         self.session = session
         self.auth = {
             'success': False,
@@ -107,7 +118,8 @@ class LoginTab(QtWidgets.QWidget):
         layout.addRow('', buttonLogin)
         layout.addRow('', buttonRegister)
 
-        spacer = QtWidgets.QSpacerItem(325, 0, hPolicy = QtWidgets.QSizePolicy.Fixed)
+        spacer = QtWidgets.QSpacerItem(
+            325, 0, hPolicy=QtWidgets.QSizePolicy.Fixed)
 
         mainLayout.addItem(spacer, 0, 0)
         mainLayout.addLayout(layout, 1, 1)
@@ -117,19 +129,17 @@ class LoginTab(QtWidgets.QWidget):
     def handle_login(self):
 
         # Try to authenticate user
-        self.auth = self.session.authenticate(self.username.text(), self.password.text())
+        self.auth = self.session.authenticate(
+            self.username.text(), self.password.text())
 
         if self.auth['success']:
-            # Pops up msg with success msg
-            QtWidgets.QMessageBox.information(
-                self, 'Success', 'User successfully authenticated !!!')
 
             # add OSCM Dashboard Tab
             self.createTransaction = CreateTransaction(self.mw, self.session)
             self.getTransaction = GetTransaction(self.mw, self.session)
 
-            self.mw.addTab(self.createTransaction,'Create Transaction')
-            self.mw.addTab(self.getTransaction,'Get Transaction')
+            self.mw.addTab(self.createTransaction, 'Create Transaction')
+            self.mw.addTab(self.getTransaction, 'Completed Transaction')
 
             # Go to OSCM Dashboard Tab
             self.mw.setCurrentWidget(self.createTransaction)
@@ -148,21 +158,22 @@ class LoginTab(QtWidgets.QWidget):
 
     def handle_register(self):
         # add OSCM Register Tab
-        self.mw.addTab(self.mw.oscm_register,'Register')
+        self.mw.addTab(self.mw.oscm_register, 'Register')
         # Go to OSCM Register Tab
         self.mw.setCurrentWidget(self.mw.oscm_register)
         # Disable log in Tab
         self.mw.setTabEnabled(0, False)
 
     def clear(self):
-        # find all QLineEdit objectes and clear them 
+        # find all QLineEdit objectes and clear them
         for attr, value in self.__dict__.items():
             if isinstance(value, QtWidgets.QLineEdit):
                 value.setText('')
 
+
 class CreateTransaction(QtWidgets.QWidget):
     '''
-	Create Transaction tab widget. This Tab allows OSCM users to create transactions 
+    Create Transaction tab widget. This Tab allows OSCM users to create transactions 
     in OSCM from Gr-ResQ tool. User authentication token is required.
     It is required that the user has access to create transaction in the facility.
     If user wants to attach a file (recipe.json), the file must exit in oscm_files directory.
@@ -189,16 +200,19 @@ class CreateTransaction(QtWidgets.QWidget):
         # build oscm path
         oscm_dir = 'oscm_files'
         self.oscm_path = os.path.abspath(oscm_dir)
-
+        
         # create list of files available
-        self.myfiles = [QtWidgets.QCheckBox(f) for f in os.listdir(self.oscm_path) if os.path.isfile(os.path.join(self.oscm_path, f))]
+        self.myfiles = [QtWidgets.QCheckBox(f) for f in os.listdir(
+            self.oscm_path) if os.path.isfile(os.path.join(self.oscm_path, f))]
 
         # get facilities
         self.get_facilities()
-        
+
         if len(self.facilities) == 0:
-            self.layout.addWidget(QtWidgets.QLabel("You do not have access to submit any transaction to a facility!!!"), 0, 0)
-            self.layout.addWidget(QtWidgets.QLabel("Please contact a facility to be able to submit transactions."), 1, 0)
+            self.layout.addWidget(QtWidgets.QLabel(
+                "You do not have access to submit any transaction to a facility!!!"), 0, 0)
+            self.layout.addWidget(QtWidgets.QLabel(
+                "Please contact a facility to be able to submit transactions."), 1, 0)
         else:
 
             # ---------------------------------------------------
@@ -213,24 +227,26 @@ class CreateTransaction(QtWidgets.QWidget):
             # qty
             self.quantity = QtWidgets.QLineEdit(self)
             self.quantity.setMaximumWidth(60)
-            self.quantity.setValidator(QtGui.QIntValidator(0,2147483647))
+            self.quantity.setValidator(QtGui.QIntValidator(0, 2147483647))
 
             # instructions
             self.instructions = QtWidgets.QTextEdit(self)
 
             # define dropdonwns
-            self.facility_selection = QtWidgets.QComboBox() # facilities
+            self.facility_selection = QtWidgets.QComboBox()  # facilities
             self.facility_selection.setMaximumWidth(max_width)
             self.queue_selection = QtWidgets.QComboBox()    # queues
             self.queue_selection.setMaximumWidth(max_width)
 
             # init description
-            self.queue_decription = QtWidgets.QLabel('', self) # set default values
+            self.queue_decription = QtWidgets.QLabel(
+                '', self)  # set default values
 
             # facility:
-            self.facility_selection.addItems([item['facility_name'] for item in self.facilities])
+            self.facility_selection.addItems(
+                [item['facility_name'] for item in self.facilities])
             self.facility_selection.activated.connect(self.selected_facility)
-            
+
             # queue:
             self.queues = []
             self.selected_facility(0)   # set default values
@@ -244,51 +260,56 @@ class CreateTransaction(QtWidgets.QWidget):
             # loading gif
             self.gif_path = os.path.abspath('img\loader.gif')
             self.gif = QtWidgets.QLabel()
-            self.gif.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+            self.gif.setSizePolicy(
+                QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
             self.gif.setAlignment(QtCore.Qt.AlignCenter)
             self.movie = QtGui.QMovie(self.gif_path)
 
             # set layout
-            hspacer = QtWidgets.QSpacerItem(0, 0, hPolicy = QtWidgets.QSizePolicy.Expanding)
-            vspacer = QtWidgets.QSpacerItem(0, 50, vPolicy = QtWidgets.QSizePolicy.Minimum)
+            hspacer = QtWidgets.QSpacerItem(
+                0, 0, hPolicy=QtWidgets.QSizePolicy.Expanding)
+            vspacer = QtWidgets.QSpacerItem(
+                0, 50, vPolicy=QtWidgets.QSizePolicy.Minimum)
 
             self.layout.addWidget(QtWidgets.QLabel("Transaction Name:"), 0, 0)
-            self.layout.addWidget(self.transaction_name, 1, 0 )
+            self.layout.addWidget(self.transaction_name, 1, 0)
 
             self.layout.addWidget(QtWidgets.QLabel("Quantity:"), 0, 1)
-            self.layout.addWidget(self.quantity, 1, 1 )
+            self.layout.addWidget(self.quantity, 1, 1)
 
-            self.layout.addItem(hspacer, 1, 2 )
+            self.layout.addItem(hspacer, 1, 2)
 
             self.layout.addWidget(QtWidgets.QLabel("Select Facility:"), 2, 0)
             self.layout.addWidget(self.facility_selection, 3, 0)
-            self.layout.addItem(hspacer, 3, 1 )
+            self.layout.addItem(hspacer, 3, 1)
 
             self.layout.addWidget(QtWidgets.QLabel("Select Queue:"), 4, 0)
             self.layout.addWidget(self.queue_selection, 5, 0)
-            self.layout.addItem(hspacer, 5, 1 )
+            self.layout.addItem(hspacer, 5, 1)
 
-            self.layout.addWidget(QtWidgets.QLabel("Queue Description: "), 6, 0)
+            self.layout.addWidget(QtWidgets.QLabel(
+                "Queue Description: "), 6, 0)
             self.layout.addWidget(self.queue_decription, 7, 0, 1, 3)
 
             self.layout.addWidget(QtWidgets.QLabel("Instructions:"), 8, 0)
-            self.layout.addWidget(self.instructions, 9, 0, 1, 3 )
+            self.layout.addWidget(self.instructions, 9, 0, 1, 3)
 
             row = 10
 
             if self.myfiles:
-                self.layout.addWidget(QtWidgets.QLabel("Please select files to attach:"), row, 0)
-                
+                self.layout.addWidget(QtWidgets.QLabel(
+                    "Please select files to attach:"), row, 0)
+
                 for file in self.myfiles:
                     row += 1
-                    self.layout.addWidget(file, row, 0 )
+                    self.layout.addWidget(file, row, 0)
 
             row += 1
-            self.layout.addItem(vspacer, row , 0)
+            self.layout.addItem(vspacer, row, 0)
             row += 1
-            self.layout.addWidget(self.buttonSubmit, row , 0)
+            self.layout.addWidget(self.buttonSubmit, row, 0)
             row += 1
-            self.layout.addWidget(self.gif, row, 0 )
+            self.layout.addWidget(self.gif, row, 0)
 
         mainLayout.addLayout(self.layout, 0, 0)
         self.setLayout(mainLayout)
@@ -308,11 +329,12 @@ class CreateTransaction(QtWidgets.QWidget):
             'end': None,
             'processing': None,
             'quantity': self.quantity.text(),
-            'instructions': self.instructions.text() if self.instructions.text() else 'no special instructions for this job'
+            'instructions': self.instructions.toPlainText() if self.instructions.toPlainText() else 'no special instructions for this job'
         }
 
         # validate form. If validation does no pass, show msg with corresponding warning
-        validate = self.validate_fields(self.transaction_name.text(), self.facility_id, job_data)
+        validate = self.validate_fields(
+            self.transaction_name.text(), self.facility_id, job_data)
         if not validate['success']:
             # stop loading gif
             self.stop_loader()
@@ -321,9 +343,10 @@ class CreateTransaction(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(
                 self, 'New Transaction form', validate['msg'])
             return False
-            
-        response_new_transaction = self.session.submit_transaction(self.transaction_name.text(), self.facility_id, job_data)
-        
+
+        response_new_transaction = self.session.submit_transaction(
+            self.transaction_name.text(), self.facility_id, job_data)
+
         if response_new_transaction['success']:
 
             # submit files
@@ -332,14 +355,15 @@ class CreateTransaction(QtWidgets.QWidget):
             is_partial_success = False
 
             for file in self.myfiles:
-                
+
                 if file.isChecked():
 
                     # uncheck check box
                     file.setChecked(False)
 
                     # submit file
-                    submitted_file = self.session.submit_file(transaction_id, self.oscm_path, file.text())
+                    submitted_file = self.session.submit_file(
+                        transaction_id, self.oscm_path, file.text())
 
                     # check if file was sent successfully, otherwise pops an warning msg
                     if not submitted_file['success']:
@@ -350,7 +374,7 @@ class CreateTransaction(QtWidgets.QWidget):
 
             # success_submission
             self.success_submission(is_partial_success)
-            
+
         else:
             # stop loading gif
             self.stop_loader()
@@ -361,11 +385,12 @@ class CreateTransaction(QtWidgets.QWidget):
                 # Pops up msg with warning msg
                 QtWidgets.QMessageBox.warning(
                     self, 'Warning', response_new_transaction['msg'])
- 
+
     def selected_facility(self, i):
 
         # get facility id
-        self.facility_id = self.facilities[i]['_id'] if len(self.facilities) > 0 else None
+        self.facility_id = self.facilities[i]['_id'] if len(
+            self.facilities) > 0 else None
 
         # get facility
         self.get_facility(self.facility_id)
@@ -377,9 +402,9 @@ class CreateTransaction(QtWidgets.QWidget):
         self.queue_selection.clear()
         self.queue_selection.addItems([item['name'] for item in self.queues])
 
-        # default queue is the first element of the dropdown  
+        # default queue is the first element of the dropdown
         self.selected_queue(0)
-        
+
     def selected_queue(self, i):
 
         # set queue value
@@ -387,7 +412,7 @@ class CreateTransaction(QtWidgets.QWidget):
 
         # update decription of the queue
         self.queue_decription.setText(self.queues[i]['description'])
-           
+
     def get_facility(self, _id):
 
         # get facility
@@ -402,7 +427,7 @@ class CreateTransaction(QtWidgets.QWidget):
     def get_queues(self):
 
         self.queues.clear()
-           
+
         queues_response = self.session.get_queues(self.facility)
 
         # save queues or handle fatal error
@@ -422,12 +447,12 @@ class CreateTransaction(QtWidgets.QWidget):
         else:
             self.facilities = []
             self.mw.handle_fatal_error(facilities_response['msg'])
-        
+
     def validate_fields(self, transaction_name, facility_id, job_data):
-           
-        # validate all filled in        
-        if not all(value != '' for value in job_data.values()) or  transaction_name == '' or facility_id == '':
-            return {'success':False, 'msg': 'Plase fill in all entries'}
+
+        # validate all filled in
+        if not all(value != '' for value in job_data.values()) or transaction_name == '' or facility_id == '':
+            return {'success': False, 'msg': 'Plase fill in all entries'}
 
         return {'success': True}
 
@@ -436,7 +461,7 @@ class CreateTransaction(QtWidgets.QWidget):
         # stop laoding gif
         self.stop_loader()
 
-        # find all QLineEdit objectes and clear them 
+        # find all QLineEdit objectes and clear them
         for attr, value in self.__dict__.items():
             if isinstance(value, QtWidgets.QLineEdit):
                 value.setText('')
@@ -451,14 +476,15 @@ class CreateTransaction(QtWidgets.QWidget):
         self.movie.stop()
         self.gif.clear()
 
+
 class GetTransaction(QtWidgets.QWidget):
     '''
-	Get Transaction tab widget. This Tab allows OSCM users to get transactions 
+    Get Transaction tab widget. This Tab allows OSCM users to get transactions 
     from OSCM. User authentication token is required.
     All files downloaded go temporarily to oscm_files directory. Once, the Gr-resQ tool
     is closed, all files are removed.
     '''
-    
+
     def __init__(self, main_widget, session, parent=None):
         super(GetTransaction, self).__init__(parent=parent)
 
@@ -478,9 +504,9 @@ class GetTransaction(QtWidgets.QWidget):
         self.files_layout = QtWidgets.QVBoxLayout()
         self.files_layout.setAlignment(QtCore.Qt.AlignTop)
 
-        #---------------------------------------------------
+        # ---------------------------------------------------
         # Init widget
-        #---------------------------------------------------
+        # ---------------------------------------------------
 
         self.mw = main_widget
         self.session = session
@@ -488,127 +514,170 @@ class GetTransaction(QtWidgets.QWidget):
         # get transactions
         self.get_transactions()
 
-        # define dropdonwns
-        self.type_transaction = QtWidgets.QComboBox() # type transaction
-        self.type_transaction.setMaximumWidth(150)
+        if len(self.transactions_customer) == 0 and len(self.transactions_provider) == 0:
+            self.layout.addWidget(QtWidgets.QLabel(
+                "You do not have any transaction completed!!!"), 0, 0)
+            mainLayout.setAlignment(QtCore.Qt.AlignCenter)
+            mainLayout.addLayout(self.layout, 0, 0)
 
-        self.transactions_available = QtWidgets.QComboBox() # list of transactios available for user
-        self.transactions_available.setMaximumWidth(150)
-        self.transactions_available.view().setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
-        self.transactions_available.view().setMaximumHeight(200)
+        else:
 
-        # type of transaction:
-        types_transaction = ['Requested by me', 'Requested on my facility'] 
-        self.type_transaction.addItems(types_transaction)
-        self.type_transaction.activated.connect(self.selected_type_transaction)
+            # define dropdonwns
+            self.type_transaction = QtWidgets.QComboBox()  # type transaction
+            self.type_transaction.setMaximumWidth(150)
 
-        # for review transaction:
-        self.list_transactions = []
-        facility_label = QtWidgets.QLabel('Facility:')
-        facility_label.setFont(label_bold)
-        self.facility_text = QtWidgets.QLabel('')
+            # list of transactios available for user
+            self.transactions_available = QtWidgets.QComboBox()
+            self.transactions_available.setMaximumWidth(150)
+            self.transactions_available.view().setVerticalScrollBarPolicy(
+                QtCore.Qt.ScrollBarAsNeeded)
+            self.transactions_available.view().setMaximumHeight(200)
 
-        submitted_label = QtWidgets.QLabel('Submitted:')
-        submitted_label.setFont(label_bold)
-        self.submitted_text = QtWidgets.QLabel('')
+            # type of transaction:
+            types_transaction = ['Requested by me', 'Requested on my facility']
+            self.type_transaction.addItems(types_transaction)
+            self.type_transaction.activated.connect(
+                self.selected_type_transaction)
 
-        status_label = QtWidgets.QLabel('Status:')
-        status_label.setFont(label_bold)
-        self.status_text = QtWidgets.QLabel('')
+            # Refresh button
+            self.buttonRefresh = QtWidgets.QPushButton('Refresh', self)
+            self.buttonRefresh.clicked.connect(
+                lambda: self.handle_refresh_btn())
+            self.buttonRefresh.setMaximumWidth(80)
 
-        qty_label = QtWidgets.QLabel('Quantity:')
-        qty_label.setFont(label_bold)
-        self.qty_text = QtWidgets.QLabel('')
+            # for review transaction:
+            self.list_transactions = []
+            facility_label = QtWidgets.QLabel('Facility:')
+            facility_label.setFont(label_bold)
+            self.facility_text = QtWidgets.QLabel('')
 
-        instructions_label = QtWidgets.QLabel('Instructions:')
-        instructions_label.setFont(label_bold)
-        self.instructions_text = QtWidgets.QLabel('')
+            submitted_label = QtWidgets.QLabel('Submitted:')
+            submitted_label.setFont(label_bold)
+            self.submitted_text = QtWidgets.QLabel('')
 
-        # for files:
-        files_title_label = QtWidgets.QLabel('Files:')
-        files_title_label.setFont(label_bold)
+            status_label = QtWidgets.QLabel('Status:')
+            status_label.setFont(label_bold)
+            self.status_text = QtWidgets.QLabel('')
 
-        # Download all files button
-        self.buttondownload = QtWidgets.QPushButton('Download Files', self)
-        self.buttondownload.clicked.connect(self.handle_download_all)
-        
-        # default transaction to the first in the list
-        self.list_files = []
-        self.selected_type_transaction(0)
-        self.transactions_available.activated.connect(self.get_transaction)
+            qty_label = QtWidgets.QLabel('Quantity:')
+            qty_label.setFont(label_bold)
+            self.qty_text = QtWidgets.QLabel('')
 
-        # list of two options of type of transaction (on my facility or requested by me)
-        self.layout.addWidget(QtWidgets.QLabel("Select Type of Transaction:"), 0, 0)
-        self.layout.addWidget(self.type_transaction, 1, 0)
+            instructions_label = QtWidgets.QLabel('Instructions:')
+            instructions_label.setFont(label_bold)
+            self.instructions_text = QtWidgets.QLabel('')
 
-        # list of transacions available for user to select
-        self.layout.addWidget(QtWidgets.QLabel("Select Transaction:"), 2, 0)
-        self.layout.addWidget(self.transactions_available, 3, 0)
+            # for files:
+            files_title_label = QtWidgets.QLabel('Files:')
+            files_title_label.setFont(label_bold)
 
-        # set review layout data
-        if self.transaction:
-            review_layout.addWidget(facility_label)
-            review_layout.addWidget(self.facility_text)           
+            # Download all files button
+            self.buttondownload = QtWidgets.QPushButton('Download Files', self)
+            self.buttondownload.clicked.connect(self.handle_download_all)
 
-            review_layout.addWidget(submitted_label)
-            review_layout.addWidget(self.submitted_text)
+            # default transaction to the first in the list
+            self.list_files = []
+            self.i = 0
+            self.selected_type_transaction(self.i)
+            self.transactions_available.activated.connect(self.get_transaction)
 
-            review_layout.addWidget(status_label)
-            review_layout.addWidget(self.status_text)
+            # list of two options of type of transaction (on my facility or requested by me)
+            self.layout.addWidget(QtWidgets.QLabel(
+                "Select Type of Transaction:"), 0, 0)
+            self.layout.addWidget(self.type_transaction, 1, 0)
 
-            review_layout.addWidget(qty_label)
-            review_layout.addWidget(self.qty_text)
+            # list of transacions available for user to select
+            self.layout.addWidget(QtWidgets.QLabel(
+                "Select Transaction:"), 2, 0)
+            self.layout.addWidget(self.transactions_available, 3, 0)
 
-            review_layout.addWidget(instructions_label)
-            review_layout.addWidget(self.instructions_text)
+            # refresh button
+            hspacer = QtWidgets.QSpacerItem(
+                100, 0, hPolicy=QtWidgets.QSizePolicy.Maximum)
+            self.layout.addItem(hspacer, 1, 1)
+            self.layout.addWidget(self.buttonRefresh, 1, 2)
 
-        # create main box
-        hbox = QtWidgets.QHBoxLayout()
-        
-        # Top lelf frame
-        left = QtWidgets.QFrame()
-        left.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        left.setLayout(self.layout)
-        
-        # Top right frame
-        right = QtWidgets.QFrame()
-        right.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        right.setLayout(review_layout)
+            # set review layout data
+            if self.transaction:
+                review_layout.addWidget(facility_label)
+                review_layout.addWidget(self.facility_text)
 
-        # Bottom frame
-        bottom = QtWidgets.QFrame()
-        bottom.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        bottom.setLayout(self.files_layout)
+                review_layout.addWidget(submitted_label)
+                review_layout.addWidget(self.submitted_text)
 
-        # split top screen into two parts and add top left and top right frames 
-        splitter1 = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
-        splitter1.addWidget(left)
-        splitter1.addWidget(right)
-        splitter1.setSizes([200,300])
+                review_layout.addWidget(status_label)
+                review_layout.addWidget(self.status_text)
 
-        # split vertically 
-        splitter2 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-        splitter2.addWidget(splitter1)
-        splitter2.addWidget(files_title_label)
-        splitter2.addWidget(bottom)
-        splitter2.addWidget(self.buttondownload)
-        splitter2.setSizes([300, 10, 200, 20])
-		
-        # add box to main layout
-        hbox.addWidget(splitter2)
-        mainLayout.addLayout(hbox, 0, 0)
+                review_layout.addWidget(qty_label)
+                review_layout.addWidget(self.qty_text)
+
+                review_layout.addWidget(instructions_label)
+                review_layout.addWidget(self.instructions_text)
+
+            # create main box
+            hbox = QtWidgets.QHBoxLayout()
+
+            # Top lelf frame
+            left = QtWidgets.QFrame()
+            left.setFrameShape(QtWidgets.QFrame.StyledPanel)
+            left.setLayout(self.layout)
+
+            # Top right frame
+            right = QtWidgets.QFrame()
+            right.setFrameShape(QtWidgets.QFrame.StyledPanel)
+            right.setLayout(review_layout)
+
+            # Bottom frame
+            bottom = QtWidgets.QFrame()
+            bottom.setFrameShape(QtWidgets.QFrame.StyledPanel)
+            bottom.setLayout(self.files_layout)
+
+            # split top screen into two parts and add top left and top right frames
+            splitter1 = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+            splitter1.addWidget(left)
+            splitter1.addWidget(right)
+            splitter1.setSizes([200, 300])
+
+            # split vertically
+            splitter2 = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+            splitter2.addWidget(splitter1)
+            splitter2.addWidget(files_title_label)
+            splitter2.addWidget(bottom)
+            splitter2.addWidget(self.buttondownload)
+            splitter2.setSizes([300, 10, 200, 20])
+
+            # add box to main layout
+            hbox.addWidget(splitter2)
+            mainLayout.addLayout(hbox, 0, 0)
 
         self.setLayout(mainLayout)
 
     def get_transactions(self):
-    
+
         # get transactions
         transactions_response = self.session.get_user_transactions()
 
         # save transactions or handle fatal error
         if transactions_response['success']:
-            self.transactions_customer = sorted(transactions_response['data']['customer'], key=lambda k: k['submitted'], reverse=True) if 'customer' in transactions_response['data'].keys() else []
-            self.transactions_provider = sorted(transactions_response['data']['provider'], key=lambda k: k['submitted'], reverse=True) if 'provider' in transactions_response['data'].keys() else []
+
+            # filter customer data:
+            if 'customer' in transactions_response['data'].keys():
+                unsorted_transactions_customer = [
+                    transaction for transaction in transactions_response['data']['customer'] if transaction['status'] == 'completed']
+                self.transactions_customer = sorted(
+                    unsorted_transactions_customer, key=lambda k: k['submitted'], reverse=True)
+            else:
+                self.transactions_customer = []
+
+            # filter provider data:
+            if 'provider' in transactions_response['data'].keys():
+                unsorted_transactions_provider = [
+                    transaction for transaction in transactions_response['data']['provider'] if transaction['status'] == 'completed']
+                self.transactions_provider = sorted(
+                    unsorted_transactions_provider, key=lambda k: k['submitted'], reverse=True)
+            else:
+                self.transactions_provider = []
+
         else:
             self.transactions_customer = []
             self.transactions_provider = []
@@ -616,36 +685,47 @@ class GetTransaction(QtWidgets.QWidget):
 
     def selected_type_transaction(self, i):
 
+        # save current state
+        self.i = i
+
         self.list_transactions.clear()
 
-        self.list_transactions = self.transactions_customer[:] if i == 0 else self.transactions_provider[:]
+        self.list_transactions = self.transactions_customer[:
+                                                            ] if self.i == 0 else self.transactions_provider[:]
 
         # list of available transactions. Depends on the transaction type
-        self.transactions_available.clear()        
+        self.transactions_available.clear()
 
         if len(self.list_transactions) == 0:
-            # pop up fatal error msg
-             QtWidgets.QMessageBox.warning(self, 'Error', 'There are no transactions for the selected transaction type!!!')
-        else:
-            self.transactions_available.addItems([transaction['name'] for transaction in self.list_transactions])
-            self.get_transaction(0)
-    
-        ''' # get facility id
-        self.facility_id = self.facilities[i]['_id'] if len(self.facilities) > 0 else None
 
-        # get facility
-        self.get_facility(self.facility_id) '''
+            # clear review layout
+            self.facility_text.setText('')
+            self.submitted_text.setText('')
+            self.status_text.setText('')
+            self.qty_text.setText('')
+            self.instructions_text.setText('')
+
+            # pop up fatal error msg
+            QtWidgets.QMessageBox.warning(
+                self, 'Error', 'There are no transactions for the selected transaction type!!!')
+
+        else:
+            self.transactions_available.addItems(
+                [transaction['name'] for transaction in self.list_transactions])
+            self.get_transaction(0)
 
     def get_transaction(self, i):
 
         # get transaction id
-        response_transaction_id = self.session.get_transaction_id(self.list_transactions[i])
-    
+        response_transaction_id = self.session.get_transaction_id(
+            self.list_transactions[i])
+
         # get transaction if transaction exists
         if response_transaction_id['success']:
 
             # get transaction by id
-            transaction_response = self.session.get_transaction(response_transaction_id['data'])
+            transaction_response = self.session.get_transaction(
+                response_transaction_id['data'])
 
             # save transaction or handle fatal error
             if transaction_response['success']:
@@ -654,44 +734,51 @@ class GetTransaction(QtWidgets.QWidget):
                 self.transaction = transaction_response['data']
 
                 # updated review layout
-                self.facility_text.setText(self.transaction['profile']['resource_locator']['name'])
-                self.submitted_text.setText(self.transaction['job']['dates']['submitted'])
-                self.status_text.setText(self.transaction['profile']['properties']['status'])
+                self.facility_text.setText(
+                    self.transaction['profile']['resource_locator']['name'])
+                self.submitted_text.setText(
+                    self.transaction['profile']['properties']['submitted'])
+                self.status_text.setText(
+                    self.transaction['profile']['properties']['status'])
                 self.qty_text.setText(str(self.transaction['job']['quantity']))
-                self.instructions_text.setText(self.transaction['job']['instructions'])
+                self.instructions_text.setText(
+                    self.transaction['job']['instructions'])
 
                 # remove current files if any:
                 if self.files_layout.count() > 0:
                     self.list_files.clear()
-                    for i in reversed(range(self.files_layout.count())): 
+                    for i in reversed(range(self.files_layout.count())):
                         self.files_layout.itemAt(i).widget().setParent(None)
 
                 # get files names for transaction
-                file_names_response = self.session.get_files(response_transaction_id['data'])
+                file_names_response = self.session.get_files(
+                    response_transaction_id['data'])
 
                 if file_names_response['success']:
                     # Show file names:
                     for item in file_names_response['data']:
                         file_name = item['filename']
-                        self.files_layout.addWidget(QtWidgets.QLabel(file_name))
+                        self.files_layout.addWidget(
+                            QtWidgets.QLabel(file_name))
                         self.list_files.append(item['id'])
 
                     self.buttondownload.setEnabled(True)
-                        
+
                 else:
                     # let user know there are no files attached to this transaction
-                    self.files_layout.addWidget(QtWidgets.QLabel('There are no files!'))
+                    self.files_layout.addWidget(
+                        QtWidgets.QLabel('There are no files!'))
                     self.buttondownload.setEnabled(False)
-                
+
             else:
                 self.mw.handle_fatal_error(transaction_response['msg'])
 
     def handle_download_all(self):
-        
+
         is_all = True   # if at any time is_all = False, means at least one file failed to download
 
         for file in self.list_files:
-            
+
             try:
                 download_file_response = self.session.session.get_file(file)
             except:
@@ -699,23 +786,50 @@ class GetTransaction(QtWidgets.QWidget):
                 return False
 
             if not download_file_response['success']:
-                is_all = False                 
+                is_all = False
 
         if is_all:
-            QtWidgets.QMessageBox.information(self, 'Files', 'All files successfully downloaded!!!')
-            self.buttondownload.setEnabled(False)
+
+            # get directory where user want to save the zip file
+            oscm_path = os.path.abspath('oscm_files')
+            file_path = QtWidgets.QFileDialog.getSaveFileName(
+                None, "Save Files", 'oscm_files.zip', "ZIP File (*.zip)")[0]
+            if file_path:
+                # create zip file
+                zipf = zipfile.ZipFile(file_path, 'w', zipfile.ZIP_DEFLATED)
+                self.zipdir(oscm_path, zipf)
+                zipf.close()
+                QtWidgets.QMessageBox.information(self, 'Files', 'All files successfully downloaded!!!')
+
+            # self.buttondownload.setEnabled(False)
 
         else:
             # pop up fatal error msg
-            QtWidgets.QMessageBox.warning(self, 'Error', 'At least one file failed to download')
+            QtWidgets.QMessageBox.warning(
+                self, 'Error', 'At least one file failed to download')
+
+    def handle_refresh_btn(self):
+        self.transactions_customer.clear()
+        self.transactions_provider.clear()
+        self.get_transactions()
+        self.selected_type_transaction(self.i)
+
+    def zipdir(self, path, ziph):
+        for root, dirs, files in os.walk(path):
+            for file in files:
+                # do not zip itself
+                if (os.path.splitext(file)[1] != '.zip'):
+                    ziph.write(os.path.join(root, file),
+                               arcname=os.path.join(os.path.relpath(root, path), file))
+
 
 class OscmRegister(QtWidgets.QWidget):
 
     '''
-	Register OSCM tab widget. This Tab allows OSCM users to register
+        Register OSCM tab widget. This Tab allows OSCM users to register
     in OSCM. The user must provide all inputs.
     '''
-    
+
     def __init__(self, main_widget, session, parent=None):
         super(OscmRegister, self).__init__(parent=parent)
 
@@ -733,7 +847,7 @@ class OscmRegister(QtWidgets.QWidget):
         # address:
         self.street_address = QtWidgets.QLineEdit(self)
         self.city = QtWidgets.QLineEdit(self)
-        
+
         self.postal_code = QtWidgets.QLineEdit(self)
         self.country = QtWidgets.QLineEdit(self)
 
@@ -741,9 +855,9 @@ class OscmRegister(QtWidgets.QWidget):
         #self.state = QtWidgets.QLineEdit(self)
         self.state = QtWidgets.QComboBox()
         states = ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL',
-         'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE',
-         'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD',
-         'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'AA', 'AE', 'AP']
+                  'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE',
+                  'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD',
+                  'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'AA', 'AE', 'AP']
 
         self.state.addItems(states)
 
@@ -779,10 +893,11 @@ class OscmRegister(QtWidgets.QWidget):
         layout2 = QtWidgets.QGridLayout()
         layout2.setAlignment(QtCore.Qt.AlignBottom)
 
-        verticalSpacer = QtWidgets.QSpacerItem(0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        verticalSpacer = QtWidgets.QSpacerItem(
+            0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
 
         layout.addWidget(QtWidgets.QLabel("Name"), 0, 0)
-        layout.addWidget(self.name, 1, 0 )
+        layout.addWidget(self.name, 1, 0)
         layout.addWidget(QtWidgets.QLabel("Username"), 0, 1)
         layout.addWidget(self.username, 1, 1)
         layout.addWidget(QtWidgets.QLabel("Email"), 0, 2)
@@ -791,7 +906,7 @@ class OscmRegister(QtWidgets.QWidget):
         layout.addWidget(self.phone, 1, 3)
 
         layout.addWidget(QtWidgets.QLabel("Street Address"), 2, 0, 1, 3)
-        layout.addWidget(self.street_address, 3, 0, 1, 3 )
+        layout.addWidget(self.street_address, 3, 0, 1, 3)
         layout.addWidget(QtWidgets.QLabel("State"), 2, 3)
         layout.addWidget(self.state, 3, 3)
         layout.addWidget(QtWidgets.QLabel("Zip Code"), 4, 0)
@@ -807,7 +922,7 @@ class OscmRegister(QtWidgets.QWidget):
         layout.addWidget(self.password_confirmed, 7, 1)
 
         layout.addWidget(self.buttonSubmit, 8, 3)
-        
+
         layout2.addItem(verticalSpacer, 0, 0)
         layout2.addWidget(self.buttonBack, 1, 0)
 
@@ -841,7 +956,7 @@ class OscmRegister(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(
                 self, 'Register user form', validate['msg'])
             return False
-            
+
         response_new_user = self.session.register_user(new_user)
 
         if response_new_user['success']:
@@ -851,12 +966,12 @@ class OscmRegister(QtWidgets.QWidget):
             # clear form
             self.clear()
             self.handle_back()
-            
+
         else:
             # Pops up msg with warning msg
             QtWidgets.QMessageBox.warning(
                 self, 'Warning', response_new_user['msg'])
-        
+
     def handle_back(self):
         # clear form
         self.clear()
@@ -868,17 +983,17 @@ class OscmRegister(QtWidgets.QWidget):
         self.mw.setCurrentWidget(self.mw.login)
         # remove OSCM Register Tab
         self.mw.removeTab(idx)
-        
+
     def validate_fields(self, user):
-       
+
         # validate all filled in
         if not all(value != '' for value in user.values()):
-            return {'success':False, 'msg': 'Plase fill in all entries'}
+            return {'success': False, 'msg': 'Plase fill in all entries'}
 
         # valiedate email
         _re = r'[^@]+@[^@]+\.[^@]+'
         if not re.fullmatch(_re, user['email']):
-            return {'success': False, 'msg': 'Please use a valid email'} 
+            return {'success': False, 'msg': 'Please use a valid email'}
 
         # valiedate phone num
         _re = r'^([0-9]( |-)?)?(\(?[0-9]{3}\)?|[0-9]{3})( |-)?([0-9]{3}( |-)?[0-9]{4}|[a-zA-Z0-9]{7})$'
@@ -886,7 +1001,7 @@ class OscmRegister(QtWidgets.QWidget):
             return {'success': False, 'msg': 'Please use a valid phone number!'}
 
         # validate zip code
-        _re =r'^[0-9]{5}([- /]?[0-9]{4})?$'
+        _re = r'^[0-9]{5}([- /]?[0-9]{4})?$'
         if not re.fullmatch(_re, user['address']['postal_code']):
             return {'success': False, 'msg': 'Please use a valid zip code'}
 
@@ -902,11 +1017,12 @@ class OscmRegister(QtWidgets.QWidget):
         return {'success': True}
 
     def clear(self):
-        # find all QLineEdit objectes and clear them 
+        # find all QLineEdit objectes and clear them
         for attr, value in self.__dict__.items():
             if isinstance(value, QtWidgets.QLineEdit):
                 value.setText('')
-         
+
+
 if __name__ == '__main__':
     app = QtWidgets.QApplication([])
     oscm = GSAOscm()
