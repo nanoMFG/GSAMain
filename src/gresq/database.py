@@ -1,5 +1,5 @@
 
-from sqlalchemy_utils.types.password import PasswordType
+# from sqlalchemy_utils.types.password import PasswordType
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
@@ -39,12 +39,13 @@ class DataAccessLayer:
 
 
     @contextmanager
-    def session_scope(self):
+    def session_scope(self,autocommit=False):
         """Provide a transactional scope around a series of operations."""
         session = self.Session()
         try:
             yield session
-            session.commit()
+            if autocommit:
+                session.commit()
         except:
             session.rollback()
             raise
@@ -58,25 +59,26 @@ from sqlalchemy import Column, String, Integer, Float, Numeric, ForeignKey, Date
 from sqlalchemy.orm import relationship, backref
 
 # Declarative classes to define GresQ DB schema
-class user(Base):
-    id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    __tablename__ = 'user'
-    username = Column(String(32),info={'verbose_name':'Username'})
-    password = Column(PasswordType(
-                schemes=[
-                    'pbkdf2_sha512',
-                    'md5_crypt'
-                ],
-                deprecated=['md5_crypt']),
-            info={'verbose_name':'Password'})
-    first_name = Column(String(64), info={
-        'verbose_name':'First Name',
-        'required': False})
-    last_name = Column(String(64), info={
-        'verbose_name':'Last Name',
-        'required': False})
-    institution = Column(String(64), info={'verbose_name':'Institution'})
-
+# class user(Base):
+#     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
+#     __tablename__ = 'user'
+#     username = Column(String(32),info={'verbose_name':'Username'})
+#     password = Column(PasswordType(
+#                 schemes=[
+#                     'pbkdf2_sha512',
+#                     'md5_crypt'
+#                 ],
+#                 deprecated=['md5_crypt']),
+#             info={'verbose_name':'Password'})
+#     first_name = Column(String(64), info={
+#         'verbose_name':'First Name',
+#         'required': False})
+#     last_name = Column(String(64), info={
+#         'verbose_name':'Last Name',
+#         'required': False})
+#     institution = Column(String(64), info={'verbose_name':'Institution'})
+#     administrator = Column(Boolean,info={'verbose_name':'Administrator'})
+#     submitter = Column(Boolean,info={'verbose_name':'Submitter'})
 
 class sample(Base):
     __tablename__ = 'sample'
@@ -92,6 +94,7 @@ class sample(Base):
         })
     recipe = relationship("recipe",uselist=False)
     properties = relationship("properties",uselist=False)
+    raman_analysis = relationship("raman_set",uselist=False)
     sem_files = relationship("sem_file")
     raman_files = relationship("raman_file")
     validated = Column(Boolean,info={'verbose_name':'Validated'})
@@ -354,6 +357,7 @@ class properties(Base):
 class raman_set(Base):
     __tablename__ = 'raman_set'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
+    sample_id = Column(Integer,ForeignKey(sample.id),info={'verbose_name':'Sample ID'})
     raman_spectra = relationship("raman_spectrum")
     authors = relationship("author")
     experiment_date = Column(Date,default=datetime.date.today,info={
