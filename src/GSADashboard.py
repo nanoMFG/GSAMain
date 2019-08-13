@@ -45,7 +45,6 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--nanohub', action = 'store_true', default = False, help='Configure for nanohub.')
 	parser.add_argument('--release_db', action = 'store_true', default = False, help='Configure database for release version.')
-	parser.add_argument('--uid', default = -1, type = int, help='User ID, necessary for submitting/editing database.')
 	parser.add_argument('--box_config_path', default = "../box_config.json", type = str, help='Path to box config.')
 
 	kwargs = vars(parser.parse_args())
@@ -66,9 +65,7 @@ if __name__ == '__main__':
     			if words[0] == 'session_token':
     				sessiontoken = words[1]
 
-    	api_info = {'sessionnum':sessionnum,'sessiontoken':sessiontoken}
-    	if kwargs['uid'] != -1:
-    		api_info['id'] = str(kwargs['uid'])
+    	api_info = {'sessionnum':sessionnum,'sessiontoken':sessiontoken,'id':os.getuid()}
 
     box_config_path = kwargs['box_config_path']
 
