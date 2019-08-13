@@ -26,12 +26,12 @@ from GSAOscm import GSAOscm
 
 
 class GSADashboard(QtGui.QTabWidget):
-    def __init__(self, parent=None, mode='local', box_config_path=None, api_info={}):
+    def __init__(self, parent=None, mode='local', box_config_path=None, privileges={'read':True,'write':False,'validate':False}):
         super(GSADashboard, self).__init__(parent=parent)
 
-        self.query_tab = GSAQuery()
+        self.query_tab = GSAQuery(privileges=privileges)
         self.image_tab = GSAImage(mode=mode).widget()
-        self.submit_tab = GSASubmit(mode=mode,box_config_path=box_config_path)
+        self.submit_tab = GSASubmit(mode=mode,box_config_path=box_config_path,privileges=privileges)
         self.oscm_tab = GSAOscm(server_instance='prod')
         self.submit_tab.preparation.oscm_signal.connect(lambda: self.setCurrentWidget(self.oscm_tab))
 
@@ -49,6 +49,8 @@ if __name__ == '__main__':
 
 	kwargs = vars(parser.parse_args())
 
+	admin_group = 31595
+	submit_group = -1
 
     dal.init_db(config['development'])
     # Base.metadata.drop_all(bind=dal.engine)
@@ -57,19 +59,18 @@ if __name__ == '__main__':
     #     build_db(session)
     if kwargs['nanohub'] == True:
     	mode = 'nanohub'
-    	with open(os.path.join(os.environ['SESSIONDIR'],'resources'),'r') as f:
-    		for line in f.readlines():
-    			words = line.split()
-    			if words[0] == 'sessionid':
-    				sessionnum = words[1]
-    			if words[0] == 'session_token':
-    				sessiontoken = words[1]
+    	groups = os.getgroups()
+    	if admin_group in groups:
+    		privileges = {'read':True,'write':True,'validate':True}
+    	elif submit_group in groups:
+    		privileges = {'read':True,'write':True,'validate':False}
+    	else:
+    		privileges = {'read':True,'write':False,'validate':False}
 
-    	api_info = {'sessionnum':sessionnum,'sessiontoken':sessiontoken,'id':os.getuid()}
 
     box_config_path = kwargs['box_config_path']
 
     app = QtGui.QApplication([])
-    dashboard = GSADashboard(mode=mode,box_config_path=box_config_path,api_info=api_info)
+    dashboard = GSADashboard(mode=mode,box_config_path=box_config_path,privileges=privileges)
     dashboard.show()
     sys.exit(app.exec_())

@@ -70,9 +70,10 @@ class GSASubmit(QtGui.QTabWidget):
 	mode:				Upload method (local or nanohub)
 	box_config_path:	Path to box configuration file
 	"""
-	def __init__(self,mode='local',parent=None, box_config_path=None):
+	def __init__(self,privileges={'read':True,'write':False,'validate':False},mode='local',parent=None, box_config_path=None):
 		super(GSASubmit,self).__init__(parent=parent)
 		self.mode = mode
+		self.privileges = privileges
 		self.properties = PropertiesTab()
 		self.preparation = PreparationTab()
 		self.provenance = ProvenanceTab()
@@ -754,13 +755,19 @@ class ReviewTab(QtGui.QScrollArea):
 
 		return box_file
 
-	def upload_recipe(self,response_dict,box_file):
-		mdf = MDFAdaptor()
-		return mdf.upload_recipe(Recipe(response_dict), box_file)
+	def upload_recipe(self,response_dict=None,box_file=None,session=None):
+		if session:
+			session.commit()
+		else:
+			mdf = MDFAdaptor()
+			return mdf.upload_recipe(Recipe(response_dict), box_file)
 
-	def upload_raman(self,response_dict,raman_dict,box_file,dataset_id):
-		mdf = MDFAdaptor()
-		return mdf.upload_raman_analysis(Recipe(response_dict), dataset_id, raman_dict, box_file)
+	def upload_raman(self,response_dict=None,raman_dict=None,box_file=None,dataset_id=None,session=None):
+		if session:
+			session.commit()
+		else:
+			mdf = MDFAdaptor()
+			return mdf.upload_raman_analysis(Recipe(response_dict), dataset_id, raman_dict, box_file)
 
 
 	def refresh(self,properties_response,preparation_response,files_response,provenance_response):
@@ -1311,9 +1318,10 @@ def make_test_dict(test_sem_file=None,test_raman_file=None):
 
 
 if __name__ == '__main__':
+	os.system("source gresq/sql_source.sh")
 	dal.init_db(config['development'])
-	Base.metadata.drop_all(bind=dal.engine)
-	Base.metadata.create_all(bind=dal.engine)
+	# Base.metadata.drop_all(bind=dal.engine)
+	# Base.metadata.create_all(bind=dal.engine)
 
 	app = QtGui.QApplication([])      
 	submit = GSASubmit(box_config_path='box_config.json')

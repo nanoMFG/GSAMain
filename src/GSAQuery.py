@@ -68,8 +68,9 @@ class GSAQuery(QtGui.QWidget):
 	"""
 	Main query widget.
 	"""
-	def __init__(self,parent=None):
+	def __init__(self,privileges={'read':True,'write':False,'validate':False},parent=None):
 		super(GSAQuery,self).__init__(parent=parent)
+		self.privileges = privileges
 		self.filters = []
 		self.filter_fields = QtGui.QStackedWidget()
 		self.filter_fields.setMaximumHeight(50)
@@ -483,10 +484,10 @@ class RamanDisplayTab(QtGui.QScrollArea):
 
 if __name__ == '__main__':
 	dal.init_db(config['development'])
-	Base.metadata.drop_all(bind=dal.engine)
-	Base.metadata.create_all(bind=dal.engine)
-	with dal.session_scope() as session:
-		build_db(session,os.path.join(os.getcwd(),'../data'))
+	# Base.metadata.drop_all(bind=dal.engine)
+	# Base.metadata.create_all(bind=dal.engine)
+	# with dal.session_scope() as session:
+	# 	build_db(session,os.path.join(os.getcwd(),'../data'))
 	app = QtGui.QApplication([])
 	query = GSAQuery()
 	query.show()
