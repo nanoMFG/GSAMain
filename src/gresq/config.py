@@ -8,25 +8,28 @@ except:
 
 class Config:
     """Configuration class.  Primariy designed for configuring database connections.
+    Instances of this class can be passed to init_db in database.py
     Done:
         - Per user database urls
 
     To do:
-        - Allow per user database arguments.
+        - Allow per user database arguments (_ARGS).
         - Define and throw exceptions when needed.
     """
     secrets_found=secrets_found
 
     def __init__(self, prefix, suffix = '', debug=False,multiarg=False):
-        """Recognized environment are of the form:
-               prefix + _'URL' + ['label']   or
-               prefix + '_ARGS' + ['label']
-        The label is optional for configuration of a single user connection.
-        To configure multiple Users, append the URL env vars with a '_user' label.
+        """Recognized environment variables are of the form:
+               prefix + '_URL' + ['_suffix']   and
+               prefix + '_ARGS'
+        The suffix label is optional for configuration of multiple user connections.
+        To configure multiple Users, append the URL env vars with a '_user' label as the
+        suffix.
         For example,
             DEV_DATABASE_URL_USER1
             DEV_DATABASE_URL_USER2
         A single set of _ARGS can be used for multiple URLs.
+        Currently suffixes are not supported for ARGS variables.
         """
         self.DEBUG = debug
         self.PREFIX = prefix
@@ -53,7 +56,7 @@ class Config:
 
 
 class MultiConfig(Config):
-    """Genrate multiple Config class instances"""
+    """Generate multiple Config class instances."""
     def __init__(self, prefix, debug, instances):
         super().__init__(prefix=prefix, debug=debug)
 
@@ -67,7 +70,7 @@ class MultiConfig(Config):
 
 def get_users(URL_var, ARGS_var):
     """Parse the environment searching for URL_var and ARGS_var.
-    Return a dictionary of matching vars and their values
+    Return a dictionary of matching vars and their values.
     """
     env = dict(os.environ)
     #print(env)
@@ -96,7 +99,7 @@ def config_factory(prefix, debug):
         instances = []
         for u in users:
             clean_u = u[1:].lower()
-            print(u, clean_u)
+            #print(u, clean_u)
             instances.append({'label' : clean_u, 'suffix' : u})
         return MultiConfig(prefix, debug, instances)
 
@@ -105,7 +108,7 @@ def config_factory(prefix, debug):
     #else
         #throw exception
 
-# Configuration dictionary to import
+# Configuration dictionary with pre-defined prefixes to import into apps.
 config = {
         'development' : config_factory(prefix='DEV_DATABASE', debug=True),
         'test' : config_factory(prefix='TEST_DATABASE', debug=True),
