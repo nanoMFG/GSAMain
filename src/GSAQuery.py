@@ -1,16 +1,23 @@
 from __future__ import division
 import pandas as pd
+import numpy as np
 import sys, operator, os
 from PyQt5 import QtGui, QtCore
 import pyqtgraph as pg
 import cv2
+import io
+import requests
+from PIL import Image
 from models import ResultsTableModel
 from GSAImage import GSAImage
+from box_adaptor import BoxAdaptor
 from GSAStats import TSNEWidget, PlotWidget
 from gresq.csv2db2 import build_db
-from gresq.database import sample, preparation_step, dal, Base, mdf_forge
+from gresq.database import sample, preparation_step, dal, Base, mdf_forge, properties, recipe, raman_set
 from sqlalchemy import String, Integer, Float, Numeric
 from gresq.config import config
+import scipy
+# from statsmodels.nonparametric.smoothers_lowess import lowess
 
 """
 Each primary field will correspond to an MDF schema. Each of these are models 
@@ -24,27 +31,53 @@ of datasets on MDF.
 								of this information as well if the user inputs it during submission. 
 								However, that information is stored in the mdf_forge model.
 """
-mdf_forge_fields = [
-	'title',
-	'grain_size',
-	'orientation',
-	'catalyst',
-	'base_pressure',
-    'max_temperature',
-    'carbon_source',
-    'sample_surface_area',
-	'sample_thickness'
+
+preparation_fields = [
+	"name",
+	"duration",
+	"furnace_temperature",
+	"furnace_pressure",
+	"sample_location",
+	"helium_flow_rate",
+	"hydrogen_flow_rate",
+	"carbon_source",
+	"carbon_source_flow_rate",
+	"argon_flow_rate",
+	"cooling_rate"
+	] 
+
+properties_fields = [
+	"average_thickness_of_growth",
+	"standard_deviation_of_growth",
+	"number_of_layers",
+	"growth_coverage",
+	"domain_size",
+	"shape"
+	]
+
+recipe_fields = [
+	"catalyst",
+	"tube_diameter",
+	"cross_sectional_area",
+	"tube_length",
+	"base_pressure",
+	"thickness",
+	"diameter",
+	"length",
+	"dewpoint"
+	]
+
+raman_fields = [
+	"gp_to_g",
+	"d_to_g"
 ]
-raman_spectrum_fields = []
-
-sem_postprocess_fields = []
-
-results_fields = mdf_forge_fields+raman_spectrum_fields+sem_postprocess_fields
+results_fields = recipe_fields+preparation_fields+properties_fields+raman_fields
 
 selection_list = {
-	'Sample Fields': mdf_forge_fields,
-	'Raman Analysis Fields': raman_spectrum_fields,
-	'SEM Analysis Fields': sem_postprocess_fields
+	'Experimental Conditions':{'fields':recipe_fields,'model':recipe},
+	'Preparation': {'fields':preparation_fields,'model':preparation_step},
+	'Properties': {'fields':properties_fields,'model':properties},
+	'Raman Analysis': {'fields':raman_fields,'model':raman_set}
 	}
 
 sql_validator = {
@@ -76,11 +109,12 @@ class GSAQuery(QtGui.QWidget):
 		self.filter_fields.setMaximumHeight(50)
 		self.filter_fields.setSizePolicy(QtGui.QSizePolicy.Maximum,QtGui.QSizePolicy.Preferred)
 		self.filters_dict = {}
-		for field in mdf_forge_fields:
-			widget = self.generate_field(model=mdf_forge,field=field)
-			widget.setSizePolicy(QtGui.QSizePolicy.Maximum,QtGui.QSizePolicy.Preferred)
-			self.filters_dict[getattr(mdf_forge,field).info['verbose_name']] = widget
-			self.filter_fields.addWidget(widget)
+		for selection in selection_list.keys():
+			for field in selection_list[selection]['fields']:
+				widget = self.generate_field(model=selection_list[selection]['model'],field=field)
+				widget.setSizePolicy(QtGui.QSizePolicy.Maximum,QtGui.QSizePolicy.Preferred)
+				self.filters_dict[getattr(selection_list[selection]['model'],field).info['verbose_name']] = widget
+				self.filter_fields.addWidget(widget)
 
 		self.primary_selection = QtGui.QComboBox()
 		self.primary_selection.addItems(sorted(selection_list.keys()))
@@ -171,11 +205,11 @@ class GSAQuery(QtGui.QWidget):
 		"""
 		Populates secondary selection combo box with fields corresponding to the primary selection model.
 		"""
-		selection_list = {
-			'Sample Fields': {'fields':mdf_forge_fields,'model':mdf_forge},
-			'Raman Analysis Fields': {'fields':raman_spectrum_fields,'model':None},
-			'SEM Analysis Fields': {'fields':sem_postprocess_fields,'model':None}
-			}
+		# selection_list = {
+		# 	'Sample Fields': {'fields':mdf_forge_fields,'model':mdf_forge},
+		# 	'Raman Analysis Fields': {'fields':raman_spectrum_fields,'model':None},
+		# 	'SEM Analysis Fields': {'fields':sem_postprocess_fields,'model':None}
+		# 	}
 
 		self.secondary_selection.clear()
 		self.secondary_selection.addItems([getattr(selection_list[selection]['model'],v).info['verbose_name'] for v in selection_list[selection]['fields']])
@@ -321,6 +355,28 @@ class ClassFilter(QtGui.QWidget):
 	def clear(self):
 		pass
 
+class DetailWidget(QtGui.QWidget):
+	def __init__(self,parent=None):
+		super(DetailWidget,self).__init__(parent=parent)
+		self.properties = FieldsDisplayWidget(fields=properties_fields,model=properties)
+		self.conditions = FieldsDisplayWidget(fields=recipe_fields,model=recipe)
+
+		propertiesLabel = QtGui.QLabel('Properties')
+		propertiesLabel.setFont(label_font)
+		conditionsLabel = QtGui.QLabel('Conditions')
+		conditionsLabel.setFont(label_font)
+
+		layout = QtGui.QGridLayout(self)
+		layout.addWidget(propertiesLabel,0,0)
+		layout.addWidget(self.properties,1,0)
+		layout.addWidget(conditionsLabel,0,1)
+		layout.addWidget(self.conditions,1,1)
+
+	def setData(self,model,index):
+		self.properties.setData(model,index)
+		self.conditions.setData(model,index)
+
+
 class PreviewWidget(QtGui.QTabWidget):
 	"""
 	Widget for displaying data associated with selected sample. Contains tabs for:
@@ -332,14 +388,16 @@ class PreviewWidget(QtGui.QTabWidget):
 	"""
 	def __init__(self,parent=None):
 		super(PreviewWidget,self).__init__(parent=parent)
-		self.detail_tab = FieldsDisplayWidget(fields=mdf_forge_fields,model=mdf_forge)
+		self.detail_tab = DetailWidget()
+		self.sem_tab = SEMDisplayTab()
+		self.recipe_tab = RecipeDisplayTab()
 		# self.provenance_tab = FieldsDisplayWidget()
 		self.setTabPosition(QtGui.QTabWidget.South)
 
 		self.addTab(self.detail_tab,'Details')
-		self.addTab(QtGui.QWidget(),'SEM')
+		self.addTab(self.sem_tab,'SEM')
 		self.addTab(QtGui.QWidget(),'Raman')
-		self.addTab(QtGui.QWidget(),'Recipe')
+		self.addTab(self.recipe_tab,'Recipe')
 		self.addTab(QtGui.QWidget(),'Provenance')
 
 	def select(self,model,index):
@@ -350,6 +408,12 @@ class PreviewWidget(QtGui.QTabWidget):
 		index:				Index from ResultsWidget table.
 		"""
 		self.detail_tab.setData(model,index)
+
+		with dal.session_scope() as session:
+			i = int(model.df['id'].values[index.row()][0])
+			s = session.query(sample).filter(sample.id==i)[0]
+			self.sem_tab.update(s)
+			self.recipe_tab.update(s.recipe)
 
 class ResultsWidget(QtGui.QTabWidget):
 	"""
@@ -385,12 +449,13 @@ class ResultsWidget(QtGui.QTabWidget):
 		self.results_model = ResultsTableModel()
 		if len(filters)>0:
 			with dal.session_scope() as session:
-				# q = session.query(sample).join(preparation_step,sample.preparation_steps).filter(*filters).distinct()
-				q = session.query(mdf_forge).filter(*filters).distinct()
+				q = session.query(sample,recipe,properties).join(sample.recipe).join(sample.properties).outerjoin(recipe.preparation_steps).filter(*filters).distinct()
+				# print(q.statement)
+				# q = session.query(mdf_forge).filter(*filters).distinct()
 				self.results_model.read_sqlalchemy(q.statement,session)
 		self.results_table.setModel(self.results_model)
 		for c in range(self.results_model.columnCount(parent=None)):
-			if self.results_model.df.columns[c] not in results_fields:
+			if self.results_model.df.columns[c] not in recipe_fields+properties_fields:
 				self.results_table.hideColumn(c)
 		self.results_table.resizeColumnsToContents()
 		self.plot.setModel(self.results_model)
@@ -448,25 +513,37 @@ class SEMDisplayTab(QtGui.QScrollArea):
 		self.layout.setAlignment(QtCore.Qt.AlignTop)
 		
 		self.file_list = QtGui.QListWidget()
-		self.sem_tabs = QtGui.QTabWidget()
 		self.sem_info = QtGui.QStackedWidget()
 
 		self.setWidgetResizable(True)
 		self.setWidget(self.contentWidget)
 
-	def update(self,sample_json=None,postprocess_json=None):
+		self.layout.addWidget(self.file_list,0,0)
+		self.layout.addWidget(self.sem_info,0,1)
+
+		self.file_list.currentRowChanged.connect(self.sem_info.setCurrentIndex)
+
+	def update(self,sample_model=None):
+		self.file_list.clear()
 		if sample_model != None:
 			for s,sem in enumerate(sample_model.sem_files,1):
-				self.file_list.addItem("SEM Image %d"%s)
+				r = requests.get(sem.url)
+				data = r.content
+				img = np.array(Image.open(io.BytesIO(data)))
+
 				image_tab = pg.GraphicsLayoutWidget()
-				wImgBox_VB = self.wImgBox.addViewBox(row=1,col=1)
+				wImgBox_VB = image_tab.addViewBox(row=1,col=1)
 				wImgItem = pg.ImageItem()
-				wImgItem.setImage(fpath)
+				wImgItem.setImage(img)
 				wImgBox_VB.addItem(wImgItem)
 				wImgBox_VB.setAspectLocked(True)
 
-				self.sem_tabs.addTab(image_tab,"Raw Data")
-				self.file_list.currentRowChanged.connect(self.sem_tabs.setCurrentIndex)
+				self.file_list.addItem("SEM Image %d"%s)
+
+				sem_tabs = QtGui.QTabWidget()
+				sem_tabs.addTab(image_tab,"Raw Data")
+
+				self.sem_info.addWidget(sem_tabs)
 
 
 class RamanDisplayTab(QtGui.QScrollArea):
@@ -481,6 +558,83 @@ class RamanDisplayTab(QtGui.QScrollArea):
 
 	def update(self,sample_json=None):
 		pass
+
+class RecipeDisplayTab(QtGui.QScrollArea):
+	def __init__(self,parent=None):
+		super(RecipeDisplayTab,self).__init__(parent=parent)
+		self.contentWidget = QtGui.QWidget()
+		self.layout = QtGui.QGridLayout(self.contentWidget)
+		self.layout.setAlignment(QtCore.Qt.AlignTop)
+
+		self.setWidgetResizable(True)
+		self.setWidget(self.contentWidget)
+
+		self.recipe_plot = pg.PlotWidget()
+		self.recipe_plot.setMouseEnabled(x=False, y=False)
+
+		self.layout.addWidget(self.recipe_plot,0,0)
+
+	def update(self,recipe_model=None):
+		self.recipe_plot.clear()
+		if recipe_model:
+			step_list = sorted(recipe_model.preparation_steps, key = lambda x: getattr(x,'step'))
+
+			if all([step.duration for step in step_list]):
+
+				data = {
+					'furnace_pressure': [],
+					'furnace_temperature': [],
+					'argon_flow_rate': [],
+					'hydrogen_flow_rate': [],
+					'carbon_source_flow_rate': [],
+					'duration': [],
+					'cooling_rate': [],
+					'name': []
+				}
+				for step in step_list:
+					for field in data.keys():
+						value = getattr(step,field)
+						if value:
+							data[field].append(value)
+						else:
+							data[field].append(0)
+
+				for field in data.keys():
+					if field != 'duration' and field != 'name':
+						data[field] = [0]+data[field]
+
+
+
+				timestamp = [sum(data['duration'][:i]) for i in range(0,len(data['duration'])+1)]
+
+				x = np.linspace(0,sum(data['duration']),1000)
+				condlist = [np.logical_and(x>=timestamp[i], x<timestamp[i+1]) for i in range(0,len(timestamp)-1)]
+				y = np.piecewise(x,condlist,data['furnace_temperature'])
+				win = scipy.signal.hann(50)
+				y = scipy.convolve(y,win,mode='same')
+				self.recipe_plot.plot(x=x,y=y,pen=pg.mkPen('r',width=8))
+				self.recipe_plot.setXRange(min(x),max(x),padding=0)
+
+				colors = ['y','g','b']
+				x1 = timestamp[0]
+				for n,name in enumerate(['Annealing','Growing','Cooling']):
+					if name in data['name']:
+						x2 = timestamp[len(data['name'])-list(reversed(data['name'])).index(name)]
+
+						brush = pg.mkBrush(colors[n])
+						c = brush.color()
+						c.setAlphaF(0.2)
+						brush.setColor(c)
+						fb = pg.LinearRegionItem(values=(x1,x2),movable=False,brush=brush)
+						self.recipe_plot.addItem(fb)
+						
+						x1=x2
+
+				self.recipe_plot.setLabel(text='Time (min)',axis='bottom')
+				self.recipe_plot.setLabel(text='Furnace Temperature (C)',axis='left')
+				
+
+
 
 if __name__ == '__main__':
 	dal.init_db(config['development'])

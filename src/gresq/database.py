@@ -5,7 +5,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
 from contextlib import contextmanager
-from . config import Config
+from .config import Config
 import ast, datetime
 
 Base = declarative_base()
@@ -19,12 +19,13 @@ class DataAccessLayer:
         
 #engine = create_engine('mysql+mysqlconnector://'+db_user+':'+db_pass+'@'+db_url, connect_args=ssl_args)
 
-    def init_db(self,config):
+    def init_db(self,config,privileges={'read':True,'write':False,'validate':False}):
         """Initialize database connection.
 
         The current initializer is specific for mysql+mysqlconnector with SSL arguments.
         Future version of this should be bable to initiate non-SSL connection with any connector.
         """
+        self.privileges = privileges
         #print(config.DATABASEURI)
         #print(config.DATABASEARGS)
         if (config.DATABASEARGS == None):
@@ -38,10 +39,15 @@ class DataAccessLayer:
         Base.query = self.Session.query_property()
 
 
+    def abort_ro(*args,**kwargs):
+        return
+
     @contextmanager
     def session_scope(self,autocommit=False):
         """Provide a transactional scope around a series of operations."""
         session = self.Session()
+        if self.privileges['write'] == False:
+            session.flush = self.abort_ro
         try:
             yield session
             if autocommit:
@@ -58,33 +64,12 @@ dal = DataAccessLayer()
 from sqlalchemy import Column, String, Integer, Float, Numeric, ForeignKey, Date, Boolean
 from sqlalchemy.orm import relationship, backref
 
-# Declarative classes to define GresQ DB schema
-# class user(Base):
-#     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-#     __tablename__ = 'user'
-#     username = Column(String(32),info={'verbose_name':'Username'})
-#     password = Column(PasswordType(
-#                 schemes=[
-#                     'pbkdf2_sha512',
-#                     'md5_crypt'
-#                 ],
-#                 deprecated=['md5_crypt']),
-#             info={'verbose_name':'Password'})
-#     first_name = Column(String(64), info={
-#         'verbose_name':'First Name',
-#         'required': False})
-#     last_name = Column(String(64), info={
-#         'verbose_name':'Last Name',
-#         'required': False})
-#     institution = Column(String(64), info={'verbose_name':'Institution'})
-#     administrator = Column(Boolean,info={'verbose_name':'Administrator'})
-#     submitter = Column(Boolean,info={'verbose_name':'Submitter'})
-
 class sample(Base):
     __tablename__ = 'sample'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
+    nanohub_userid = Column(Integer,info={'verbose_name':'Nanohub Submitter User ID'})
     authors = relationship("author")
-    experiment_date = Column(Date,default=datetime.date.today,info={
+    experiment_date = Column(Date,info={
         'verbose_name':'Experiment Date',
         'required':True})
     material_name = Column(String(32),info={
@@ -97,7 +82,7 @@ class sample(Base):
     raman_analysis = relationship("raman_set",uselist=False)
     sem_files = relationship("sem_file")
     raman_files = relationship("raman_file")
-    validated = Column(Boolean,info={'verbose_name':'Validated'})
+    validated = Column(Boolean,info={'verbose_name':'Validated'},default=False)
 
     def json_encodable(self):
         return {
@@ -162,6 +147,12 @@ class recipe(Base):
         'conversions': {'mTorr':1,'Pa':1/133.322,'mbar':1/1.33322},
         'required': True
         })
+    dewpoint = Column(Float,info={
+        'verbose_name':'Dew Point',
+        'std_unit': 'C',
+        'conversions': {'C':1},
+        'required': False
+        })
 
     # PREPARATION STEPS
     preparation_steps = relationship("preparation_step")
@@ -175,7 +166,8 @@ class recipe(Base):
             "base_pressure",
             "thickness",
             "diameter",
-            "length"
+            "length",
+            "dewpoint"
             ]
         json_dict = {}
         for p in params:
@@ -357,6 +349,7 @@ class properties(Base):
 class raman_set(Base):
     __tablename__ = 'raman_set'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
+    nanohub_userid = Column(Integer,info={'verbose_name':'Nanohub Submitter User ID'})
     sample_id = Column(Integer,ForeignKey(sample.id),info={'verbose_name':'Sample ID'})
     raman_spectra = relationship("raman_spectrum")
     authors = relationship("author")
@@ -436,6 +429,7 @@ class raman_file(Base):
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
     sample_id = Column(Integer,ForeignKey(sample.id))
     filename = Column(String(64))
+    url = Column(String(256))
     wavelength = Column(Float,info={
         'verbose_name':'Wavelength',
         'std_unit': 'nm',
@@ -540,6 +534,7 @@ class sem_file(Base):
     __tablename__ = 'sem_file'
     sample_id = Column(Integer,ForeignKey(sample.id),primary_key=True)
     filename = Column(String(64),primary_key=True)
+    url = Column(String(256))
 
     def json_encodable(self):
         return {'filename': self.filename}
