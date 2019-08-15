@@ -15,16 +15,18 @@ class DevelopmentConfig(Config):
     def __init__(self):
         self.DEBUG = True
         try:
-            self.DATABASEURI = os.environ.get('DEV_DATABASE_URL') or \
-            secrets.DEV_DATABASE_URL if self.secrets_found else \
-            'sqlite://'
+            self.DATABASEURI = os.environ.get('DEV_DATABASE_URL') #or \
+            # secrets.DEV_DATABASE_URL if self.secrets_found else \
+            # 'sqlite://'
+            # print(os.environ.get('DEV_DATABASE_URL'))
+            # print(self.secrets_found)
         except AttributeError:
             self.DATABASEURI =  'sqlite://'
 
         try:
-            self.DATABASEARGS = os.environ.get('DEV_DATABASE_ARGS') or \
-            secrets.DEV_DATABASE_ARGS if self.secrets_found else \
-            None
+            self.DATABASEARGS = os.environ.get('DEV_DATABASE_ARGS')# or \
+            # secrets.DEV_DATABASE_ARGS if self.secrets_found else \
+            # None
         except AttributeError:
             self.DATABASEARGS = None
 
