@@ -1,23 +1,10 @@
 from __future__ import division
-import numpy as np
-import scipy as sc
-import cv2
 import sys
-import time
-import json
-import copy
-import subprocess
 import os
 import argparse
-from skimage import transform
-from PyQt5 import QtGui, QtCore, QtWidgets
-import pyqtgraph as pg
-from gresq.database import sample, preparation_step, dal, Base
-from sqlalchemy import String, Integer, Float, Numeric
+from PyQt5 import QtGui
+from gresq.database import dal
 from gresq.config import config
-from gresq.csv2db import build_db
-from gresq.csv2db import build_db
-from gresq.forge2db import build_db
 from GSAQuery import GSAQuery
 from GSAImage import GSAImage
 from GSASubmit import GSASubmit
