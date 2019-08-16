@@ -1,8 +1,11 @@
 import os
 
 try:
-    import secrets
+    print('hey')
+    from . import gresq_app_secrets as secrets
     secrets_found = True
+    print(dir(secrets))
+    print(secrets.__file__)
 except:
     secrets_found = False
 
@@ -33,8 +36,12 @@ class Config:
         """
         self.DEBUG = debug
         self.PREFIX = prefix
+        self.secrets_found = secrets_found
 
         self.URL_var = prefix + '_URL' + suffix
+        print (self.secrets_found)
+        print(self.URL_var)
+
         if multiarg:
             self.ARGS_var = prefix + '_ARGS' + suffix
         else:
@@ -81,6 +88,7 @@ def get_users(URL_var, ARGS_var):
             urls[key] = val
         if key.startswith(ARGS_var):
             args[key] = val
+    #print(urls)
     return urls, args
 
 def config_factory(prefix, debug):
@@ -90,6 +98,11 @@ def config_factory(prefix, debug):
     URL_var = prefix + '_URL'
     ARGS_var = prefix + '_ARGS'
     urls, args = get_users(URL_var, ARGS_var)
+
+    # Possible secrets file, only for 1 DB config for now
+
+    if len(urls) == 0:
+        return Config(prefix=prefix, debug=debug)
 
     if len(urls) <= 1 and len(args) <= 1:
         return Config(prefix=prefix, debug=debug)
