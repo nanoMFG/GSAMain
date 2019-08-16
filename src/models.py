@@ -72,6 +72,11 @@ class ResultsTableModel(QtCore.QAbstractTableModel):
 		self.df = pd.read_sql_query(statement,session.connection())
 		self.endResetModel()
 
+	def value(self,column,row):
+		if isinstance(column,str):
+			item = self.df[column]
+			return item.iloc[row].values[0]
+
 	def rowCount(self, parent):
 		return self.df.shape[0]
 

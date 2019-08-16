@@ -2,7 +2,7 @@ from __future__ import division
 import numpy as np
 import cv2, sys, time, json, copy, subprocess, os
 from PyQt5 import QtGui, QtCore
-
+import uuid
 from box_adaptor import BoxAdaptor
 from gresq.database import sample, preparation_step, dal, Base, mdf_forge, author, raman_spectrum, recipe, properties, sem_file, raman_file, raman_set
 from sqlalchemy import String, Integer, Float, Numeric, Date
@@ -40,7 +40,8 @@ recipe_fields = [
 	"base_pressure",
 	"thickness",
 	"diameter",
-	"length"
+	"length",
+	"dewpoint"
 ]
 
 properties_fields = [
@@ -70,9 +71,10 @@ class GSASubmit(QtGui.QTabWidget):
 	mode:				Upload method (local or nanohub)
 	box_config_path:	Path to box configuration file
 	"""
-	def __init__(self,mode='local',parent=None, box_config_path=None):
+	def __init__(self,privileges={'read':True,'write':False,'validate':False},mode='local',parent=None, box_config_path=None):
 		super(GSASubmit,self).__init__(parent=parent)
 		self.mode = mode
+		self.privileges = privileges
 		self.properties = PropertiesTab()
 		self.preparation = PreparationTab()
 		self.provenance = ProvenanceTab()
@@ -81,10 +83,11 @@ class GSASubmit(QtGui.QTabWidget):
 
 		self.setTabPosition(QtGui.QTabWidget.South)
 		self.addTab(self.preparation,'Preparation')
-		self.addTab(self.properties,'Properties')
-		self.addTab(self.file_upload,'File Upload')
-		self.addTab(self.provenance,"Provenance")
-		self.addTab(self.review, 'Review')
+		if self.privileges['write']:
+			self.addTab(self.properties,'Properties')
+			self.addTab(self.file_upload,'File Upload')
+			self.addTab(self.provenance,"Provenance")
+			self.addTab(self.review, 'Review')
 
 		self.currentChanged.connect(lambda x: self.review.refresh(
 			properties_response = self.properties.getResponse(),
@@ -93,12 +96,12 @@ class GSASubmit(QtGui.QTabWidget):
 			provenance_response = self.provenance.getResponse()) if x == self.indexOf(self.review) else None,
 		)
 
-		self.review.submitButton.clicked.connect(lambda: self.review.submit(self.review.getFullResponse(
+		self.review.submitButton.clicked.connect(lambda: self.review.submit(
 			properties_response = self.properties.getResponse(),
 			preparation_response = self.preparation.getResponse(),
 			files_response = self.file_upload.getResponse(),
 			provenance_response = self.provenance.getResponse()
-			)))
+			))
 
 		self.provenance.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.review))
 		self.preparation.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.properties))
@@ -754,13 +757,26 @@ class ReviewTab(QtGui.QScrollArea):
 
 		return box_file
 
-	def upload_recipe(self,response_dict,box_file):
-		mdf = MDFAdaptor()
-		return mdf.upload_recipe(Recipe(response_dict), box_file)
+	def upload_recipe(self,response_dict=None,box_file=None,session=None):
+		if session:
+			session.commit()
+		else:
+			mdf = MDFAdaptor()
+			return mdf.upload_recipe(Recipe(response_dict), box_file)
 
-	def upload_raman(self,response_dict,raman_dict,box_file,dataset_id):
-		mdf = MDFAdaptor()
-		return mdf.upload_raman_analysis(Recipe(response_dict), dataset_id, raman_dict, box_file)
+	def upload_raman(self,response_dict=None,raman_dict=None,box_file=None,dataset_id=None,session=None):
+		if session:
+			session.commit()
+		else:
+			mdf = MDFAdaptor()
+			return mdf.upload_raman_analysis(Recipe(response_dict), dataset_id, raman_dict, box_file)
+
+	def upload_file(self,file_path,folder_name=None):
+		box_adaptor = BoxAdaptor(self.box_config_path)
+		upload_folder = box_adaptor.create_upload_folder(folder_name=folder_name)
+		box_file = box_adaptor.upload_file(upload_folder,file_path,str(uuid.uuid4()))
+
+		return box_file.get_shared_link_download_url(access='open')
 
 
 	def refresh(self,properties_response,preparation_response,files_response,provenance_response):
@@ -970,7 +986,7 @@ class ReviewTab(QtGui.QScrollArea):
 		return True
 
 
-	def getFullResponse(self,properties_response,preparation_response,files_response, provenance_response):
+	def submit(self,properties_response,preparation_response,files_response, provenance_response):
 		"""
 		Checks and validates responses. If invalid, displays message box with problems. 
 		Otherwise, it submits the full, validated response and returns the output response dictionary.
@@ -1028,14 +1044,17 @@ class ReviewTab(QtGui.QScrollArea):
 			session.flush()
 
 			for f in files_response['SEM Image Files']:
+				print(f)
 				sf = sem_file()
 				sf.sample_id = s.id
 				sf.filename = os.path.basename(f)
+				sf.url = self.upload_file(f)
 				session.add(sf)
 				session.flush()
 			
 			### RAMAN IS A SEPARATE DATASET FROM SAMPLE ###
 			rs = raman_set()
+			rs.sample_id = s.id
 			rs.experiment_date = provenance_response['sample']['experiment_date']['value']
 			session.add(rs)
 			session.flush()
@@ -1043,6 +1062,7 @@ class ReviewTab(QtGui.QScrollArea):
 				rf = raman_file()
 				rf.filename = os.path.basename(ram)
 				rf.sample_id = s.id
+				rf.url = self.upload_file(ram)
 				if files_response['Raman Wavength'] != None:
 					rf.wavelength = files_response['Raman Wavength']
 				session.add(rf)
@@ -1059,7 +1079,7 @@ class ReviewTab(QtGui.QScrollArea):
 				for peak in params.keys():
 					for v in params[peak].keys():
 						key = "%s_%s"%(peak,v)
-						setattr(r,key,params[peak][v])
+						setattr(r,key,float(params[peak][v]))
 				session.add(r)
 				session.flush()
 			
@@ -1146,54 +1166,47 @@ class ReviewTab(QtGui.QScrollArea):
 				session.add(a)
 				session.flush()
 
-			sample_json = s.json_encodable()
-			raman_json = rs.json_encodable()
-		full_response = {'json':sample_json,'raman':raman_json}
-		full_response.update(files_response)
+			confirmation_dialog = QtGui.QMessageBox(self)
+			confirmation_dialog.setText("Are you sure you want to submit this recipe?")
+			confirmation_dialog.setInformativeText("Note: you will not be able to undo this submission.")
+			confirmation_dialog.setStandardButtons(QtGui.QMessageBox.Ok | QtGui.QMessageBox.Cancel)
+			confirmation_dialog.setWindowModality(QtCore.Qt.WindowModal)
 
-		return full_response
+			def upload_wrapper(btn):
+				if btn.text() == "OK":
+					try:
+						# response_dict = full_response['json']
+						# box_file = self.stage_upload(
+						# 	response_dict,
+						# 	response_files=full_response['Raman Files']+full_response['SEM Image Files'],
+						# 	json_name='recipe'
+						# 	)
+						# dataset_id = self.upload_recipe(response_dict,box_file)
 
-	def submit(self,full_response):
-		confirmation_dialog = QtGui.QMessageBox(self)
-		confirmation_dialog.setText("Are you sure you want to submit this recipe?")
-		confirmation_dialog.setInformativeText("Note: you will not be able to undo this submission.")
-		confirmation_dialog.setStandardButtons(QtGui.QMessageBox.Ok | QtGui.QMessageBox.Cancel)
-		confirmation_dialog.setWindowModality(QtCore.Qt.WindowModal)
+						# raman_dict = full_response['raman']
+						# box_file = self.stage_upload(
+						# 	raman_dict,
+						# 	json_name='raman'
+						# 	)
+						# dataset_id = self.upload_raman(response_dict,raman_dict,box_file,dataset_id)
+						session.commit()
 
-		def upload_wrapper(btn):
-			if btn.text() == "OK":
-				try:
-					response_dict = full_response['json']
-					box_file = self.stage_upload(
-						response_dict,
-						response_files=full_response['Raman Files']+full_response['SEM Image Files'],
-						json_name='recipe'
-						)
-					dataset_id = self.upload_recipe(response_dict,box_file)
+						success_dialog = QtGui.QMessageBox(self)
+						success_dialog.setText("Recipe successfully submitted.")
+						success_dialog.setWindowModality(QtCore.Qt.WindowModal)
+						success_dialog.exec()
 
-					raman_dict = full_response['raman']
-					box_file = self.stage_upload(
-						raman_dict,
-						json_name='raman'
-						)
-					dataset_id = self.upload_raman(response_dict,raman_dict,box_file,dataset_id)
-
-					success_dialog = QtGui.QMessageBox(self)
-					success_dialog.setText("Recipe successfully submitted.")
-					success_dialog.setWindowModality(QtCore.Qt.WindowModal)
-					success_dialog.exec()
-
-				except MDFException as e:
-					error_dialog = QtGui.QMessageBox(self)
-					error_dialog.setWindowModality(QtCore.Qt.WindowModal)
-					error_dialog.setText("Submission Error!")
-					error_dialog.setInformativeText(str(e))
-					error_dialog.exec()
-					return
+					except MDFException as e:
+						error_dialog = QtGui.QMessageBox(self)
+						error_dialog.setWindowModality(QtCore.Qt.WindowModal)
+						error_dialog.setText("Submission Error!")
+						error_dialog.setInformativeText(str(e))
+						error_dialog.exec()
+						return
 
 
-		confirmation_dialog.buttonClicked.connect(upload_wrapper)
-		confirmation_dialog.exec()
+			confirmation_dialog.buttonClicked.connect(upload_wrapper)
+			confirmation_dialog.exec()
 
 
 def random_fill(field_name,model):
@@ -1311,12 +1324,13 @@ def make_test_dict(test_sem_file=None,test_raman_file=None):
 
 
 if __name__ == '__main__':
-	dal.init_db(config['development'])
-	Base.metadata.drop_all(bind=dal.engine)
-	Base.metadata.create_all(bind=dal.engine)
+	os.system("source gresq/sql_source.sh")
+	dal.init_db(config['development'],privileges={'read':True,'write':True,'validate':False})
+	# Base.metadata.drop_all(bind=dal.engine)
+	# Base.metadata.create_all(bind=dal.engine)
 
 	app = QtGui.QApplication([])      
-	submit = GSASubmit(box_config_path='box_config.json')
+	submit = GSASubmit(box_config_path='box_config.json',privileges={'read':True,'write':True,'validate':False})
 	if len(sys.argv) > 1 and sys.argv[1] == 'test':
 		submit.test()
 	submit.show()
