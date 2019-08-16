@@ -37,6 +37,9 @@ if __name__ == '__main__':
 	parser.add_argument('--test', action = 'store_true', default = False, help='Test configuration.')
 	parser.add_argument('--release_db', action = 'store_true', default = False, help='Configure database for release version.')
 	parser.add_argument('--box_config_path', default = "../box_config.json", type = str, help='Path to box config.')
+	parser.add_argument('--db_config_path', default = ".", type = str, help='Path to database config secrets.')
+	parser.add_argument('--db_mode', default = "development", type = str, help='Database mode: \
+	development, testing, or production')
 
 	kwargs = vars(parser.parse_args())
 
@@ -56,7 +59,7 @@ if __name__ == '__main__':
 
 
 
-	dal.init_db(config['development'],privileges=privileges)
+	dal.init_db(config[kwargs['db_mode']],privileges=privileges)
 	box_config_path = os.path.abspath(kwargs['box_config_path'])
 
 	app = QtGui.QApplication([])
