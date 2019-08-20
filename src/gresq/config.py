@@ -48,15 +48,12 @@ class Config:
         self.secrets_found = False
         if try_secrets:
             if os.path.isfile(dbconfig_file):
-                print('man')
                 try:
                     spec = importlib.util.spec_from_file_location('gresq.gresq_app_secrets', dbconfig_file)
                     secrets = importlib.util.module_from_spec(spec)
                     spec.loader.exec_module(secrets)
-                    print(secrets.TEST_DATABASE_URL)
                     self.secrets_found = True
                 except:
-                    print('nong')
                     self.secrets_found = False
             else:
                 try:
@@ -77,9 +74,6 @@ class Config:
         else:
             self.ARGS_var = prefix + '_ARGS'
 
-        print (self.secrets_found)
-        print(self.URL_var)
-        print(os.environ.get(self.URL_var))
 
         try:
             self.DATABASEURI = os.environ.get(self.URL_var) or \
