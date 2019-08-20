@@ -1,4 +1,6 @@
 import os, importlib
+import logging
+logger = logging.getLogger(__name__)
 
 #try:
 #    #from . import gresq_app_secrets as secrets
@@ -62,19 +64,19 @@ class Config:
                 except:
                     self.secrets_found = False
 
+        logger.debug('secrets_found:')
+        logger.debug(self.secrets_found)
         self.DEBUG = debug
         self.PREFIX = prefix
-        #self.secrets_found = secrets_found
-
-
+       
         self.URL_var = prefix + '_URL' + suffix
-
         if multiarg:
             self.ARGS_var = prefix + '_ARGS' + suffix
         else:
             self.ARGS_var = prefix + '_ARGS'
 
 
+        logger.debug(self.URL_var)
         try:
             self.DATABASEURI = os.environ.get(self.URL_var) or \
             getattr(secrets,self.URL_var) if self.secrets_found else \

@@ -2,6 +2,7 @@ from __future__ import division
 import sys
 import os
 import argparse
+import logging
 from PyQt5 import QtGui
 from gresq.database import dal
 from gresq.config import config, Config
@@ -45,8 +46,12 @@ if __name__ == '__main__':
     parser.add_argument('--db_config_path', default = '', type = str, help='Path to database config secrets.')
     parser.add_argument('--db_mode', default = "development", type = str,
                         help='Database mode: development, testing, or production')
-
+    parser.add_argument("-v", "--verbose", help="increase output verbosity",
+                        action="store_true")
     kwargs = vars(parser.parse_args())
+
+    if kwargs['verbose']:
+        logging.basicConfig(level=logging.DEBUG)
 
     admin_group = 31595
     submit_group = -1
@@ -62,23 +67,30 @@ if __name__ == '__main__':
     elif kwargs['db_mode'] == 'testing':
         db_config_prefix = 'TEST_DATABASE'
 
+    db_config_suffix = ''
     if kwargs['nanohub'] == True:
         mode = 'nanohub'
         groups = os.getgroups()
         if admin_group in groups:
             privileges = {'read':True,'write':True,'validate':True}
-            db_config_prefix = db_config_prefix + '_ADMIN'
+            db_config_suffix = '_ADMIN'
         elif submit_group in groups:
             privileges = {'read':True,'write':True,'validate':False}
-            db_config_prefix = db_config_prefix + '_WRITE'
+            db_config_suffix = '_WRITE'
         else:
             privileges = {'read':True,'write':False,'validate':False}
-            db_config_prefix = db_config_prefix + '_READ'
+            db_config_suffix = '_READ'
     else:
         mode = 'local'
         privileges = {'read':True,'write':False,'validate':True}
 
-    db_conf = Config(prefix=db_config_prefix, debug=db_debug, dbconfig_file=kwargs['db_config_path'])
+    #logging.debug(db_config_prefix)
+    #logging.debug(kwargs['db_config_path'])
+    db_conf = Config(prefix=db_config_prefix, suffix=db_config_suffix, debug=db_debug, 
+                     dbconfig_file=kwargs['db_config_path'])
+    #logging.debug(db_conf.DATABASEURI)
+    #logging.debug(db_conf.DATABASEARGS)
+
 
     dal.init_db(db_conf, privileges=privileges)
 
