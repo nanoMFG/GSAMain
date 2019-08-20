@@ -1,7 +1,6 @@
 language: python
 os:
   - linux
-  dist: bionic
   - osx
 python:
   - 3.5
