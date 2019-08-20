@@ -27,8 +27,6 @@ class DataAccessLayer:
         Future version of this should be bable to initiate non-SSL connection with any connector.
         """
         self.privileges = privileges
-        #print(config.DATABASEURI)
-        #print(config.DATABASEARGS)
         if (config.DATABASEARGS == None):
             self.engine = create_engine(config.DATABASEURI)
         else:
