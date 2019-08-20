@@ -1,13 +1,18 @@
-import os
+import os, importlib
 
-try:
-    print('hey')
-    from . import gresq_app_secrets as secrets
-    secrets_found = True
-    print(dir(secrets))
-    print(secrets.__file__)
-except:
-    secrets_found = False
+#try:
+#    #from . import gresq_app_secrets as secrets
+#    spec = importlib.util.spec_from_file_location('gresq.gresq_app_secrets', '/Users/dadams/gresq_app_secrets.py')
+#    secrets = importlib.util.module_from_spec(spec)
+#    spec.loader.exec_module(secrets)
+#
+#    secrets_found = True
+#    print(dir(secrets))
+#    print(secrets.__file__)
+#    print(secrets.__name__)
+#    print(secrets.__package__)
+#except:
+#    secrets_found = False
 
 class Config:
     """Configuration class.  Primariy designed for configuring database connections.
@@ -19,9 +24,9 @@ class Config:
         - Allow per user database arguments (_ARGS).
         - Define and throw exceptions when needed.
     """
-    secrets_found=secrets_found
+    #secrets_found=secrets_found
 
-    def __init__(self, prefix, suffix = '', debug=False,multiarg=False):
+    def __init__(self, prefix, suffix = '', debug=False, multiarg=False, dbconfig_file='', try_secrets=True):
         """Recognized environment variables are of the form:
                prefix + '_URL' + ['_suffix']   and
                prefix + '_ARGS'
@@ -34,34 +39,73 @@ class Config:
         A single set of _ARGS can be used for multiple URLs.
         Currently suffixes are not supported for ARGS variables.
         """
+        #secrets = importlib.import_module('gresq.gresq_app_secrets','gresq')
+        #secrets_found = True
+        #print(dir(secrets))
+        #print(secrets.__file__)
+        #print(secrets.__name__)
+        #print(secrets.__package__)
+        self.secrets_found = False
+        if try_secrets:
+            if os.path.isfile(dbconfig_file):
+                print('man')
+                try:
+                    spec = importlib.util.spec_from_file_location('gresq.gresq_app_secrets', dbconfig_file)
+                    secrets = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(secrets)
+                    print(secrets.TEST_DATABASE_URL)
+                    self.secrets_found = True
+                except:
+                    print('nong')
+                    self.secrets_found = False
+            else:
+                try:
+                    from . import gresq_app_secrets as secrets
+                    self.secrets_found = True
+                except:
+                    self.secrets_found = False
+
         self.DEBUG = debug
         self.PREFIX = prefix
-        self.secrets_found = secrets_found
+        #self.secrets_found = secrets_found
+
 
         self.URL_var = prefix + '_URL' + suffix
-        print (self.secrets_found)
-        print(self.URL_var)
 
         if multiarg:
             self.ARGS_var = prefix + '_ARGS' + suffix
         else:
             self.ARGS_var = prefix + '_ARGS'
 
+        print (self.secrets_found)
+        print(self.URL_var)
+        print(os.environ.get(self.URL_var))
+
         try:
-            self.DATABASEURI = os.environ.get('DEV_DATABASE_URL') #or \
-            # secrets.DEV_DATABASE_URL if self.secrets_found else \
-            # 'sqlite://'
-            # print(os.environ.get('DEV_DATABASE_URL'))
-            # print(self.secrets_found)
+            self.DATABASEURI = os.environ.get(self.URL_var) or \
+            getattr(secrets,self.URL_var) if self.secrets_found else \
+            'sqlite://'
         except AttributeError:
             self.DATABASEURI =  'sqlite://'
 
         try:
-            self.DATABASEARGS = os.environ.get('DEV_DATABASE_ARGS')# or \
-            # secrets.DEV_DATABASE_ARGS if self.secrets_found else \
-            # None
+            self.DATABASEARGS = os.environ.get(self.ARGS_var) or \
+            getattr(secrets, self.ARGS_var) if self.secrets_found else \
+            None
         except AttributeError:
             self.DATABASEARGS = None
+
+        if os.environ.get(self.URL_var):
+            try:
+                self.DATABASEURI = os.environ.get(self.URL_var)
+            except AttributeError:
+                self.DATABASEURI =  'sqlite://'
+
+            try:
+                self.DATABASEARGS = os.environ.get(self.ARGS_var)
+            except AttributeError:
+                self.DATABASEARGS = None
+
 
 
 class MultiConfig(Config):
@@ -85,6 +129,8 @@ def get_users(URL_var, ARGS_var):
     #print(env)
     urls = {}
     args = {}
+    #print('hey')
+    #print(os.environ.get(URL_var))
     for key,val in env.items():
         if key.startswith(URL_var):
             urls[key] = val

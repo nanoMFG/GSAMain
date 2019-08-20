@@ -109,3 +109,5 @@ venv.bak/
 output
 
 .vscode
+env*
+*secrets*

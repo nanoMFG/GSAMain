@@ -15,8 +15,9 @@ class DataAccessLayer:
     def __init__(self):
         """ Define data access layer attrubutes."""
         self.engine = None
-        self.Session = None 
-        
+        self.Session = None
+        self.privileges = {'read':True,'write':False,'validate':False}
+
 #engine = create_engine('mysql+mysqlconnector://'+db_user+':'+db_pass+'@'+db_url, connect_args=ssl_args)
 
     def init_db(self,config,privileges={'read':True,'write':False,'validate':False}):
@@ -39,7 +40,7 @@ class DataAccessLayer:
         Base.query = self.Session.query_property()
 
 
-    def abort_ro(*args,**kwargs):
+    def abort_ro(self, *args ,**kwargs):
         return
 
     @contextmanager
@@ -119,7 +120,7 @@ class recipe(Base):
 
     # EXPERIMENTAL CONDITIONS:
     catalyst = Column(String(64),info={
-        'verbose_name':'Catalyst', 
+        'verbose_name':'Catalyst',
         'choices':[],
         'std_unit':None,
         'required': True})
@@ -261,7 +262,7 @@ class preparation_step(Base):
             "carbon_source",
             "carbon_source_flow_rate",
             "argon_flow_rate"
-            ] 
+            ]
 
         if self.name == "Cooling":
             params.append('cooling_rate')
@@ -566,4 +567,3 @@ class GresqEncoder(JSONEncoder):
             raise TypeError(
                 'Object of type %s with value of %s is not JSON serializable' % (
                     type(o), repr(o)))
-
