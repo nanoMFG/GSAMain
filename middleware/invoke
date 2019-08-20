@@ -1,6 +1,10 @@
 #!/bin/sh
 
-/usr/bin/invoke_app "$@" -C "python @tool/bin/GSADashboard.pyc nanohub /data/tools/gresq/box_config.json 2>&1 | tee ${SESSIONDIR}/gresq.log" \
+BOX_CONFIG='/data/tools/gresq/box_config.json'
+
+/usr/bin/invoke_app "$@" -C "python @tool/bin/GSADashboard.pyc \
+                             --nanohub --box_config_path ${BOX_CONFIG} \
+                             | tee ${SESSIONDIR}/gresq.log" \
                          -u anaconda3-5.1 \
                          -u pyqtgraph-0.10.0 \
                          -t gresq 
