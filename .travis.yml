@@ -1,8 +1,12 @@
 language: python
+os:
+  - linux
+  dist: bionic
+  - osx
 python:
-  - 2.7
   - 3.5
   - 3.6
+  - 3.7
 before_install:
   - python --version
   - pip install -U pip
