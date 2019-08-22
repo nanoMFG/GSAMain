@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.com/nanoMFG/GSAMain.svg?token=N4nkhb241rGHotEqsu3q&branch=master)](https://travis-ci.com/nanoMFG/GSAMain)
 
 # Graphene-Synthesis-Analysis
 
