@@ -5,7 +5,7 @@ import argparse
 import logging
 from PyQt5 import QtGui
 from gresq.database import dal
-from gresq.config import config, Config
+from gresq.config import Config
 from GSAQuery import GSAQuery
 from GSAImage import GSAImage
 from GSASubmit import GSASubmit
@@ -32,8 +32,7 @@ class GSADashboard(QtGui.QTabWidget):
         if test:
             self.submit_tab.test()
 
-
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--nanohub', action = 'store_true', default = False,
                         help='Configure for nanohub.')
@@ -86,7 +85,7 @@ if __name__ == '__main__':
 
     #logging.debug(db_config_prefix)
     #logging.debug(kwargs['db_config_path'])
-    db_conf = Config(prefix=db_config_prefix, suffix=db_config_suffix, debug=db_debug, 
+    db_conf = Config(prefix=db_config_prefix, suffix=db_config_suffix, debug=db_debug,
                      dbconfig_file=kwargs['db_config_path'])
     #logging.debug(db_conf.DATABASEURI)
     #logging.debug(db_conf.DATABASEARGS)
@@ -100,3 +99,6 @@ if __name__ == '__main__':
     dashboard = GSADashboard(mode=mode,box_config_path=box_config_path,privileges=privileges,test=kwargs['test'])
     dashboard.show()
     sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main()
