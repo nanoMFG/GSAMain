@@ -6,6 +6,7 @@ import uuid
 
 class BoxAdaptor():
     def __init__(self, path_to_config):
+        print('box_config',path_to_config)
         if (os.path.isfile(path_to_config) == False):
             raise ValueError("configPath must be a path to the JSON config file for your Box JWT app")
         auth = JWTAuth.from_settings_file(path_to_config)
@@ -13,8 +14,9 @@ class BoxAdaptor():
         auth.authenticate_instance()
         self.client = Client(auth)
 
-    def create_upload_folder(self):
-        folder_name = str(uuid.uuid4())
+    def create_upload_folder(self,folder_name=None):
+        if not folder_name:
+            folder_name = str(uuid.uuid4())
         folder =  self.client.folder(0).create_subfolder(folder_name)
         return folder
 

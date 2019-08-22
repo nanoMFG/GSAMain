@@ -1,3 +1,4 @@
+pytest
 pandas==0.23.4
 sqlalchemy==1.2.13
 boxsdk==2.0.0

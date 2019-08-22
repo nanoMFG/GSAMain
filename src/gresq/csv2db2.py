@@ -1,8 +1,21 @@
-from gresq.database import sample, preparation_step, dal, Base, recipe, properties, mdf_forge
-from gresq.config import config
-from gresq.recipe import Recipe
+from gresq.database import sample, preparation_step, recipe, properties
+#from gresq.config import config
+#from gresq.recipe import Recipe
+from sqlalchemy import String, Integer, Float, Numeric
 import pandas as pd
 import os
+sql_validator = {
+    'int': lambda x: isinstance(x.property.columns[0].type,Integer),
+    'float': lambda x: isinstance(x.property.columns[0].type,Float),
+    'str': lambda x: isinstance(x.property.columns[0].type,String)
+}
+def convert(value,field):
+    if sql_validator['int'](field):
+        return int(value)
+    elif sql_validator['float'](field):
+        return float(value)
+    else:
+        return str(value)
 
 sample_fields = [
     "material_name",
@@ -11,7 +24,7 @@ sample_fields = [
 
 preparation_fields = [
     'name',
-    'timestamp',
+    'duration',
     'furnace_temperature',
     'furnace_pressure',
     'sample_location',
@@ -51,6 +64,7 @@ def build_db(session,filepath):
     for i in range(data.shape[0]):
         s = sample()
         s.material_name = "Graphene"
+        s.validated = True
         session.add(s)
         session.commit()
 
@@ -63,8 +77,12 @@ def build_db(session,filepath):
             if pd.isnull(value) == False:
                 dbkey = var_map[col_names[j]][0]
                 if dbkey in properties_fields:
+                    value = convert(data.iloc[i,j],getattr(properties,dbkey))
+                    # print('properties',dbkey,value,type(value))
                     setattr(pr,dbkey,value)
                 elif dbkey in recipe_fields:
+                    value = convert(data.iloc[i,j],getattr(recipe,dbkey))
+                    # print('recipe',dbkey,value,type(value))
                     setattr(r,dbkey,value)
         session.add(pr)
         session.add(r)
@@ -77,51 +95,80 @@ def build_db(session,filepath):
             prep.name = "Annealing"
             prep.recipe_id = r.id
             for p in range(13):
-                value = data.iloc[i,j+p]
                 dbkey = var_map[col_names[j+p]][0]
-                if pd.isnull(value) == False:
-                    setattr(prep,dbkey,value)
+                value = data.iloc[i,j+p]
+                if pd.isnull(value) == False and dbkey in preparation_fields:
+                    value = convert(data.iloc[i,j+p],getattr(preparation_step,dbkey))
+                    # print(prep.name,col_names[j+p],dbkey,value,type(value))
+                    if 'flow_rate' in dbkey:
+                        if 'sccm' in col_names[j+p]:
+                            setattr(prep,dbkey,value)
+                        else:
+                            setattr(prep,dbkey,value/0.01270903)
+                    elif 'furnace_pressure' in dbkey:
+                        setattr(prep,dbkey,value*1e3)
+                    else:
+                        setattr(prep,dbkey,value)
             if prep.duration != None:
                 prep.step = total_steps
                 total_steps += 1
+                # print('Added Annealing')
+                # print(vars(prep))
                 session.add(prep)
+                session.commit()
         # Growing
-        for step,j in enumerate(range(109,188,13)):
+        for step,j in enumerate(range(110,188,13)):
             prep = preparation_step()
             prep.name = "Growing"
             prep.recipe_id = r.id
             for p in range(13):
-                value = data.iloc[i,j+p]
                 dbkey = var_map[col_names[j+p]][0]
-                if pd.isnull(value) == False:
-                    setattr(prep,dbkey,value)
+                value = data.iloc[i,j+p]
+                if pd.isnull(value) == False and dbkey in preparation_fields:
+                    value = convert(data.iloc[i,j+p],getattr(preparation_step,dbkey))
+                    # print(prep.name,col_names[j+p],dbkey,value,type(value))
+                    if 'flow_rate' in dbkey:
+                        if 'sccm' in col_names[j+p]:
+                            setattr(prep,dbkey,value)
+                        else:
+                            setattr(prep,dbkey,value/0.01270903)
+                    elif 'furnace_pressure' in dbkey:
+                        setattr(prep,dbkey,value*1e3)
+                    else:
+                        setattr(prep,dbkey,value)
             if prep.duration != None:
                 prep.step = total_steps
                 total_steps += 1
+                # print('Added Growing')
+                # print(vars(prep))
                 session.add(prep)
+                session.commit()
         # Cooling
-        for step,j in enumerate(range(190,268,13)):
+        for step,j in enumerate(range(191,268,13)):
             prep = preparation_step()
             prep.name = "Cooling"
-            prep.cooling_rate = data.iloc[i,190]
+            prep.cooling_rate = convert(data.iloc[i,190],getattr(preparation_step,'cooling_rate'))
             prep.recipe_id = r.id
             for p in range(13):
-                value = data.iloc[i,j+p]
                 dbkey = var_map[col_names[j+p]][0]
-                if pd.isnull(value) == False:
-                    setattr(prep,dbkey,value)
+                value = data.iloc[i,j+p]
+                if pd.isnull(value) == False and dbkey in preparation_fields:
+                    value = convert(data.iloc[i,j+p],getattr(preparation_step,dbkey))
+                    # print(prep.name,col_names[j+p],dbkey,value,type(value))
+                    if 'flow_rate' in dbkey:
+                        if 'sccm' in col_names[j+p]:
+                            setattr(prep,dbkey,value)
+                        else:
+                            setattr(prep,dbkey,value/0.01270903)
+                    elif 'furnace_pressure' in dbkey:
+                        setattr(prep,dbkey,value*1e3)
+                    else:
+                        setattr(prep,dbkey,value)
             if prep.duration != None:
                 prep.step = total_steps
                 total_steps += 1
+                # print('Added Cooling')
+                # print(vars(prep))
                 session.add(prep)
-        session.commit()
-
-        mdf_recipe = Recipe(s.json_encodable())
-        mdf = mdf_forge()
-        mdf.mdf_id = s.id
-        mdf.catalyst = mdf_recipe.catalyst
-        mdf.max_temperature = mdf_recipe.max_temp()
-        mdf.carbon_source = mdf_recipe.carbon_source()
-        mdf.base_pressure = mdf_recipe.base_pressure
-        session.add(mdf)
+                session.commit()
         session.commit()
