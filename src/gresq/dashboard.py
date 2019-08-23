@@ -4,13 +4,13 @@ import os
 import argparse
 import logging
 from PyQt5 import QtGui
-from gresq.database import dal
 from gresq.config import Config
-from GSAQuery import GSAQuery
-from GSAImage import GSAImage
-from GSASubmit import GSASubmit
+from gresq.database import dal
+from gresq.submit import GSASubmit
+from gresq.GSAImage import GSAImage
+from gresq.query import GSAQuery
 # from GSARaman import GSARaman
-from GSAOscm import GSAOscm
+from gresq.oscm import GSAOscm
 
 
 class GSADashboard(QtGui.QTabWidget):

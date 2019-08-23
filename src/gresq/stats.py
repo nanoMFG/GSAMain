@@ -6,9 +6,9 @@ import copy
 from sklearn.manifold import TSNE
 from PyQt5 import QtGui, QtCore
 from gresq.database import sample, preparation_step, dal, Base
-from models import ItemsetsTableModel, ResultsTableModel
+from gresq.models import ItemsetsTableModel, ResultsTableModel
 
-label_font = QtGui.QFont("Helvetica", 16, QtGui.QFont.Bold) 
+label_font = QtGui.QFont("Helvetica", 16, QtGui.QFont.Bold)
 
 class PlotWidget(QtGui.QWidget):
 	def __init__(self,parent=None):
@@ -59,7 +59,7 @@ class PlotWidget(QtGui.QWidget):
 				y=scatter_data.iloc[:,0],
 				data=list(range(len(scatter_data[x])))
 				)
-		
+
 		xbounds = self.scatter_plot.dataBounds(ax=0)
 		if None not in xbounds:
 			self.plot_widget.setXRange(*xbounds)
@@ -92,7 +92,7 @@ class TSNEWidget(QtGui.QStackedWidget):
 			)
 		self.feature.setModel(self.itemsets_model)
 		self.tsne.setModel(self.results_model)
-		
+
 class TSNEPlot(QtGui.QWidget):
 	def __init__(self,parent=None):
 		super(TSNEPlot,self).__init__(parent=parent)
@@ -110,7 +110,7 @@ class TSNEPlot(QtGui.QWidget):
 		self.plot_widget.hideAxis('left')
 		self.plot_widget.hideAxis('bottom')
 		self.plot_widget.addItem(self.tsne_plot)
-		
+
 		self.random_seed_edit = QtGui.QLineEdit(str(self.random_seed))
 		self.random_seed_edit.setValidator(QtGui.QIntValidator(1,99999))
 		self.random_seed_edit.setMaximumWidth(75)
@@ -209,7 +209,7 @@ class FeatureSelectionItem(QtGui.QWidget):
 		self.feature_list.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
 
 		self.min_support = 0.5
-		
+
 		self.model = ItemsetsTableModel()
 		self.itemsets_view = QtGui.QTableView()
 		self.itemsets_view.verticalHeader().setVisible(False)
@@ -257,4 +257,3 @@ class FeatureSelectionItem(QtGui.QWidget):
 
 	def get_selected_features(self):
 		return [s.text() for s in self.feature_list.selectedItems()]
-

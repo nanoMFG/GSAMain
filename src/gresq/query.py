@@ -8,10 +8,10 @@ import cv2
 import io
 import requests
 from PIL import Image
-from models import ResultsTableModel
-from GSAImage import GSAImage
-from box_adaptor import BoxAdaptor
-from GSAStats import TSNEWidget, PlotWidget
+from gresq.models import ResultsTableModel
+from gresq.GSAImage import GSAImage
+from gresq.box_adaptor import BoxAdaptor
+from gresq.stats import TSNEWidget, PlotWidget
 from gresq.csv2db2 import build_db
 from gresq.database import sample, preparation_step, dal, Base, mdf_forge, properties, recipe, raman_set
 from sqlalchemy import String, Integer, Float, Numeric
@@ -20,15 +20,15 @@ import scipy
 # from statsmodels.nonparametric.smoothers_lowess import lowess
 
 """
-Each primary field will correspond to an MDF schema. Each of these are models 
+Each primary field will correspond to an MDF schema. Each of these are models
 (whose schema is in gresq/database.py) that are stored as separate datasets on MDF
 so when a user selects a primary field, they are searching a particular group
 of datasets on MDF.
 	mdf_forge_fields:			mdf_forge schema. This corresponds to the raw data.
 	raman_spectrum_fields:		raman_spectrum schema. This corresponds the Raman postprocessing (peaks, fwhm, etc.)
-	sem_postprocess_fields		sem_postprocess schema. This corresponds to SEM postprocessing 
+	sem_postprocess_fields		sem_postprocess schema. This corresponds to SEM postprocessing
 								like coverage, orientation, etc. The raw data may contain some
-								of this information as well if the user inputs it during submission. 
+								of this information as well if the user inputs it during submission.
 								However, that information is stored in the mdf_forge model.
 """
 
@@ -44,7 +44,7 @@ preparation_fields = [
 	"carbon_source_flow_rate",
 	"argon_flow_rate",
 	"cooling_rate"
-	] 
+	]
 
 properties_fields = [
 	"average_thickness_of_growth",
@@ -95,7 +95,7 @@ operators = {
 	'>=': operator.ge
 }
 
-label_font = QtGui.QFont("Helvetica", 28, QtGui.QFont.Bold) 
+label_font = QtGui.QFont("Helvetica", 28, QtGui.QFont.Bold)
 
 class GSAQuery(QtGui.QWidget):
 	"""
@@ -126,7 +126,7 @@ class GSAQuery(QtGui.QWidget):
 		self.filter_table = QtGui.QTableWidget()
 		self.filter_table.setColumnCount(4)
 		self.filter_table.setHorizontalHeaderLabels(['Field','','Value',''])
-		header = self.filter_table.horizontalHeader()       
+		header = self.filter_table.horizontalHeader()
 		header.setSectionResizeMode(0, QtGui.QHeaderView.Stretch)
 		self.filter_table.setColumnWidth(1,30)
 		self.filter_table.setColumnWidth(2,100)
@@ -155,7 +155,7 @@ class GSAQuery(QtGui.QWidget):
 		resultsLabel = QtGui.QLabel('Results')
 		resultsLabel.setFont(label_font)
 
-		searchLayout = QtGui.QGridLayout() 
+		searchLayout = QtGui.QGridLayout()
 		searchLayout.setAlignment(QtCore.Qt.AlignTop)
 		searchLayout.addWidget(self.primary_selection,1,0)
 		searchLayout.addWidget(self.secondary_selection,2,0)
@@ -174,8 +174,8 @@ class GSAQuery(QtGui.QWidget):
 		self.layout.addLayout(searchLayout,1,0)
 		self.layout.addWidget(resultsLabel,0,1)
 		self.layout.addWidget(resultsLayout,1,1)
-		
-	
+
+
 	def generate_field(self,model,field):
 		"""
 		Generates an input selected field of selected model.
@@ -241,7 +241,7 @@ class GSAQuery(QtGui.QWidget):
 		Deletes filter associated with row in filter_table when delete button is activated. Three actions take place:
 			- The row is deleted from filter_table
 			- The corresponding sqlalchemy filter object is removed from the filters list
-			- A SQL query is performed using new filters list. 
+			- A SQL query is performed using new filters list.
 		"""
 		row = self.filter_table.indexAt(self.sender().parent().pos()).row()
 		if row >= 0:
@@ -418,7 +418,7 @@ class PreviewWidget(QtGui.QTabWidget):
 class ResultsWidget(QtGui.QTabWidget):
 	"""
 	Widget for displaying results associated with a query. Contains tabs:
-		- Results:				Each row associated with a sample and column corresponding to 
+		- Results:				Each row associated with a sample and column corresponding to
 								a field. Clicking a row selects that sample for the PreviewWidget.
 		- t-SNE:				Allows users to conduct t-SNE visualization on queried data.
 		- Plot:					Allows users to scatter plot queried data.
@@ -463,7 +463,7 @@ class ResultsWidget(QtGui.QTabWidget):
 
 class FieldsDisplayWidget(QtGui.QScrollArea):
 	"""
-	Generic widget that creates a display from the selected fields from a particular model. 
+	Generic widget that creates a display from the selected fields from a particular model.
 
 	fields:	The fields from the model to generate the form. Note: fields must exist in the model.
 	model:	The model to base the display on.
@@ -503,7 +503,7 @@ class FieldsDisplayWidget(QtGui.QScrollArea):
 				value = model.df[field].iloc[index.row()]
 				if pd.isnull(value):
 					value = ''
-				self.fields[field]['value'].setText(str(value))		
+				self.fields[field]['value'].setText(str(value))
 
 class SEMDisplayTab(QtGui.QScrollArea):
 	def __init__(self,parent=None):
@@ -511,7 +511,7 @@ class SEMDisplayTab(QtGui.QScrollArea):
 		self.contentWidget = QtGui.QWidget()
 		self.layout = QtGui.QGridLayout(self.contentWidget)
 		self.layout.setAlignment(QtCore.Qt.AlignTop)
-		
+
 		self.file_list = QtGui.QListWidget()
 		self.sem_info = QtGui.QStackedWidget()
 
@@ -627,12 +627,12 @@ class RecipeDisplayTab(QtGui.QScrollArea):
 						brush.setColor(c)
 						fb = pg.LinearRegionItem(values=(x1,x2),movable=False,brush=brush)
 						self.recipe_plot.addItem(fb)
-						
+
 						x1=x2
 
 				self.recipe_plot.setLabel(text='Time (min)',axis='bottom')
 				self.recipe_plot.setLabel(text='Furnace Temperature (C)',axis='left')
-				
+
 
 
 
