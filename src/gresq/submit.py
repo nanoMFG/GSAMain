@@ -3,14 +3,14 @@ import numpy as np
 import cv2, sys, time, json, copy, subprocess, os
 from PyQt5 import QtGui, QtCore
 import uuid
-from box_adaptor import BoxAdaptor
+from gresq.util.box_adaptor import BoxAdaptor
 from gresq.database import sample, preparation_step, dal, Base, mdf_forge, author, raman_spectrum, recipe, properties, sem_file, raman_file, raman_set
 from sqlalchemy import String, Integer, Float, Numeric, Date
 from gresq.config import config
-from gresq.csv2db import build_db
-import GSARaman
+from gresq.util.csv2db import build_db
+from gresq.GSARaman import GSARaman
 from gresq.recipe import Recipe
-from mdf_adaptor import MDFAdaptor, MDFException
+from gresq.util.mdf_adaptor import MDFAdaptor, MDFException
 
 
 sample_fields = [
@@ -116,8 +116,8 @@ class GSASubmit(QtGui.QTabWidget):
 class FieldsFormWidget(QtGui.QScrollArea):
 	"""
 	Generic widget that creates a form from the selected fields from a particular model. Automatically
-	determines whether to use a combo box or line edit widget. Applies appropriate validators and 
-	allows users to select the appropriate unit as defined in the model. If the field is a String 
+	determines whether to use a combo box or line edit widget. Applies appropriate validators and
+	allows users to select the appropriate unit as defined in the model. If the field is a String
 	field and 'choices' is not in the model 'info' dictionary, a line edit is used instead of combo box.
 
 	fields:	The fields from the model to generate the form. Note: fields must exist in the model.
@@ -131,7 +131,7 @@ class FieldsFormWidget(QtGui.QScrollArea):
 		self.layout.setAlignment(QtCore.Qt.AlignTop)
 		self.fields = fields
 		self.model = model
-		
+
 		self.input_widgets = {}
 		self.other_input = {}
 		self.units_input = {}
@@ -148,7 +148,7 @@ class FieldsFormWidget(QtGui.QScrollArea):
 						for v in session.query(getattr(self.model,field)).distinct():
 							if getattr(v,field) not in input_set:
 								input_set.append(getattr(v,field))
-				if 'choices' in info.keys():	
+				if 'choices' in info.keys():
 					input_set.extend(info['choices'])
 					self.input_widgets[field] = QtGui.QComboBox()
 					self.input_widgets[field].addItems(input_set)
@@ -158,7 +158,7 @@ class FieldsFormWidget(QtGui.QScrollArea):
 					self.other_input[field].setPlaceholderText('Enter other input here.')
 					self.other_input[field].setFixedHeight(self.other_input[field].sizeHint().height())
 					self.other_input[field].hide()
-					
+
 					self.input_widgets[field].activated[str].connect(
 						lambda x, other_input = self.other_input[field]: other_input.show() if x == 'Other' else other_input.hide())
 					self.layout.addWidget(self.other_input[field],row,3*col+2)
@@ -166,12 +166,16 @@ class FieldsFormWidget(QtGui.QScrollArea):
 
 				else:
 					self.input_widgets[field] = QtGui.QLineEdit()
+<<<<<<< HEAD:src/GSASubmit.py
 					with dal.session_scope() as session:
 						if hasattr(self.model,field):
 							entries = [v[0] for v in session.query(getattr(self.model,field)).distinct()]
 							completer = QtGui.QCompleter(entries)
 							self.input_widgets[field].setCompleter(completer)
 				self.layout.addWidget(self.input_widgets[field],row,3*col+1)	
+=======
+				self.layout.addWidget(self.input_widgets[field],row,3*col+1)
+>>>>>>> 5e04c04ed393406405abb0f7dc303336fa7b0ee6:src/gresq/submit.py
 
 			elif sql_validator['date'](getattr(model,field)):
 				self.input_widgets[field] = QtGui.QDateEdit()
@@ -185,10 +189,10 @@ class FieldsFormWidget(QtGui.QScrollArea):
 					self.input_widgets[field].setValidator(QtGui.QIntValidator())
 				elif sql_validator['float'](getattr(model,field)):
 					self.input_widgets[field].setValidator(QtGui.QDoubleValidator())
-				
+
 				if 'conversions' in info.keys():
 					self.units_input[field] = QtGui.QComboBox()
-					self.units_input[field].addItems(info['conversions'])					
+					self.units_input[field].addItems(info['conversions'])
 
 				self.layout.addWidget(self.input_widgets[field],row,3*col+1)
 				if field in self.units_input.keys():
@@ -293,11 +297,11 @@ class ProvenanceTab(QtGui.QWidget):
 		self.clearButton = QtGui.QPushButton('Clear Fields')
 		spacer = QtGui.QSpacerItem(
 			self.nextButton.sizeHint().width(),
-			self.nextButton.sizeHint().height(), 
+			self.nextButton.sizeHint().height(),
 			vPolicy = QtGui.QSizePolicy.Expanding)
 		hspacer = QtGui.QSpacerItem(
 			self.nextButton.sizeHint().width(),
-			self.nextButton.sizeHint().height(), 
+			self.nextButton.sizeHint().height(),
 			vPolicy = QtGui.QSizePolicy.Expanding,
 			hPolicy = QtGui.QSizePolicy.Expanding)
 
@@ -374,11 +378,11 @@ class PropertiesTab(QtGui.QWidget):
 		self.clearButton = QtGui.QPushButton('Clear Fields')
 		spacer = QtGui.QSpacerItem(
 			self.nextButton.sizeHint().width(),
-			self.nextButton.sizeHint().height(), 
+			self.nextButton.sizeHint().height(),
 			vPolicy = QtGui.QSizePolicy.Expanding)
 		hspacer = QtGui.QSpacerItem(
 			self.nextButton.sizeHint().width(),
-			self.nextButton.sizeHint().height(), 
+			self.nextButton.sizeHint().height(),
 			vPolicy = QtGui.QSizePolicy.Expanding,
 			hPolicy = QtGui.QSizePolicy.Expanding)
 
@@ -433,7 +437,7 @@ class PreparationTab(QtGui.QWidget):
 
 		spacer = QtGui.QSpacerItem(
 			self.nextButton.sizeHint().width(),
-			self.nextButton.sizeHint().height(), 
+			self.nextButton.sizeHint().height(),
 			vPolicy = QtGui.QSizePolicy.Expanding,
 			hPolicy = QtGui.QSizePolicy.Expanding)
 
@@ -486,7 +490,7 @@ class PreparationTab(QtGui.QWidget):
 	def getResponse(self):
 		"""
 		Returns a response dictionary containing:
-		
+
 		reparation_step:		A list of dictionary responses, as defined in FieldsFormWidget.getResponse() for each step.
 		recipe:					A dictionary containing response from recipe input widget.
 		"""
@@ -504,7 +508,7 @@ class PreparationTab(QtGui.QWidget):
 		self.recipeParams.clear()
 
 	def getRecipeDict(self,preparation_response):
-		with dal.session_scope() as session: 
+		with dal.session_scope() as session:
 			c = recipe()
 			for field,item in preparation_response["recipe"].items():
 				value = item['value']
@@ -553,7 +557,7 @@ class PreparationTab(QtGui.QWidget):
 			ReviewTab.validate_base_pressure(preparation_response),
 			ReviewTab.validate_carbon_source(preparation_response)
 			]
-			
+
 		if any([v!=True for v in validator_response]):
 			error_dialog = QtGui.QMessageBox(self)
 			error_dialog.setWindowModality(QtCore.Qt.WindowModal)
@@ -579,7 +583,7 @@ class PreparationTab(QtGui.QWidget):
 
 		# Stop preparing recipe and go to oscm widget (not sure if this work!!!)
 		self.oscm_signal.emit()
-		
+
 class FileUploadTab(QtGui.QWidget):
 	"""
 	File upload widget tab. Users upload SEM and Raman files as well as associated input.
@@ -608,7 +612,7 @@ class FileUploadTab(QtGui.QWidget):
 		self.nextButton = QtGui.QPushButton('Next >>>')
 		spacer = QtGui.QSpacerItem(
 			self.nextButton.sizeHint().width(),
-			self.nextButton.sizeHint().height(), 
+			self.nextButton.sizeHint().height(),
 			vPolicy = QtGui.QSizePolicy.Expanding)
 
 		self.layout.addWidget(self.upload_sem,0,0,1,1)
@@ -687,12 +691,12 @@ class FileUploadTab(QtGui.QWidget):
 		Returns a response dictionary containing:
 			SEM Image File:				The path to the SEM file.
 			Raman Files:				A list of paths to the Raman files.
-			Characteristic Percentage:	A list of percentages, where each entry represents the fraction of 
+			Characteristic Percentage:	A list of percentages, where each entry represents the fraction of
 										the sample that each Raman file represents.
 			Raman Wavelength:			The wavelength of the Raman spectroscopy.
 		"""
 		r = {
-			'SEM Image Files': [self.sem_list.item(i).text() for i in range(self.sem_list.count())], 
+			'SEM Image Files': [self.sem_list.item(i).text() for i in range(self.sem_list.count())],
 			'Raman Files': [self.raman_list.item(i).text() for i in range(self.raman_list.count())],
 			'Characteristic Percentage': [self.stackedRamanFormWidget.widget(i).text() for i in range(self.stackedRamanFormWidget.count())],
 			'Raman Wavength': self.wavelength_input.getResponse()['wavelength']['value']}
@@ -800,7 +804,7 @@ class ReviewTab(QtGui.QScrollArea):
 		self.contentWidget = QtGui.QWidget()
 		self.layout = QtGui.QGridLayout(self.contentWidget)
 		self.layout.setAlignment(QtCore.Qt.AlignTop)
-		
+
 		propertiesLabel = QtGui.QLabel('Properties')
 		propertiesLabel.setFont(label_font)
 		preparationLabel = QtGui.QLabel('Recipe')
@@ -852,7 +856,7 @@ class ReviewTab(QtGui.QScrollArea):
 			self.layout.addItem(
 				QtGui.QSpacerItem(label.sizeHint().width(),label.sizeHint().height(), hPolicy = QtGui.QSizePolicy.Expanding),
 				row,
-				3)	
+				3)
 
 		self.layout.addWidget(QtGui.QLabel("Preparation Steps:"),self.layout.rowCount(),0,QtCore.Qt.AlignLeft)
 		for step, step_response in enumerate(preparation_response['preparation_step']):
@@ -872,7 +876,7 @@ class ReviewTab(QtGui.QScrollArea):
 					QtGui.QSpacerItem(label.sizeHint().width(),label.sizeHint().height(), hPolicy = QtGui.QSizePolicy.Expanding),
 					row,
 					3)
-		
+
 		# File upload response
 		self.layout.addItem(
 			QtGui.QSpacerItem(label.sizeHint().width(),label.sizeHint().height(), vPolicy = QtGui.QSizePolicy.Fixed),
@@ -885,7 +889,7 @@ class ReviewTab(QtGui.QScrollArea):
 			name = files_response["SEM Image Files"][k]
 			label = QtGui.QLabel("%s"%(name))
 			self.layout.addWidget(label,row,0,QtCore.Qt.AlignLeft|QtCore.Qt.AlignCenter)
-		
+
 		self.layout.addWidget(QtGui.QLabel("Raman Wavength"),self.layout.rowCount(),0)
 		self.layout.addWidget(QtGui.QLabel(files_response['Raman Wavength']),self.layout.rowCount(),1)
 		self.layout.addWidget(QtGui.QLabel("Raman Spectroscopy Files:"),self.layout.rowCount(),0)
@@ -985,7 +989,7 @@ class ReviewTab(QtGui.QScrollArea):
 	def validate_raman_files(files_response):
 		for ri,ram in enumerate(files_response['Raman Files']):
 			try:
-				params = GSARaman.auto_fitting(ram) 
+				params = GSARaman.auto_fitting(ram)
 			except:
 				return 'File formatting issue with file: %s'%ram
 		return True
@@ -993,7 +997,7 @@ class ReviewTab(QtGui.QScrollArea):
 
 	def submit(self,properties_response,preparation_response,files_response, provenance_response):
 		"""
-		Checks and validates responses. If invalid, displays message box with problems. 
+		Checks and validates responses. If invalid, displays message box with problems.
 		Otherwise, it submits the full, validated response and returns the output response dictionary.
 
 		properties_response:		Response from PropertiesTab.getResponse().
@@ -1026,7 +1030,7 @@ class ReviewTab(QtGui.QScrollArea):
 			ReviewTab.validate_carbon_source(preparation_response),
 			ReviewTab.validate_raman_files(files_response)
 			]
-			
+
 		if any([v!=True for v in validator_response]):
 			error_dialog = QtGui.QMessageBox(self)
 			error_dialog.setWindowModality(QtCore.Qt.WindowModal)
@@ -1056,7 +1060,7 @@ class ReviewTab(QtGui.QScrollArea):
 				sf.url = self.upload_file(f)
 				session.add(sf)
 				session.flush()
-			
+
 			### RAMAN IS A SEPARATE DATASET FROM SAMPLE ###
 			rs = raman_set()
 			rs.sample_id = s.id
@@ -1078,7 +1082,7 @@ class ReviewTab(QtGui.QScrollArea):
 				r.raman_file_id = rf.id
 				r.set_id = rs.id
 				if files_response['Characteristic Percentage'] != None:
-					r.percent = float(files_response['Characteristic Percentage'][ri]) 
+					r.percent = float(files_response['Characteristic Percentage'][ri])
 				else:
 					r.percent = 0.
 				for peak in params.keys():
@@ -1087,7 +1091,7 @@ class ReviewTab(QtGui.QScrollArea):
 						setattr(r,key,float(params[peak][v]))
 				session.add(r)
 				session.flush()
-			
+
 			rs_fields = [
 			"d_peak_shift",
 			"d_peak_amplitude",
@@ -1304,7 +1308,7 @@ def make_test_dict(test_sem_file=None,test_raman_file=None):
 						setattr(r,key,params[peak][v])
 				session.add(r)
 				session.flush()
-			
+
 			rs_fields = [
 			"d_peak_shift",
 			"d_peak_amplitude",
@@ -1334,11 +1338,9 @@ if __name__ == '__main__':
 	# Base.metadata.drop_all(bind=dal.engine)
 	# Base.metadata.create_all(bind=dal.engine)
 
-	app = QtGui.QApplication([])      
+	app = QtGui.QApplication([])
 	submit = GSASubmit(box_config_path='box_config.json',privileges={'read':True,'write':True,'validate':False})
 	if len(sys.argv) > 1 and sys.argv[1] == 'test':
 		submit.test()
 	submit.show()
 	sys.exit(app.exec_())
-
-

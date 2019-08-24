@@ -9,7 +9,7 @@ import json
 import re
 import zipfile
 from PyQt5 import QtGui, QtCore, QtWidgets
-from oscm_adapter import OSCMAdapter
+from gresq.util.oscm_adapter import OSCMAdapter
 
 label_bold = QtGui.QFont("Times", 7, QtGui.QFont.Bold)
 
@@ -173,7 +173,7 @@ class LoginTab(QtWidgets.QWidget):
 
 class CreateTransaction(QtWidgets.QWidget):
     '''
-    Create Transaction tab widget. This Tab allows OSCM users to create transactions 
+    Create Transaction tab widget. This Tab allows OSCM users to create transactions
     in OSCM from Gr-ResQ tool. User authentication token is required.
     It is required that the user has access to create transaction in the facility.
     If user wants to attach a file (recipe.json), the file must exit in oscm_files directory.
@@ -200,7 +200,7 @@ class CreateTransaction(QtWidgets.QWidget):
         # build oscm path
         oscm_dir = 'oscm_files'
         self.oscm_path = os.path.abspath(oscm_dir)
-        
+
         # create list of files available
         self.myfiles = [QtWidgets.QCheckBox(f) for f in os.listdir(
             self.oscm_path) if os.path.isfile(os.path.join(self.oscm_path, f))]
@@ -479,7 +479,7 @@ class CreateTransaction(QtWidgets.QWidget):
 
 class GetTransaction(QtWidgets.QWidget):
     '''
-    Get Transaction tab widget. This Tab allows OSCM users to get transactions 
+    Get Transaction tab widget. This Tab allows OSCM users to get transactions
     from OSCM. User authentication token is required.
     All files downloaded go temporarily to oscm_files directory. Once, the Gr-resQ tool
     is closed, all files are removed.

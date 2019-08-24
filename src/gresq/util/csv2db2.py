@@ -246,4 +246,3 @@ def build_db(session,filepath):
             session.flush()
 
         session.commit()
-
