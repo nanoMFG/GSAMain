@@ -77,11 +77,11 @@ class sample(Base):
         'choices': ['Graphene'],
         'required': True
         })
-    recipe = relationship("recipe",uselist=False)
-    properties = relationship("properties",uselist=False)
-    raman_analysis = relationship("raman_set",uselist=False)
-    sem_files = relationship("sem_file")
-    raman_files = relationship("raman_file")
+    recipe = relationship("recipe",uselist=False,cascade="save-update, merge, delete")
+    properties = relationship("properties",uselist=False,cascade="save-update, merge, delete")
+    raman_analysis = relationship("raman_set",uselist=False,cascade="save-update, merge, delete")
+    sem_files = relationship("sem_file",cascade="save-update, merge, delete")
+    raman_files = relationship("raman_file",cascade="save-update, merge, delete")
     validated = Column(Boolean,info={'verbose_name':'Validated'},default=False)
 
     def json_encodable(self):
@@ -143,8 +143,8 @@ class recipe(Base):
         })
     base_pressure = Column(Float,info={
         'verbose_name':'Base Pressure',
-        'std_unit': 'mTorr',
-        'conversions': {'mTorr':1,'Pa':1/133.322,'mbar':1/1.33322},
+        'std_unit': 'Torr',
+        'conversions': {'Torr':1,'Pa':1/133.322,'mbar':1/1.33322},
         'required': True
         })
     dewpoint = Column(Float,info={
@@ -155,7 +155,7 @@ class recipe(Base):
         })
 
     # PREPARATION STEPS
-    preparation_steps = relationship("preparation_step")
+    preparation_steps = relationship("preparation_step",cascade="save-update, merge, delete")
 
     def json_encodable(self):
         params = [
@@ -200,8 +200,8 @@ class preparation_step(Base):
         })
     furnace_pressure = Column(Float,info={
         'verbose_name':'Furnace Pressure',
-        'std_unit': 'mTorr',
-        'conversions': {'mTorr':1,'Pa':1/133.322,'mbar':1/1.33322},
+        'std_unit': 'Torr',
+        'conversions': {'Torr':1,'Pa':1/133.322,'mbar':1/1.33322},
         'required': True
         })
     sample_location = Column(Float,info={
@@ -275,6 +275,7 @@ class preparation_step(Base):
 
 class author(Base):
     __tablename__ = 'author'
+
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
     sample_id = Column(Integer,ForeignKey('sample.id'),info={'verbose_name':'Sample ID'})
     raman_id = Column(Integer,ForeignKey('raman_set.id'),info={'verbose_name':'Raman Set ID'})
@@ -350,8 +351,9 @@ class raman_set(Base):
     __tablename__ = 'raman_set'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
     nanohub_userid = Column(Integer,info={'verbose_name':'Nanohub Submitter User ID'})
+    # map_file = Column(Boolean,info={'verbose_name':'Map File'},default=False)
     sample_id = Column(Integer,ForeignKey(sample.id),info={'verbose_name':'Sample ID'})
-    raman_spectra = relationship("raman_spectrum")
+    raman_spectra = relationship("raman_spectrum",cascade="save-update, merge, delete")
     authors = relationship("author")
     experiment_date = Column(Date,default=datetime.date.today,info={
         'verbose_name':'Experiment Date',
@@ -451,7 +453,9 @@ class raman_spectrum(Base):
     __tablename__ = 'raman_spectrum'
     set_id = Column(Integer,ForeignKey(raman_set.id),info={'verbose_name':'Sample ID'})
     raman_file_id = Column(Integer,ForeignKey(raman_file.id),primary_key=True)
-    raman_file = relationship("raman_file",uselist=False)
+    raman_file = relationship("raman_file",uselist=False,cascade="save-update, merge, delete")
+    # xcoord = Column(Integer,info={'verbose_name':'X Coordinate'})
+    # ycoord = Column(Integer,info={'verbose_name':'Y Coordinate'})
     percent = Column(Float,info={
         'verbose_name':'Characteristic Percent',
         'std_unit': '%',
@@ -520,15 +524,6 @@ class raman_spectrum(Base):
             json_dict[p] = {'value':getattr(self,p),'unit':getattr(raman_spectrum,p).info['std_unit']}
 
         return json_dict
-
-class image(Base):
-    __tablename__ = 'images'
-    sample_id = Column(Integer,ForeignKey(sample.id),primary_key=True)
-    type = Column(String(16),primary_key=True)
-    filename = Column(String(16),primary_key=True)
-    location = Column(String(256))
-    size = Column(Integer)
-    hash = Column(String(128))
 
 class sem_file(Base):
     __tablename__ = 'sem_file'
