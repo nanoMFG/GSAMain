@@ -14,7 +14,7 @@ from gresq.GSAImage import GSAImage
 from gresq.util.box_adaptor import BoxAdaptor
 from gresq.stats import TSNEWidget, PlotWidget
 from gresq.util.csv2db2 import build_db
-from gresq.database import sample, preparation_step, dal, Base, mdf_forge, properties, recipe, raman_set
+from gresq.database import sample, preparation_step, dal, Base, mdf_forge, properties, recipe, raman_set, author
 from sqlalchemy import String, Integer, Float, Numeric
 from gresq.config import config
 import scipy
@@ -262,7 +262,10 @@ class GSAQuery(QtGui.QWidget):
         Runs query on results widget. This is a separate function so as to make the selection signal work properly.
         This is because the model must be set before selection signalling can be connected.
         """
-        self.results.query(self.filters)
+        if self.privileges['validate']:
+            self.results.query(filters)
+        else:
+            self.results.query(filters+[sample.validated==True])
         self.results.results_table.selectionModel().currentChanged.connect(lambda x: self.preview.select(self.results.results_model,x))
 
 class ValueFilter(QtGui.QWidget):
@@ -703,6 +706,7 @@ class RecipeDisplayTab(QtGui.QScrollArea):
                 
 
 class AdminDisplayTab(QtGui.QScrollArea):
+    update_signal = QtCore.pyqtSignal()
     def __init__(self,privileges, parent=None):
         super(AdminDisplayTab,self).__init__(parent=parent)
         self.sample_id = None
@@ -736,11 +740,15 @@ class AdminDisplayTab(QtGui.QScrollArea):
         self.sample_id = sample_model.id
         self.validate_status_label.setText(str(sample_model.validated))
 
-        if self.privileges['write'] and sample_model.nanohub_userid:
-            if sample_model.nanohub_userid == os.getuid() or self.privileges['validate']:
+        if self.privileges['write'] or self.privileges['validate']:
+            if self.privileges['validate']:
+                self.delete_button.setEnabled(True)
+            elif self.privileges['write'] and sample_model.nanohub_userid and sample_model.nanohub_userid == os.getuid():
                 self.delete_button.setEnabled(True)
             else:
                 self.delete_button.setEnabled(False)
+        else:
+            self.delete_button.setEnabled(False)
 
 
     def delete_model(self):
