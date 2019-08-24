@@ -8,11 +8,11 @@ import cv2
 import io
 import requests
 from PIL import Image
-from gresq.models import ResultsTableModel
+from gresq.util.models import ResultsTableModel
 from gresq.GSAImage import GSAImage
-from gresq.box_adaptor import BoxAdaptor
+from gresq.util.box_adaptor import BoxAdaptor
 from gresq.stats import TSNEWidget, PlotWidget
-from gresq.csv2db2 import build_db
+from gresq.util.csv2db2 import build_db
 from gresq.database import sample, preparation_step, dal, Base, mdf_forge, properties, recipe, raman_set
 from sqlalchemy import String, Integer, Float, Numeric
 from gresq.config import config

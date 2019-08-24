@@ -3,14 +3,14 @@ import numpy as np
 import cv2, sys, time, json, copy, subprocess, os
 from PyQt5 import QtGui, QtCore
 import uuid
-from gresq.box_adaptor import BoxAdaptor
+from gresq.util.box_adaptor import BoxAdaptor
 from gresq.database import sample, preparation_step, dal, Base, mdf_forge, author, raman_spectrum, recipe, properties, sem_file, raman_file, raman_set
 from sqlalchemy import String, Integer, Float, Numeric, Date
 from gresq.config import config
-from gresq.csv2db import build_db
+from gresq.util.csv2db import build_db
 from gresq.GSARaman import GSARaman
 from gresq.recipe import Recipe
-from gresq.mdf_adaptor import MDFAdaptor, MDFException
+from gresq.util.mdf_adaptor import MDFAdaptor, MDFException
 
 
 sample_fields = [

@@ -9,7 +9,7 @@ import json
 import re
 import zipfile
 from PyQt5 import QtGui, QtCore, QtWidgets
-from gresq.oscm_adapter import OSCMAdapter
+from gresq.util.oscm_adapter import OSCMAdapter
 
 label_bold = QtGui.QFont("Times", 7, QtGui.QFont.Bold)
 
