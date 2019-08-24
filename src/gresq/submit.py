@@ -166,16 +166,12 @@ class FieldsFormWidget(QtGui.QScrollArea):
 
 				else:
 					self.input_widgets[field] = QtGui.QLineEdit()
-<<<<<<< HEAD:src/GSASubmit.py
 					with dal.session_scope() as session:
 						if hasattr(self.model,field):
 							entries = [v[0] for v in session.query(getattr(self.model,field)).distinct()]
 							completer = QtGui.QCompleter(entries)
 							self.input_widgets[field].setCompleter(completer)
 				self.layout.addWidget(self.input_widgets[field],row,3*col+1)	
-=======
-				self.layout.addWidget(self.input_widgets[field],row,3*col+1)
->>>>>>> 5e04c04ed393406405abb0f7dc303336fa7b0ee6:src/gresq/submit.py
 
 			elif sql_validator['date'](getattr(model,field)):
 				self.input_widgets[field] = QtGui.QDateEdit()
