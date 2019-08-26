@@ -1,15 +1,10 @@
-
+"""database.model module.
+Contains the database classes that comprise .
+"""
 import datetime
 from json import JSONEncoder
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy import Column, String, Integer, Float, Numeric, ForeignKey, Date, Boolean
-#from sqlalchemy import create_engine
-#from sqlalchemy.orm import scoped_session, sessionmaker, relationship
-#from sqlalchemy.ext.declarative import declarative_base
-#from sqlalchemy.ext.hybrid import hybrid_property
-#from contextlib import contextmanager
-#import ast
-#import database
 from gresq.database import Base
 
 class sample(Base):
