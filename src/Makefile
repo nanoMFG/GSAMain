@@ -10,9 +10,7 @@ SUBDIRS := gresq
 # Edit the CYPYTHON_SUFFIX to match python version
 # Add src files to SRCS as needed
 CPYTHON_SUFFIX = cpython-36
-SRCS := GSARaman.py GSADashboard.py GSAImage.py GSAQuery.py \
-        GSARecipe.py GSAStats.py GSASubmit.py GSAOscm.py models.py \
-		box_adaptor.py mdf_adaptor.py oscm_adapter.py 
+SRCS :=
 DATAFILES := varmap.csv varmap2.csv recipe_2018_11_08.csv
 
 DATAOBJS := $(patsubst %,${DATADESTDIR}/%,${DATAFILES})

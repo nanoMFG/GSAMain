@@ -12,7 +12,7 @@ from PIL import Image
 from gresq.util.models import ResultsTableModel
 from gresq.GSAImage import GSAImage
 from gresq.util.box_adaptor import BoxAdaptor
-from gresq.stats import TSNEWidget, PlotWidget
+from gresq.dashboard.stats import TSNEWidget, PlotWidget
 from gresq.util.csv2db2 import build_db
 from gresq.database import sample, preparation_step, dal, Base, mdf_forge, properties, recipe, raman_set, author
 from sqlalchemy import String, Integer, Float, Numeric
