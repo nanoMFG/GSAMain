@@ -3,10 +3,13 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.ext.hybrid import hybrid_property
 from contextlib import contextmanager
 from .config import Config
+from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
+from sqlalchemy import select, func
 import ast, datetime
+from sqlalchemy import Column, String, Integer, Float, Numeric, ForeignKey, Date, Boolean
+from sqlalchemy.orm import relationship, backref
 
 Base = declarative_base()
 
@@ -61,8 +64,6 @@ class DataAccessLayer:
 
 dal = DataAccessLayer()
 
-from sqlalchemy import Column, String, Integer, Float, Numeric, ForeignKey, Date, Boolean
-from sqlalchemy.orm import relationship, backref
 
 class sample(Base):
     __tablename__ = 'sample'
@@ -153,6 +154,41 @@ class recipe(Base):
         'conversions': {'C':1},
         'required': False
         })
+
+    @hybrid_property
+    def maximum_temperature(self):
+        return max([p.furnace_temperature for p in self.preparation_steps])
+
+    @maximum_temperature.expression
+    def maximum_temperature(cls):
+        return select([func.max(preparation_step.furnace_temperature)]).\
+                where(preparation_step.recipe_id==cls.id).\
+                label('maximum_temperature')
+
+    @hybrid_property
+    def maximum_pressure(self):
+        return max([p.furnace_pressure for p in self.preparation_steps])
+
+    @hybrid_property
+    def average_carbon_flow_rate(self):
+        return sum([p.carbon_source_flow_rate for p in self.preparation_steps])
+
+    @hybrid_property
+    def carbon_source(self):
+        vals = [p.carbon_source for p in self.preparation_steps if p.carbon_source is not None]
+        return vals[0]
+
+    @hybrid_property
+    def uses_helium(self):
+        return any([p.helium_flow_rate for p in self.preparation_steps])
+
+    @hybrid_property
+    def uses_argon(self):
+        return any([p.argon_flow_rate for p in self.preparation_steps])
+
+    @hybrid_property
+    def uses_hydrogen(self):
+        return any([p.hydrogen_flow_rate for p in self.preparation_steps])
 
     # PREPARATION STEPS
     preparation_steps = relationship("preparation_step",cascade="save-update, merge, delete")
