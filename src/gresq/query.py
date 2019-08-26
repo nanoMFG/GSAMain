@@ -65,7 +65,17 @@ recipe_fields = [
     "thickness",
     "diameter",
     "length",
-    "dewpoint"
+    "dewpoint",
+    ]
+
+hybrid_recipe_fields = [
+    "maximum_temperature",
+    "maximum_pressure",
+    "average_carbon_flow_rate",
+    "carbon_source",
+    "uses_helium",
+    "uses_hydrogen",
+    "uses_argon"
     ]
 
 author_fields = [
@@ -78,7 +88,8 @@ raman_fields = [
     "gp_to_g",
     "d_to_g"
 ]
-results_fields = recipe_fields+preparation_fields+properties_fields+raman_fields
+
+results_fields = recipe_fields+hybrid_recipe_fields+properties_fields+raman_fields
 
 selection_list = {
     'Experimental Conditions':{'fields':recipe_fields,'model':recipe},
@@ -146,6 +157,8 @@ class GSAQuery(QtGui.QWidget):
         self.results.setSizePolicy(QtGui.QSizePolicy.Maximum,QtGui.QSizePolicy.Preferred)
 
         self.preview = PreviewWidget(privileges=self.privileges)
+        self.preview.admin_tab.updateQuery.connect(lambda: self.query(self.filters))
+        self.preview.admin_tab.queryUnvalidated.connect(lambda: self.query([sample.validated==False]))
         # self.results.plot.scatter_plot.sigClicked.connect(lambda x: self.preview.select(self.results.results_model,x[0]))
 
         self.addFilterBtn = QtGui.QPushButton('Add Filter')
@@ -182,6 +195,9 @@ class GSAQuery(QtGui.QWidget):
         self.layout.addLayout(searchLayout,1,0)
         self.layout.addWidget(resultsLabel,0,1)
         self.layout.addWidget(resultsLayout,1,1)
+
+        self.primary_selection.activated[str].emit(self.primary_selection.currentText())
+        self.secondary_selection.activated[str].emit(self.secondary_selection.currentText())
         
     
     def generate_field(self,model,field):
@@ -387,7 +403,6 @@ class DetailWidget(QtGui.QWidget):
         self.properties.setData(properties_model)
         self.conditions.setData(recipe_model)
 
-
 class PreviewWidget(QtGui.QTabWidget):
     """
     Widget for displaying data associated with selected sample. Contains tabs for:
@@ -426,7 +441,7 @@ class PreviewWidget(QtGui.QTabWidget):
         """
 
         with dal.session_scope() as session:
-            i = int(model.df['id'].values[index.row()][0])
+            i = int(model.df['id'].values[index.row()])
             s = session.query(sample).filter(sample.id==i)[0]
             self.detail_tab.update(s.properties,s.recipe)
             self.sem_tab.update(s)
@@ -468,7 +483,11 @@ class ResultsWidget(QtGui.QTabWidget):
         self.results_model = ResultsTableModel()
         if len(filters)>0:
             with dal.session_scope() as session:
-                q = session.query(sample,recipe,properties).join(sample.recipe).join(sample.properties).outerjoin(recipe.preparation_steps).filter(*filters).distinct()
+                sample_columns = (sample,)
+                recipe_columns = tuple([getattr(recipe,r) for r in recipe_fields])+(recipe.maximum_temperature,)
+                properties_columns = tuple([getattr(properties,p) for p in properties_fields])
+                query_columns = sample_columns+recipe_columns+properties_columns
+                q = session.query(*query_columns).join(sample.recipe).join(sample.properties).outerjoin(recipe.preparation_steps).filter(*filters).distinct()
                 # print(q.statement)
                 # q = session.query(mdf_forge).filter(*filters).distinct()
                 self.results_model.read_sqlalchemy(q.statement,session)
@@ -477,7 +496,7 @@ class ResultsWidget(QtGui.QTabWidget):
             if self.results_model.df.columns[c] not in recipe_fields+properties_fields:
                 self.results_table.hideColumn(c)
         self.results_table.resizeColumnsToContents()
-        self.plot.setModel(self.results_model)
+        self.plot.setModel(self.results_model,xfields=recipe_fields+properties_fields,yfields=raman_fields+properties_fields)
         self.tsne.setModel(self.results_model)
 
 class FieldsDisplayWidget(QtGui.QScrollArea):
@@ -617,27 +636,21 @@ class RecipeDisplayTab(QtGui.QScrollArea):
         self.setWidget(self.contentWidget)
 
         self.primary_axis = QtGui.QComboBox()
-        axis_fields = {
-            'Furnace Temperature': 'furnace_temperature',
-            'Furnace Pressure': 'furnace_pressure',
-            'Helium Flow Rate': "helium_flow_rate",
-            'Hydrogen Flow Rate': "hydrogen_flow_rate",
-            'Carbon Source Flow Rate': "carbon_source_flow_rate",
-            'Argon Flow Rate': "argon_flow_rate"
-            }
-        self.primary_axis.addItems(sorted(axis_fields.keys()))
-        self.primary_axis.setCurrentIndex(0)
-        self.primary_axis.activated[str].connect(lambda x: self.plot(plot_field=axis_fields[x]))
         self.recipe_model = None
 
         self.recipe_plot = pg.PlotWidget()
-        self.recipe_plot.setMouseEnabled(x=False, y=False)
+        # self.recipe_plot.setMouseEnabled(x=True, y=False)
 
         self.layout.addWidget(self.recipe_plot,0,0,1,2)
         self.layout.addWidget(QtGui.QLabel("Primary Axis:"),1,0)
         self.layout.addWidget(self.primary_axis,1,1)
 
     def update(self,recipe_model):
+        try:
+            self.primary_axis.activated[str].disconnect()
+        except:
+            pass
+        self.primary_axis.clear()
         self.recipe_plot.clear()
         self.recipe_model = recipe_model
         if self.recipe_model:
@@ -660,7 +673,22 @@ class RecipeDisplayTab(QtGui.QScrollArea):
                         self.data[field].append(value)
                     else:
                         self.data[field].append(np.nan)
-            self.primary_axis.activated[str].emit(self.primary_axis.currentText())
+            axis_fields = {
+                'Furnace Temperature': 'furnace_temperature',
+                'Furnace Pressure': 'furnace_pressure',
+                'Helium Flow Rate': "helium_flow_rate",
+                'Hydrogen Flow Rate': "hydrogen_flow_rate",
+                'Carbon Source Flow Rate': "carbon_source_flow_rate",
+                'Argon Flow Rate': "argon_flow_rate"
+                }
+            for field in list(axis_fields.keys()):
+                if np.isnan(self.data[axis_fields[field]]).all():
+                    del axis_fields[field]
+            self.primary_axis.addItems(sorted(axis_fields.keys()))
+            self.primary_axis.activated[str].connect(lambda x: self.plot(plot_field=axis_fields[x]))
+            if self.primary_axis.count() > 0:
+                self.primary_axis.setCurrentIndex(0)
+                self.primary_axis.activated[str].emit(self.primary_axis.currentText())
 
     def plot(self,plot_field=None):
         self.recipe_plot.clear()
@@ -706,7 +734,8 @@ class RecipeDisplayTab(QtGui.QScrollArea):
                 
 
 class AdminDisplayTab(QtGui.QScrollArea):
-    update_signal = QtCore.pyqtSignal()
+    updateQuery = QtCore.pyqtSignal()
+    queryUnvalidated = QtCore.pyqtSignal()
     def __init__(self,privileges, parent=None):
         super(AdminDisplayTab,self).__init__(parent=parent)
         self.sample_id = None
@@ -725,15 +754,20 @@ class AdminDisplayTab(QtGui.QScrollArea):
 
         self.delete_button = QtGui.QPushButton('Delete Selected Entry')
         self.delete_button.clicked.connect(self.delete_model)
+        self.delete_button.setStyleSheet("background-color: rgb(255,100,100)")
+
+        self.query_unvalidated_button = QtGui.QPushButton('Query All Unvalidated')
+        self.query_unvalidated_button.clicked.connect(lambda: self.queryUnvalidated.emit())
 
         if self.privileges['validate']==False:
             self.validate_button.setEnabled(False)
         self.delete_button.setEnabled(False)
 
-        self.layout.addWidget(QtGui.QLabel('Validation Status:'),0,0)
-        self.layout.addWidget(self.validate_status_label,0,1)
-        self.layout.addWidget(self.validate_button,1,0)
-        self.layout.addWidget(self.delete_button,1,1)
+        self.layout.addWidget(self.query_unvalidated_button,0,0,1,3)
+        self.layout.addWidget(QtGui.QLabel('Validation Status:'),1,0)
+        self.layout.addWidget(self.validate_status_label,1,1)
+        self.layout.addWidget(self.validate_button,1,2)
+        self.layout.addWidget(self.delete_button,2,0,1,3)
 
 
     def update(self,sample_model):
@@ -789,6 +823,7 @@ class AdminDisplayTab(QtGui.QScrollArea):
                 model.validated = not model.validated
                 session.commit()
                 self.validate_status_label.setText(str(model.validated))
+            self.updateQuery.emit()
 
 
 if __name__ == '__main__':

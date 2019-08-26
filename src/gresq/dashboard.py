@@ -81,7 +81,7 @@ def main():
             db_config_suffix = '_READ'
     else:
         mode = 'local'
-        privileges = {'read':True,'write':False,'validate':True}
+        privileges = {'read':True,'write':True,'validate':True}
 
     #logging.debug(db_config_prefix)
     #logging.debug(kwargs['db_config_path'])

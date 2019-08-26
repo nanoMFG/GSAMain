@@ -455,7 +455,9 @@ class PreparationTab(QtGui.QWidget):
 		for step in range(3):
 			self.addStep()
 			self.stackedFormWidget.currentWidget().testFill()
-			self.stackedFormWidget.currentWidget().input_widgets['name'].setCurrentIndex(step)
+			name_widget = self.stackedFormWidget.currentWidget().input_widgets['name']
+			name_widget.setCurrentIndex(step)
+			name_widget.activated[str].emit(name_widget.currentText())
 
 	def addStep(self):
 		"""
@@ -631,6 +633,8 @@ class FileUploadTab(QtGui.QWidget):
 		self.remove_raman.clicked.connect(self.removeRaman)
 		self.clearButton.clicked.connect(self.clear)
 
+	def setWavelength(self,wavelength):
+		self.wavelength_input.setText(str(wavelength))
 
 	def removeSEM(self):
 		x=self.sem_list.currentRow()
@@ -641,24 +645,35 @@ class FileUploadTab(QtGui.QWidget):
 		self.stackedRamanFormWidget.removeWidget(self.stackedRamanFormWidget.widget(x))
 		self.raman_list.takeItem(x)
 
-	def importSEM(self):
-		self.sem_file_path = self.importFile()
+	def importSEM(self,file_path=None):
+		if file_path:
+			self.sem_file_path = file_path
+		else:
+			self.sem_file_path = self.importFile()
 		if isinstance(self.sem_file_path,str):
 			self.sem_list.addItem(self.sem_file_path)
 
-	def importRaman(self):
-		self.raman_file_path = self.importFile()
+	def importRaman(self,file_path=None,pct=None):
+		if file_path:
+			self.raman_file_path = file_path
+		else:
+			self.raman_file_path = self.importFile()
+
 		if isinstance(self.raman_file_path,str):
 			if self.stackedRamanFormWidget.count() > 0:
 				sm = sum([float(self.stackedRamanFormWidget.widget(i).text()) for i in range(self.stackedRamanFormWidget.count())])
 			else:
 				sm = 0
+
 			self.raman_list.addItem(self.raman_file_path)
 			w = QtGui.QLineEdit()
 			w.setPlaceholderText("Input must be <= %s"%(100-sm))
 			w.setValidator(QtGui.QDoubleValidator(0.,100.-sm,2))
 			self.stackedRamanFormWidget.addWidget(w)
 			self.stackedRamanFormWidget.setCurrentIndex(self.stackedRamanFormWidget.count()-1)
+
+			if pct:
+				w.setText(str(pct))
 
 	def importFile(self):
 		if self.mode == 'local':
@@ -1195,6 +1210,11 @@ class ReviewTab(QtGui.QScrollArea):
 						# 	)
 						# dataset_id = self.upload_raman(response_dict,raman_dict,box_file,dataset_id)
 						session.commit()
+
+						for ram in files_response['Raman Files']:
+							os.remove(ram)
+						for sem in files_response['SEM Image Files']:
+							os.remove(sem)
 
 						success_dialog = QtGui.QMessageBox(self)
 						success_dialog.setText("Recipe successfully submitted.")

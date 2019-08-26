@@ -33,14 +33,19 @@ class PlotWidget(QtGui.QWidget):
 		self.layout.addWidget(self.yaxisbox,1,1,1,1)
 		self.layout.addWidget(self.plot_widget,2,0,1,2)
 
-	def setModel(self,model):
+	def setModel(self,model,xfields=None,yfields=None):
 		self.model = model
 		self.yaxisbox.clear()
 		self.xaxisbox.clear()
 		for c in self.model.df.columns:
 			if is_numeric_dtype(self.model.df[c]):
-				self.xaxisbox.addItem(c)
-				self.yaxisbox.addItem(c)
+				if xfields and c in xfields:
+					self.xaxisbox.addItem(c)
+				elif yfields and c in yfields:
+					self.yaxisbox.addItem(c)
+				else:
+					self.xaxisbox.addItem(c)
+					self.yaxisbox.addItem(c)
 		self.scatter_plot.clear()
 
 	def updatePlot(self):
