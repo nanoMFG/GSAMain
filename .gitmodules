@@ -1,0 +1,3 @@
+[submodule "src/gresq/dashboard/gsaimage"]
+	path = src/gresq/dashboard/gsaimage
+	url = git@github.com:nanoMFG/GSA-Image.git
