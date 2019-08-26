@@ -144,8 +144,8 @@ class FieldsFormWidget(QtGui.QScrollArea):
 			if sql_validator['str'](getattr(model,field)):
 				input_set = []
 				with dal.session_scope() as session:
-					if hasattr(mdf_forge,field):
-						for v in session.query(getattr(mdf_forge,field)).distinct():
+					if hasattr(self.model,field):
+						for v in session.query(getattr(self.model,field)).distinct():
 							if getattr(v,field) not in input_set:
 								input_set.append(getattr(v,field))
 				if 'choices' in info.keys():
@@ -166,7 +166,12 @@ class FieldsFormWidget(QtGui.QScrollArea):
 
 				else:
 					self.input_widgets[field] = QtGui.QLineEdit()
-				self.layout.addWidget(self.input_widgets[field],row,3*col+1)
+					with dal.session_scope() as session:
+						if hasattr(self.model,field):
+							entries = [v[0] for v in session.query(getattr(self.model,field)).distinct()]
+							completer = QtGui.QCompleter(entries)
+							self.input_widgets[field].setCompleter(completer)
+				self.layout.addWidget(self.input_widgets[field],row,3*col+1)	
 
 			elif sql_validator['date'](getattr(model,field)):
 				self.input_widgets[field] = QtGui.QDateEdit()

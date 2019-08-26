@@ -44,13 +44,13 @@ class GSAImage:
 		'Dilate': Dilation,
 		'Erode': Erosion,
 		'Binary Mask': BinaryMask,
-		'Find Contours': FindContours,
+		# 'Find Contours': FindContours,
 		'Filter Pattern': FilterPattern,
 		'Blur': Blur,
 		'Draw Scale': DrawScale,
 		'Crop': Crop,
 		'Domain Centers': DomainCenters,
-		'Hough Transform': HoughTransform,
+		# 'Hough Transform': HoughTransform,
 		'Erase': Erase,
 		'Sobel Filter': SobelFilter
 		}
