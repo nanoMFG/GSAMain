@@ -8,7 +8,7 @@ DESTDIR := $(realpath ${current_dir}../bin)
 DATADIR = ../data
 DATADESTDIR = ../bin/data
 INSTALL = install -D --mode 0444
-SUBDIRS := gresq gresq/util gresq/database gresq/dashboard
+SUBDIRS := gresq gresq/util gresq/database gresq/dashboard gresq/dashboard/gsaimage/src/gsaimage
 
 # Edit the CYPYTHON_SUFFIX to match python version
 # Add src files to SRCS as needed
