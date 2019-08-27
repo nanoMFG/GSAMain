@@ -1,7 +1,10 @@
 from __future__ import division
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'gsaimage','src'))
 from PyQt5 import QtGui
 from gresq.dashboard.submit import GSASubmit
-from gresq.GSAImage import GSAImage
+from gsaimage import GSAImage
 from gresq.dashboard.query import GSAQuery
 # from GSARaman import GSARaman
 from gresq.dashboard.oscm import GSAOscm
