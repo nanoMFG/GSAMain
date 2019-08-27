@@ -15,7 +15,7 @@ SUBDIRS := gresq gresq/util gresq/database gresq/dashboard \
 # Edit the CYPYTHON_SUFFIX to match python version
 # Add src files to SRCS as needed
 CPYTHON_SUFFIX = cpython-36
-SRCS :=
+SRCS := run_gresq.py
 DATAFILES := varmap.csv varmap2.csv recipe_2018_11_08.csv
 
 DATAOBJS := $(patsubst %,${DATADESTDIR}/%,${DATAFILES})
