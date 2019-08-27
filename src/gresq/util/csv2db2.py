@@ -73,7 +73,7 @@ properties_fields = [
     "shape"
 ]
 all_fields = sample_fields+preparation_fields+recipe_fields+properties_fields
-def build_db(session,filepath):
+def build_db(session,filepath,sem_raman_path=None):
     var_map = pd.read_csv(os.path.join(filepath,'varmap2.csv')).to_dict()
     data = pd.read_csv(os.path.join(filepath,'recipe_2018_11_08.csv')).iloc[:-1,:]
 
@@ -93,14 +93,17 @@ def build_db(session,filepath):
             value = data.iloc[i,j]
             if pd.isnull(value) == False:
                 dbkey = var_map[col_names[j]][0]
+                if dbkey == 'identifier':
+                    identifier = str(data.iloc[i,j])
                 if dbkey in properties_fields:
                     value = convert(data.iloc[i,j],getattr(properties,dbkey))
-                    # print('properties',dbkey,value,type(value))
                     setattr(pr,dbkey,value)
                 elif dbkey in recipe_fields:
                     value = convert(data.iloc[i,j],getattr(recipe,dbkey))
-                    # print('recipe',dbkey,value,type(value))
-                    setattr(r,dbkey,value)
+                    if 'mTorr' in col_names[j]:
+                        setattr(prep,dbkey,value/1000)
+                    else:
+                        setattr(prep,dbkey,value)
         session.add(pr)
         session.add(r)
         session.commit()
@@ -123,7 +126,10 @@ def build_db(session,filepath):
                         else:
                             setattr(prep,dbkey,value/0.01270903)
                     elif 'furnace_pressure' in dbkey:
-                        setattr(prep,dbkey,value)
+                        if 'mTorr' in col_names[j+p]:
+                            setattr(prep,dbkey,value/1000)
+                        else:
+                            setattr(prep,dbkey,value)
                     else:
                         setattr(prep,dbkey,value)
             if prep.duration != None:
@@ -150,7 +156,10 @@ def build_db(session,filepath):
                         else:
                             setattr(prep,dbkey,value/0.01270903)
                     elif 'furnace_pressure' in dbkey:
-                        setattr(prep,dbkey,value)
+                        if 'mTorr' in col_names[j+p]:
+                            setattr(prep,dbkey,value/1000)
+                        else:
+                            setattr(prep,dbkey,value)
                     else:
                         setattr(prep,dbkey,value)
             if prep.duration != None:
@@ -178,7 +187,10 @@ def build_db(session,filepath):
                         else:
                             setattr(prep,dbkey,value/0.01270903)
                     elif 'furnace_pressure' in dbkey:
-                        setattr(prep,dbkey,value)
+                        if 'mTorr' in col_names[j+p]:
+                            setattr(prep,dbkey,value/1000)
+                        else:
+                            setattr(prep,dbkey,value)
                     else:
                         setattr(prep,dbkey,value)
             if prep.duration != None:
@@ -195,6 +207,17 @@ def build_db(session,filepath):
         # rs.experiment_date = provenance_response['sample']['experiment_date']['value']
         session.add(rs)
         session.flush()
+
+        files = os.listdir(os.path.join(sem_raman_path,identifier))
+        files_response = {'Raman Files':[],'SEM Image Files':[]}
+        for f in files:
+            if f.split('.')[-1] == 'txt':
+                files_response['Raman Files'].append(os.path.join(sem_raman_path,identifier,f))
+            elif f.split('.')[-1] == 'tif':
+                files_response['SEM Image Files'].append(os.path.join(sem_raman_path,identifier,f))
+
+        files_response['Characteristic Percentage'] = [1/len(files_response['Raman Files'])]*len(files_response['Raman Files'])
+
         for ri,ram in enumerate(files_response['Raman Files']):
             rf = raman_file()
             rf.filename = os.path.basename(ram)
