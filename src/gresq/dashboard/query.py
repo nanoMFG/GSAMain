@@ -1,4 +1,7 @@
 from __future__ import division
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'gsaimage','src'))
 import pandas as pd
 import numpy as np
 import sys, operator, os
@@ -144,7 +147,7 @@ class GSAQuery(QtGui.QWidget):
         self.filter_table = QtGui.QTableWidget()
         self.filter_table.setColumnCount(4)
         self.filter_table.setHorizontalHeaderLabels(['Field','','Value',''])
-        header = self.filter_table.horizontalHeader()       
+        header = self.filter_table.horizontalHeader()
         header.setSectionResizeMode(0, QtGui.QHeaderView.Stretch)
         self.filter_table.setColumnWidth(1,30)
         self.filter_table.setColumnWidth(2,100)
@@ -176,7 +179,7 @@ class GSAQuery(QtGui.QWidget):
         resultsLabel = QtGui.QLabel('Results')
         resultsLabel.setFont(label_font)
 
-        searchLayout = QtGui.QGridLayout() 
+        searchLayout = QtGui.QGridLayout()
         searchLayout.setAlignment(QtCore.Qt.AlignTop)
         searchLayout.addWidget(self.primary_selection,1,0)
         searchLayout.addWidget(self.secondary_selection,2,0)
@@ -198,8 +201,8 @@ class GSAQuery(QtGui.QWidget):
 
         self.primary_selection.activated[str].emit(self.primary_selection.currentText())
         self.secondary_selection.activated[str].emit(self.secondary_selection.currentText())
-        
-    
+
+
     def generate_field(self,model,field):
         """
         Generates an input selected field of selected model.
@@ -265,7 +268,7 @@ class GSAQuery(QtGui.QWidget):
         Deletes filter associated with row in filter_table when delete button is activated. Three actions take place:
             - The row is deleted from filter_table
             - The corresponding sqlalchemy filter object is removed from the filters list
-            - A SQL query is performed using new filters list. 
+            - A SQL query is performed using new filters list.
         """
         row = self.filter_table.indexAt(self.sender().parent().pos()).row()
         if row >= 0:
@@ -452,7 +455,7 @@ class PreviewWidget(QtGui.QTabWidget):
 class ResultsWidget(QtGui.QTabWidget):
     """
     Widget for displaying results associated with a query. Contains tabs:
-        - Results:              Each row associated with a sample and column corresponding to 
+        - Results:              Each row associated with a sample and column corresponding to
                                 a field. Clicking a row selects that sample for the PreviewWidget.
         - t-SNE:                Allows users to conduct t-SNE visualization on queried data.
         - Plot:                 Allows users to scatter plot queried data.
@@ -488,9 +491,9 @@ class ResultsWidget(QtGui.QTabWidget):
                 recipe_columns = tuple([getattr(recipe,r) for r in recipe_fields+hybrid_recipe_fields])
                 properties_columns = tuple([getattr(properties,p) for p in properties_fields])
                 raman_columns = tuple([getattr(raman_set,r) for r in raman_fields])
-                
+
                 query_columns = sample_columns+recipe_columns+properties_columns+raman_columns
-                
+
                 q = session.query(*query_columns).\
                     join(sample.recipe).\
                     join(sample.properties).\
@@ -499,7 +502,7 @@ class ResultsWidget(QtGui.QTabWidget):
                     filter(*filters).distinct()
 
                 self.results_model.read_sqlalchemy(q.statement,session,models=[sample,recipe,properties,raman_set])
-        
+
         self.results_table.setModel(self.results_model)
         for c in range(self.results_model.columnCount(parent=None)):
             if self.results_model.df.columns[c] not in properties_fields+raman_fields:
@@ -510,7 +513,7 @@ class ResultsWidget(QtGui.QTabWidget):
 
 class FieldsDisplayWidget(QtGui.QScrollArea):
     """
-    Generic widget that creates a display from the selected fields from a particular model. 
+    Generic widget that creates a display from the selected fields from a particular model.
 
     fields: The fields from the model to generate the form. Note: fields must exist in the model.
     model:  The model to base the display on.
@@ -556,7 +559,7 @@ class FieldsDisplayWidget(QtGui.QScrollArea):
                     value = getattr(model,field)
                 except:
                     value = ''
-            self.fields[field]['value'].setText(str(value))     
+            self.fields[field]['value'].setText(str(value))
 
 class SEMDisplayTab(QtGui.QScrollArea):
     def __init__(self,parent=None):
@@ -564,7 +567,7 @@ class SEMDisplayTab(QtGui.QScrollArea):
         self.contentWidget = QtGui.QWidget()
         self.layout = QtGui.QGridLayout(self.contentWidget)
         self.layout.setAlignment(QtCore.Qt.AlignTop)
-        
+
         self.file_list = QtGui.QListWidget()
         self.sem_info = QtGui.QStackedWidget()
 
@@ -748,7 +751,7 @@ class RecipeDisplayTab(QtGui.QScrollArea):
                 self.recipe_plot.setLabel(text=ylabel,axis='left')
 
                 self.recipe_plot.enableAutoRange()
-                
+
 
 class AdminDisplayTab(QtGui.QScrollArea):
     updateQuery = QtCore.pyqtSignal()
@@ -829,7 +832,7 @@ class AdminDisplayTab(QtGui.QScrollArea):
                         error_dialog.setInformativeText(str(e))
                         error_dialog.exec()
                         return
-            
+
             confirmation_dialog.buttonClicked.connect(upload_wrapper)
             confirmation_dialog.exec()
 

@@ -1,21 +1,22 @@
 COMPILE = . /etc/environ.sh; use -e -r anaconda3-5.1; python -m compileall
 DESTDIR = ../../bin/gresq
 INSTALL = install -D --mode 0444
-SUBDIRS := database util dashboard
+#SUBDIRS := database util dashboard
 
 # Edit the CYPYTHON_SUFFIX to match python version
 # Add src files to SRCS as needed
 CPYTHON_SUFFIX = cpython-36
-SRCS := __init__.py __main__.py run_dashboard.py config.py
+SRCS := __init__.py __main__.py run_dashboard.py config.py recipe.py
 
 # Generate a list of objects based on python mangling rules
 #OBJS:= $(patsubst %.py,__pycache__/%.${CPYTHON_SUFFIX}.pyc,${SRCS})
 OBJS:= $(patsubst %.py,%.pyc,${SRCS})
 
-all: ${OBJS} ${SUBDIRS}
+#all: ${OBJS} ${SUBDIRS}
+all: ${OBJS}
 
-$(SUBDIRS):
-	$(MAKE) -C $@ $(MAKECMDGOALS)
+#$(SUBDIRS):
+#	$(MAKE) -C $@ $(MAKECMDGOALS)
 
 __pycache__/%.${CPYTHON_SUFFIX}.pyc: %.py
 	${COMPILE} $<

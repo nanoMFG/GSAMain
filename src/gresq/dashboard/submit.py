@@ -1,4 +1,7 @@
 from __future__ import division
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'gsaraman','src'))
 import numpy as np
 import cv2, sys, time, json, copy, subprocess, os
 from PyQt5 import QtGui, QtCore
@@ -8,7 +11,7 @@ from gresq.database import sample, preparation_step, dal, Base, mdf_forge, autho
 from sqlalchemy import String, Integer, Float, Numeric, Date
 from gresq.config import config
 from gresq.util.csv2db import build_db
-from gresq.GSARaman import GSARaman
+from gsaraman import GSARaman
 from gresq.recipe import Recipe
 from gresq.util.mdf_adaptor import MDFAdaptor, MDFException
 
@@ -172,7 +175,7 @@ class FieldsFormWidget(QtGui.QScrollArea):
 							entries = [v[0] for v in session.query(getattr(self.model,field)).distinct()]
 							completer = QtGui.QCompleter(entries)
 							self.input_widgets[field].setCompleter(completer)
-				self.layout.addWidget(self.input_widgets[field],row,3*col+1)	
+				self.layout.addWidget(self.input_widgets[field],row,3*col+1)
 
 			elif sql_validator['date'](getattr(model,field)):
 				self.input_widgets[field] = QtGui.QDateEdit()
