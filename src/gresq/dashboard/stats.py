@@ -6,7 +6,7 @@ import copy
 from sklearn.manifold import TSNE
 from PyQt5 import QtGui, QtCore
 from gresq.database import sample, preparation_step, dal, Base
-from gresq.models import ItemsetsTableModel, ResultsTableModel
+from gresq.util.models import ItemsetsTableModel, ResultsTableModel
 
 label_font = QtGui.QFont("Helvetica", 16, QtGui.QFont.Bold)
 
@@ -33,14 +33,22 @@ class PlotWidget(QtGui.QWidget):
 		self.layout.addWidget(self.yaxisbox,1,1,1,1)
 		self.layout.addWidget(self.plot_widget,2,0,1,2)
 
-	def setModel(self,model):
+	def setModel(self,model,xfields=None,yfields=None):
 		self.model = model
 		self.yaxisbox.clear()
 		self.xaxisbox.clear()
 		for c in self.model.df.columns:
 			if is_numeric_dtype(self.model.df[c]):
-				self.xaxisbox.addItem(c)
-				self.yaxisbox.addItem(c)
+				if xfields:
+					if c in xfields:
+						self.xaxisbox.addItem(c)
+				else:
+					self.xaxisbox.addItem(c)
+				if yfields:
+					if c in yfields:
+						self.yaxisbox.addItem(c)
+				else:
+					self.yaxisbox.addItem(c)
 		self.scatter_plot.clear()
 
 	def updatePlot(self):
@@ -84,10 +92,10 @@ class TSNEWidget(QtGui.QStackedWidget):
 		self.feature.go_button.clicked.connect(lambda: self.setCurrentWidget(self.tsne))
 		self.tsne.back_button.clicked.connect(lambda: self.setCurrentWidget(self.feature))
 
-	def setModel(self,model):
-		self.results_model = model
+	def setModel(self,model,fields=None):
+		self.results_model = model.copy(fields=fields)
 		self.itemsets_model.update_frequent_itemsets(
-			df=model.df.select_dtypes(include=[np.number]),
+			df=self.results_model.df.select_dtypes(include=[np.number,np.bool]),
 			min_support=float(self.feature.min_support_edit.text())
 			)
 		self.feature.setModel(self.itemsets_model)

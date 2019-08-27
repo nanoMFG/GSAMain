@@ -1,0 +1,6 @@
+[submodule "src/gresq/dashboard/gsaimage"]
+	path = src/gresq/dashboard/gsaimage
+	url = git@github.com:nanoMFG/GSA-Image.git
+[submodule "src/gresq/dashboard/gsaraman"]
+	path = src/gresq/dashboard/gsaraman
+	url = git@github.com:nanoMFG/GSA-Raman.git

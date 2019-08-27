@@ -1,16 +1,19 @@
 from __future__ import division
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'gsaraman','src'))
 import numpy as np
 import cv2, sys, time, json, copy, subprocess, os
 from PyQt5 import QtGui, QtCore
 import uuid
-from gresq.box_adaptor import BoxAdaptor
+from gresq.util.box_adaptor import BoxAdaptor
 from gresq.database import sample, preparation_step, dal, Base, mdf_forge, author, raman_spectrum, recipe, properties, sem_file, raman_file, raman_set
 from sqlalchemy import String, Integer, Float, Numeric, Date
 from gresq.config import config
-from gresq.csv2db import build_db
-from gresq.GSARaman import GSARaman
+from gresq.util.csv2db import build_db
+from gsaraman import GSARaman
 from gresq.recipe import Recipe
-from gresq.mdf_adaptor import MDFAdaptor, MDFException
+from gresq.util.mdf_adaptor import MDFAdaptor, MDFException
 
 
 sample_fields = [
@@ -143,13 +146,14 @@ class FieldsFormWidget(QtGui.QScrollArea):
 			self.layout.addWidget(QtGui.QLabel(info['verbose_name']),row,3*col)
 			if sql_validator['str'](getattr(model,field)):
 				input_set = []
-				with dal.session_scope() as session:
-					if hasattr(mdf_forge,field):
-						for v in session.query(getattr(mdf_forge,field)).distinct():
-							if getattr(v,field) not in input_set:
-								input_set.append(getattr(v,field))
 				if 'choices' in info.keys():
 					input_set.extend(info['choices'])
+					with dal.session_scope() as session:
+						if hasattr(self.model,field):
+							for v in session.query(getattr(self.model,field)).distinct():
+								if getattr(v,field) not in input_set:
+									input_set.append(getattr(v,field))
+
 					self.input_widgets[field] = QtGui.QComboBox()
 					self.input_widgets[field].addItems(input_set)
 					self.input_widgets[field].addItem('Other')
@@ -166,6 +170,11 @@ class FieldsFormWidget(QtGui.QScrollArea):
 
 				else:
 					self.input_widgets[field] = QtGui.QLineEdit()
+					with dal.session_scope() as session:
+						if hasattr(self.model,field):
+							entries = [v[0] for v in session.query(getattr(self.model,field)).distinct()]
+							completer = QtGui.QCompleter(entries)
+							self.input_widgets[field].setCompleter(completer)
 				self.layout.addWidget(self.input_widgets[field],row,3*col+1)
 
 			elif sql_validator['date'](getattr(model,field)):
@@ -450,7 +459,9 @@ class PreparationTab(QtGui.QWidget):
 		for step in range(3):
 			self.addStep()
 			self.stackedFormWidget.currentWidget().testFill()
-			self.stackedFormWidget.currentWidget().input_widgets['name'].setCurrentIndex(step)
+			name_widget = self.stackedFormWidget.currentWidget().input_widgets['name']
+			name_widget.setCurrentIndex(step)
+			name_widget.activated[str].emit(name_widget.currentText())
 
 	def addStep(self):
 		"""
@@ -626,6 +637,8 @@ class FileUploadTab(QtGui.QWidget):
 		self.remove_raman.clicked.connect(self.removeRaman)
 		self.clearButton.clicked.connect(self.clear)
 
+	def setWavelength(self,wavelength):
+		self.wavelength_input.setText(str(wavelength))
 
 	def removeSEM(self):
 		x=self.sem_list.currentRow()
@@ -636,24 +649,35 @@ class FileUploadTab(QtGui.QWidget):
 		self.stackedRamanFormWidget.removeWidget(self.stackedRamanFormWidget.widget(x))
 		self.raman_list.takeItem(x)
 
-	def importSEM(self):
-		self.sem_file_path = self.importFile()
+	def importSEM(self,file_path=None):
+		if file_path:
+			self.sem_file_path = file_path
+		else:
+			self.sem_file_path = self.importFile()
 		if isinstance(self.sem_file_path,str):
 			self.sem_list.addItem(self.sem_file_path)
 
-	def importRaman(self):
-		self.raman_file_path = self.importFile()
+	def importRaman(self,file_path=None,pct=None):
+		if file_path:
+			self.raman_file_path = file_path
+		else:
+			self.raman_file_path = self.importFile()
+
 		if isinstance(self.raman_file_path,str):
 			if self.stackedRamanFormWidget.count() > 0:
 				sm = sum([float(self.stackedRamanFormWidget.widget(i).text()) for i in range(self.stackedRamanFormWidget.count())])
 			else:
 				sm = 0
+
 			self.raman_list.addItem(self.raman_file_path)
 			w = QtGui.QLineEdit()
 			w.setPlaceholderText("Input must be <= %s"%(100-sm))
 			w.setValidator(QtGui.QDoubleValidator(0.,100.-sm,2))
 			self.stackedRamanFormWidget.addWidget(w)
 			self.stackedRamanFormWidget.setCurrentIndex(self.stackedRamanFormWidget.count()-1)
+
+			if pct:
+				w.setText(str(pct))
 
 	def importFile(self):
 		if self.mode == 'local':
@@ -1190,6 +1214,11 @@ class ReviewTab(QtGui.QScrollArea):
 						# 	)
 						# dataset_id = self.upload_raman(response_dict,raman_dict,box_file,dataset_id)
 						session.commit()
+
+						for ram in files_response['Raman Files']:
+							os.remove(ram)
+						for sem in files_response['SEM Image Files']:
+							os.remove(sem)
 
 						success_dialog = QtGui.QMessageBox(self)
 						success_dialog.setText("Recipe successfully submitted.")

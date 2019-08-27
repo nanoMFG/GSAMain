@@ -8,7 +8,25 @@
 
 <!-- These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. 
 See deployment for notes on how to deploy the project on a live system. -->
+##### Cloning From GitHub:
+The code in the repository uses submoded fro mthe GSAImage and GSARaman repos.  Be sure to use `--recurse-submodules` when cloning:
+```
+$ git clone --recurse-submodules git@github.com:nanoMFG/GSAMain.git
+```
+If already cloned:
+```
+$ git submodule init
+$ git submodule update
+```
+See: <br/>
+https://git-scm.com/book/en/v2/Git-Tools-Submodules<br/>
+for more details on working with submodules.
 
+##### Execute the dashboard GUI
+```
+$cd src
+$python -m gresq
+```
 
 ### Prerequisites
 <!-- 

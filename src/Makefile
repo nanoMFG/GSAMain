@@ -1,18 +1,21 @@
 
 #COMPILE = ./py3_compilefiles
 COMPILE = . /etc/environ.sh; use -e -r anaconda3-5.1; python -m compileall
-DESTDIR = ../bin
+mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
+current_dir := $(dir $(mkfile_path))
+DESTDIR := $(realpath ${current_dir}../bin)
+#DESTDIR = ../bin
 DATADIR = ../data
 DATADESTDIR = ../bin/data
 INSTALL = install -D --mode 0444
-SUBDIRS := gresq
+SUBDIRS := gresq gresq/util gresq/database gresq/dashboard \
+           gresq/dashboard/gsaimage/src/gsaimage \
+		   gresq/dashboard/gsaraman/src/gsaraman
 
 # Edit the CYPYTHON_SUFFIX to match python version
 # Add src files to SRCS as needed
 CPYTHON_SUFFIX = cpython-36
-SRCS := GSARaman.py GSADashboard.py GSAImage.py GSAQuery.py \
-        GSARecipe.py GSAStats.py GSASubmit.py GSAOscm.py models.py \
-		box_adaptor.py mdf_adaptor.py oscm_adapter.py 
+SRCS := run_gresq.py
 DATAFILES := varmap.csv varmap2.csv recipe_2018_11_08.csv
 
 DATAOBJS := $(patsubst %,${DATADESTDIR}/%,${DATAFILES})
@@ -23,7 +26,7 @@ OBJS:= $(patsubst %.py,%.pyc,${SRCS})
 all: ${OBJS} ${SUBDIRS}
 
 $(SUBDIRS):
-	$(MAKE) -C $@ $(MAKECMDGOALS)
+	$(MAKE) -C $@ $(MAKECMDGOALS) DESTDIR=${DESTDIR}/$@
 
 # Implict rules to generate *.pyc targets
 __pycache__/%.${CPYTHON_SUFFIX}.pyc: %.py
