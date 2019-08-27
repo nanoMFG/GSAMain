@@ -1,7 +1,7 @@
 from __future__ import division
 from PyQt5 import QtGui
 from gresq.dashboard.submit import GSASubmit
-from gresq.GSAImage import GSAImage
+# from gresq.GSAImage import GSAImage
 from gresq.dashboard.query import GSAQuery
 # from GSARaman import GSARaman
 from gresq.dashboard.oscm import GSAOscm
