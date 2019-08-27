@@ -6,7 +6,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from contextlib import contextmanager
 from gresq.config import Config
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
-from sqlalchemy import select, func
+from sqlalchemy import select, func, and_, or_
+from sqlalchemy.sql import exists
 import ast, datetime
 from sqlalchemy import Column, String, Integer, Float, Numeric, ForeignKey, Date, Boolean
 from sqlalchemy.orm import relationship, backref
@@ -67,23 +68,25 @@ dal = DataAccessLayer()
 
 class sample(Base):
     __tablename__ = 'sample'
-    id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    nanohub_userid = Column(Integer,info={'verbose_name':'Nanohub Submitter User ID'})
+    id = Column(Integer,primary_key=True,info={'verbose_name':'ID','std_unit':None})
+    nanohub_userid = Column(Integer,info={'verbose_name':'Nanohub Submitter User ID','std_unit':None})
     authors = relationship("author")
     experiment_date = Column(Date,info={
         'verbose_name':'Experiment Date',
-        'required':True})
+        'required':True,
+        'std_unit':None})
     material_name = Column(String(32),info={
         'verbose_name':'Material Name',
         'choices': ['Graphene'],
-        'required': True
+        'required': True,
+        'std_unit':None
         })
     recipe = relationship("recipe",uselist=False,cascade="save-update, merge, delete")
     properties = relationship("properties",uselist=False,cascade="save-update, merge, delete")
     raman_analysis = relationship("raman_set",uselist=False,cascade="save-update, merge, delete")
     sem_files = relationship("sem_file",cascade="save-update, merge, delete")
     raman_files = relationship("raman_file",cascade="save-update, merge, delete")
-    validated = Column(Boolean,info={'verbose_name':'Validated'},default=False)
+    validated = Column(Boolean,info={'verbose_name':'Validated','std_unit':None},default=False)
 
     def json_encodable(self):
         return {
@@ -162,33 +165,72 @@ class recipe(Base):
     @maximum_temperature.expression
     def maximum_temperature(cls):
         return select([func.max(preparation_step.furnace_temperature)]).\
-                where(preparation_step.recipe_id==cls.id).\
+                where(preparation_step.recipe_id==cls.id).correlate(cls).\
                 label('maximum_temperature')
 
     @hybrid_property
     def maximum_pressure(self):
         return max([p.furnace_pressure for p in self.preparation_steps])
 
+    @maximum_pressure.expression
+    def maximum_pressure(cls):
+        return select([func.max(preparation_step.furnace_pressure)]).\
+                where(preparation_step.recipe_id==cls.id).correlate(cls).\
+                label('maximum_pressure')
+
     @hybrid_property
     def average_carbon_flow_rate(self):
-        return sum([p.carbon_source_flow_rate for p in self.preparation_steps])
+        steps = [p.carbon_source_flow_rate for p in self.preparation_steps]
+        return sum(steps)/len(steps)
+
+    @average_carbon_flow_rate.expression
+    def average_carbon_flow_rate(cls):
+        return select([func.avg(preparation_step.carbon_source_flow_rate)]).\
+                where(preparation_step.recipe_id==cls.id).correlate(cls).\
+                label('average_carbon_flow_rate')
 
     @hybrid_property
     def carbon_source(self):
         vals = [p.carbon_source for p in self.preparation_steps if p.carbon_source is not None]
         return vals[0]
 
+    @carbon_source.expression
+    def carbon_source(cls):
+        return select([preparation_step.carbon_source]).\
+                where(and_(preparation_step.recipe_id==cls.id,preparation_step.carbon_source != None)).\
+                correlate(cls).\
+                limit(1).\
+                label('carbon_source')
+
     @hybrid_property
     def uses_helium(self):
         return any([p.helium_flow_rate for p in self.preparation_steps])
+
+    @uses_helium.expression
+    def uses_helium(cls):
+        s = select([preparation_step.helium_flow_rate]).\
+                where(preparation_step.helium_flow_rate != None)
+        return exists(s)
 
     @hybrid_property
     def uses_argon(self):
         return any([p.argon_flow_rate for p in self.preparation_steps])
 
+    @uses_argon.expression
+    def uses_argon(cls):
+        s = select([preparation_step.argon_flow_rate]).\
+                where(preparation_step.argon_flow_rate != None)
+        return exists(s)
+
     @hybrid_property
     def uses_hydrogen(self):
         return any([p.hydrogen_flow_rate for p in self.preparation_steps])
+
+    @uses_hydrogen.expression
+    def uses_hydrogen(cls):
+        s = select([preparation_step.hydrogen_flow_rate]).\
+                where(preparation_step.hydrogen_flow_rate != None)
+        return exists(s)
 
     # PREPARATION STEPS
     preparation_steps = relationship("preparation_step",cascade="save-update, merge, delete")
@@ -393,9 +435,10 @@ class raman_set(Base):
     authors = relationship("author")
     experiment_date = Column(Date,default=datetime.date.today,info={
         'verbose_name':'Experiment Date',
-        'required':True})
-    d_to_g = Column(Float,info={'verbose_name':'Weighted D/G'})
-    gp_to_g = Column(Float,info={'verbose_name':'Weighted G\'/G'})
+        'required':True,
+        'std_unit':None})
+    d_to_g = Column(Float,info={'verbose_name':'Weighted D/G','std_unit':None})
+    gp_to_g = Column(Float,info={'verbose_name':'Weighted G\'/G','std_unit':None})
     d_peak_shift = Column(Float,info={
         'verbose_name':'Weighted D Peak Shift',
         'std_unit': 'cm^-1',
@@ -597,4 +640,37 @@ class GresqEncoder(JSONEncoder):
             raise TypeError(
                 'Object of type %s with value of %s is not JSON serializable' % (
                     type(o), repr(o)))
+hybrid_recipe_fields = [
+    "maximum_temperature",
+    "maximum_pressure",
+    "average_carbon_flow_rate",
+    "carbon_source",
+    "uses_helium",
+    "uses_hydrogen",
+    "uses_argon"
+    ]
+
+recipe.maximum_temperature.info['verbose_name'] = 'Maximum Temperature'
+recipe.maximum_temperature.info['std_unit'] = 'C'
+
+recipe.maximum_pressure.info['verbose_name'] = 'Maximum Pressure'
+recipe.maximum_pressure.info['std_unit'] = 'Torr'
+
+recipe.maximum_temperature.info['verbose_name'] = 'Maximum Temperature'
+recipe.maximum_temperature.info['std_unit'] = 'C'
+
+recipe.average_carbon_flow_rate.info['verbose_name'] = 'Average Carbon Flow Rate'
+recipe.average_carbon_flow_rate.info['std_unit'] = 'sccm'
+
+recipe.carbon_source.info['verbose_name'] = 'Carbon Source'
+recipe.carbon_source.info['std_unit'] = None
+
+recipe.uses_helium.info['verbose_name'] = 'Uses Helium'
+recipe.uses_helium.info['std_unit'] = None
+
+recipe.uses_argon.info['verbose_name'] = 'Uses Argon'
+recipe.uses_argon.info['std_unit'] = None
+
+recipe.uses_hydrogen.info['verbose_name'] = 'Uses Hydrogen'
+recipe.uses_hydrogen.info['std_unit'] = None
 

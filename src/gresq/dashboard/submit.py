@@ -143,13 +143,14 @@ class FieldsFormWidget(QtGui.QScrollArea):
 			self.layout.addWidget(QtGui.QLabel(info['verbose_name']),row,3*col)
 			if sql_validator['str'](getattr(model,field)):
 				input_set = []
-				with dal.session_scope() as session:
-					if hasattr(self.model,field):
-						for v in session.query(getattr(self.model,field)).distinct():
-							if getattr(v,field) not in input_set:
-								input_set.append(getattr(v,field))
 				if 'choices' in info.keys():
 					input_set.extend(info['choices'])
+					with dal.session_scope() as session:
+						if hasattr(self.model,field):
+							for v in session.query(getattr(self.model,field)).distinct():
+								if getattr(v,field) not in input_set:
+									input_set.append(getattr(v,field))
+									
 					self.input_widgets[field] = QtGui.QComboBox()
 					self.input_widgets[field].addItems(input_set)
 					self.input_widgets[field].addItem('Other')

@@ -39,12 +39,15 @@ class PlotWidget(QtGui.QWidget):
 		self.xaxisbox.clear()
 		for c in self.model.df.columns:
 			if is_numeric_dtype(self.model.df[c]):
-				if xfields and c in xfields:
-					self.xaxisbox.addItem(c)
-				elif yfields and c in yfields:
-					self.yaxisbox.addItem(c)
+				if xfields:
+					if c in xfields:
+						self.xaxisbox.addItem(c)
 				else:
 					self.xaxisbox.addItem(c)
+				if yfields:
+					if c in yfields:
+						self.yaxisbox.addItem(c)
+				else:
 					self.yaxisbox.addItem(c)
 		self.scatter_plot.clear()
 
@@ -89,10 +92,10 @@ class TSNEWidget(QtGui.QStackedWidget):
 		self.feature.go_button.clicked.connect(lambda: self.setCurrentWidget(self.tsne))
 		self.tsne.back_button.clicked.connect(lambda: self.setCurrentWidget(self.feature))
 
-	def setModel(self,model):
-		self.results_model = model
+	def setModel(self,model,fields=None):
+		self.results_model = model.copy(fields=fields)
 		self.itemsets_model.update_frequent_itemsets(
-			df=model.df.select_dtypes(include=[np.number]),
+			df=self.results_model.df.select_dtypes(include=[np.number,np.bool]),
 			min_support=float(self.feature.min_support_edit.text())
 			)
 		self.feature.setModel(self.itemsets_model)

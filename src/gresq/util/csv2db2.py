@@ -123,7 +123,7 @@ def build_db(session,filepath):
                         else:
                             setattr(prep,dbkey,value/0.01270903)
                     elif 'furnace_pressure' in dbkey:
-                        setattr(prep,dbkey,value*1e3)
+                        setattr(prep,dbkey,value)
                     else:
                         setattr(prep,dbkey,value)
             if prep.duration != None:
@@ -150,7 +150,7 @@ def build_db(session,filepath):
                         else:
                             setattr(prep,dbkey,value/0.01270903)
                     elif 'furnace_pressure' in dbkey:
-                        setattr(prep,dbkey,value*1e3)
+                        setattr(prep,dbkey,value)
                     else:
                         setattr(prep,dbkey,value)
             if prep.duration != None:
@@ -178,7 +178,7 @@ def build_db(session,filepath):
                         else:
                             setattr(prep,dbkey,value/0.01270903)
                     elif 'furnace_pressure' in dbkey:
-                        setattr(prep,dbkey,value*1e3)
+                        setattr(prep,dbkey,value)
                     else:
                         setattr(prep,dbkey,value)
             if prep.duration != None:

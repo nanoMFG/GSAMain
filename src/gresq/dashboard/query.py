@@ -158,7 +158,7 @@ class GSAQuery(QtGui.QWidget):
 
         self.preview = PreviewWidget(privileges=self.privileges)
         self.preview.admin_tab.updateQuery.connect(lambda: self.query(self.filters))
-        self.preview.admin_tab.queryUnvalidated.connect(lambda: self.query([sample.validated==False]))
+        self.preview.admin_tab.queryUnvalidated.connect(lambda: self.query([sample.validated.is_(False)]))
         # self.results.plot.scatter_plot.sigClicked.connect(lambda x: self.preview.select(self.results.results_model,x[0]))
 
         self.addFilterBtn = QtGui.QPushButton('Add Filter')
@@ -386,7 +386,7 @@ class DetailWidget(QtGui.QWidget):
     def __init__(self,parent=None):
         super(DetailWidget,self).__init__(parent=parent)
         self.properties = FieldsDisplayWidget(fields=properties_fields,model=properties)
-        self.conditions = FieldsDisplayWidget(fields=recipe_fields,model=recipe)
+        self.conditions = FieldsDisplayWidget(fields=recipe_fields+hybrid_recipe_fields,model=recipe)
 
         propertiesLabel = QtGui.QLabel('Properties')
         propertiesLabel.setFont(label_font)
@@ -483,21 +483,30 @@ class ResultsWidget(QtGui.QTabWidget):
         self.results_model = ResultsTableModel()
         if len(filters)>0:
             with dal.session_scope() as session:
-                sample_columns = (sample,)
-                recipe_columns = tuple([getattr(recipe,r) for r in recipe_fields])+(recipe.maximum_temperature,)
+                all_sample_fields = [c.key for c in sample.__table__.columns]
+                sample_columns = tuple([getattr(sample,s) for s in all_sample_fields])
+                recipe_columns = tuple([getattr(recipe,r) for r in recipe_fields+hybrid_recipe_fields])
                 properties_columns = tuple([getattr(properties,p) for p in properties_fields])
-                query_columns = sample_columns+recipe_columns+properties_columns
-                q = session.query(*query_columns).join(sample.recipe).join(sample.properties).outerjoin(recipe.preparation_steps).filter(*filters).distinct()
-                # print(q.statement)
-                # q = session.query(mdf_forge).filter(*filters).distinct()
-                self.results_model.read_sqlalchemy(q.statement,session)
+                raman_columns = tuple([getattr(raman_set,r) for r in raman_fields])
+                
+                query_columns = sample_columns+recipe_columns+properties_columns+raman_columns
+                
+                q = session.query(*query_columns).\
+                    join(sample.recipe).\
+                    join(sample.properties).\
+                    outerjoin(recipe.preparation_steps).\
+                    outerjoin(raman_set).\
+                    filter(*filters).distinct()
+
+                self.results_model.read_sqlalchemy(q.statement,session,models=[sample,recipe,properties,raman_set])
+        
         self.results_table.setModel(self.results_model)
         for c in range(self.results_model.columnCount(parent=None)):
-            if self.results_model.df.columns[c] not in recipe_fields+properties_fields:
+            if self.results_model.df.columns[c] not in properties_fields+raman_fields:
                 self.results_table.hideColumn(c)
         self.results_table.resizeColumnsToContents()
-        self.plot.setModel(self.results_model,xfields=recipe_fields+properties_fields,yfields=raman_fields+properties_fields)
-        self.tsne.setModel(self.results_model)
+        self.plot.setModel(self.results_model,xfields=recipe_fields+hybrid_recipe_fields,yfields=raman_fields+properties_fields)
+        self.tsne.setModel(self.results_model,fields=recipe_fields+hybrid_recipe_fields+raman_fields+properties_fields)
 
 class FieldsDisplayWidget(QtGui.QScrollArea):
     """
@@ -546,7 +555,7 @@ class FieldsDisplayWidget(QtGui.QScrollArea):
                 try:
                     value = getattr(model,field)
                 except:
-                    value == ''
+                    value = ''
             self.fields[field]['value'].setText(str(value))     
 
 class SEMDisplayTab(QtGui.QScrollArea):
@@ -695,16 +704,19 @@ class RecipeDisplayTab(QtGui.QScrollArea):
         if self.recipe_model and plot_field:
             if all(self.data['duration']):
 
-                timestamp = [sum(self.data['duration'][:i]) for i in range(1,len(self.data['duration'])+1)]
+                timestamp = [0]+[sum(self.data['duration'][:i]) for i in range(1,len(self.data['duration'])+1)]
 
                 x = np.linspace(0,sum(self.data['duration']),1000)
                 condlist = [np.logical_and(x>=timestamp[i], x<timestamp[i+1]) for i in range(0,len(timestamp)-1)]
                 y = np.piecewise(x,condlist,self.data[plot_field])
-                win = scipy.signal.hann(50)
-                win /= win.sum()
-                y = scipy.convolve(y,win,mode='same')
+                if np.isfinite(y).sum()>25:
+                    win = scipy.signal.hann(25)
+                    win /= win.sum()
+                    y = scipy.convolve(y,win,mode='same')
                 self.recipe_plot.plot(x=x,y=y,pen=pg.mkPen('r',width=8))
                 self.recipe_plot.setXRange(min(x),max(x),padding=0)
+
+                # print(self.data['duration'],timestamp,self.data[plot_field])
 
                 colors = {'Annealing':'y','Growing':'g','Cooling':'b'}
                 for n,name in enumerate(self.data['name']):
@@ -721,7 +733,8 @@ class RecipeDisplayTab(QtGui.QScrollArea):
 
                 ay = self.recipe_plot.getAxis('left')
                 yticks = np.unique(self.data[plot_field])
-                ay.setTicks([[(v, str(v)) for v in yticks]])
+                # ay.setTicks([[(v, str(v)) for v in yticks]])
+
 
                 ax = self.recipe_plot.getAxis('bottom')
                 xticks = [0]+timestamp
@@ -729,8 +742,12 @@ class RecipeDisplayTab(QtGui.QScrollArea):
 
                 self.recipe_plot.setLabel(text='Time (min)',axis='bottom')
                 info = getattr(preparation_step,plot_field).info
-                ylabel = "%s (%s)"%(info['verbose_name'],info['std_unit'])
+                ylabel = info['verbose_name']
+                if info['std_unit']:
+                    ylabel += ' (%s)'%info['std_unit']
                 self.recipe_plot.setLabel(text=ylabel,axis='left')
+
+                self.recipe_plot.enableAutoRange()
                 
 
 class AdminDisplayTab(QtGui.QScrollArea):
@@ -823,7 +840,6 @@ class AdminDisplayTab(QtGui.QScrollArea):
                 model.validated = not model.validated
                 session.commit()
                 self.validate_status_label.setText(str(model.validated))
-            self.updateQuery.emit()
 
 
 if __name__ == '__main__':

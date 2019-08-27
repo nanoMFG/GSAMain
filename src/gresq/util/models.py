@@ -1,5 +1,6 @@
 from PyQt5 import QtGui, QtCore
 import pandas as pd
+import copy
 from mlxtend.frequent_patterns import apriori
 
 class ItemsetsTableModel(QtCore.QAbstractTableModel):
@@ -66,10 +67,43 @@ class ResultsTableModel(QtCore.QAbstractTableModel):
 	def __init__(self,parent=None):
 		super(ResultsTableModel,self).__init__(parent=parent)
 		self.df = pd.DataFrame()
+		self.header_mapper = None
 
-	def read_sqlalchemy(self,statement,session):
+	def copy(self,fields=None):
+		model = ResultsTableModel()
+		model.df = self.df.copy()
+		model.header_mapper = copy.deepcopy(self.header_mapper)
+
+		if fields:
+			for col in model.df.columns:
+				if col not in fields:
+					model.df.drop(columns=col,inplace=True)
+					del model.header_mapper[col]
+
+		return model
+
+	def setHeaderMapper(self,models):
+		self.header_mapper = {}
+		for column in list(self.df.columns):
+			for model in models:
+				if hasattr(model,column):
+					info = getattr(model,column).info
+					value = info['verbose_name']
+					if info['std_unit']:
+						value += ' (%s)'%info['std_unit']
+					self.header_mapper[column] = value
+					break
+
+
+	def read_sqlalchemy(self,statement,session,models=None):
 		self.beginResetModel()
 		self.df = pd.read_sql_query(statement,session.connection())
+		
+		if models:
+			self.setHeaderMapper(models)
+		else:
+			self.header_mapper = None
+
 		self.endResetModel()
 
 	def value(self,column,row):
@@ -96,7 +130,11 @@ class ResultsTableModel(QtCore.QAbstractTableModel):
 
 	def headerData(self,section,orientation,role=QtCore.Qt.DisplayRole):
 		if role == QtCore.Qt.DisplayRole and orientation == QtCore.Qt.Horizontal:
-			return self.df.columns[section]
+			if self.header_mapper:
+				return self.header_mapper[self.df.columns[section]]
+			else:
+				return self.df.columns[section]
+
 		return QtCore.QAbstractTableModel.headerData(self,section,orientation,role)
 
 	def sort(self,column,order=QtCore.Qt.AscendingOrder):
