@@ -4,7 +4,7 @@ BOX_CONFIG='/data/tools/gresq/box_config.json'
 DB_CONFIG='/data/tools/gresq/db_config.py'
 DB_MODE='development'
 
-/usr/bin/invoke_app "$@" -C "python @tool/bin/GSADashboard.pyc \
+/usr/bin/invoke_app "$@" -C "python @tool/bin/run_gresq.pyc \
                              --nanohub --box_config_path ${BOX_CONFIG} 
                              --db_config_path ${DB_CONFIG} \
                              --db_mode ${DB_MODE} \
