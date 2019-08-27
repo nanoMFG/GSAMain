@@ -10,7 +10,6 @@ import sip
 import requests
 from PIL import Image
 from gresq.util.models import ResultsTableModel
-from gresq.GSAImage import GSAImage
 from gresq.util.box_adaptor import BoxAdaptor
 from gresq.dashboard.stats import TSNEWidget, PlotWidget
 from gresq.util.csv2db2 import build_db
@@ -18,6 +17,7 @@ from gresq.database import sample, preparation_step, dal, Base, mdf_forge, prope
 from sqlalchemy import String, Integer, Float, Numeric
 from gresq.config import config
 import scipy
+from scipy import signal
 # from statsmodels.nonparametric.smoothers_lowess import lowess
 
 """
@@ -710,7 +710,7 @@ class RecipeDisplayTab(QtGui.QScrollArea):
                 condlist = [np.logical_and(x>=timestamp[i], x<timestamp[i+1]) for i in range(0,len(timestamp)-1)]
                 y = np.piecewise(x,condlist,self.data[plot_field])
                 if np.isfinite(y).sum()>25:
-                    win = scipy.signal.hann(25)
+                    win = signal.hann(25)
                     win /= win.sum()
                     y = scipy.convolve(y,win,mode='same')
                 self.recipe_plot.plot(x=x,y=y,pen=pg.mkPen('r',width=8))
