@@ -1,11 +1,14 @@
 
 #COMPILE = ./py3_compilefiles
 COMPILE = . /etc/environ.sh; use -e -r anaconda3-5.1; python -m compileall
-DESTDIR = ../bin
+mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
+current_dir := $(dir $(mkfile_path))
+DESTDIR := $(realpath ${current_dir}../bin)
+#DESTDIR = ../bin
 DATADIR = ../data
 DATADESTDIR = ../bin/data
 INSTALL = install -D --mode 0444
-SUBDIRS := gresq
+SUBDIRS := gresq gresq/util gresq/database gresq/dashboard
 
 # Edit the CYPYTHON_SUFFIX to match python version
 # Add src files to SRCS as needed
@@ -21,7 +24,7 @@ OBJS:= $(patsubst %.py,%.pyc,${SRCS})
 all: ${OBJS} ${SUBDIRS}
 
 $(SUBDIRS):
-	$(MAKE) -C $@ $(MAKECMDGOALS)
+	$(MAKE) -C $@ $(MAKECMDGOALS) DESTDIR=${DESTDIR}/$@
 
 # Implict rules to generate *.pyc targets
 __pycache__/%.${CPYTHON_SUFFIX}.pyc: %.py
