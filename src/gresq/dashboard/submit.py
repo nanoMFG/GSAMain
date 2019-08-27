@@ -987,9 +987,9 @@ class ReviewTab(QtGui.QScrollArea):
 		if len(provenance_response['author'])==0:
 			return "You must have at least one author."
 		for a,auth in enumerate(provenance_response['author']):
-			if len(auth['last_name']['value'])==0 or len(auth['first_name']['value'])==0:
+			if auth['last_name']['value']==None or auth['first_name']['value']==None:
 				return "Author %s (input: %s, %s) must have a valid first and last name"%(a,auth['last_name']['value'],auth['first_name']['value'])
-			if len(auth['institution'])==0:
+			if auth['institution']['value']==None:
 				return "Author [%s, %s] must have a valid institution"%(auth['last_name']['value'],auth['first_name']['value'])
 		return True
 
