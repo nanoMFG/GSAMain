@@ -21,7 +21,7 @@ before_install:
   - conda info -a
   - conda env create -f .conda/env_gresq_${TRAVIS_OS_NAME}_${TRAVIS_PYTHON_VERSION}.yml
   - source $(conda info --root)/etc/profile.d/conda.sh
-  - conda activate gresq_${TRAVIS_OS_NAME}_${TRAVIS_PYTHON_VERSION}
+  - conda activate env_gresq_${TRAVIS_OS_NAME}_${TRAVIS_PYTHON_VERSION}
   - conda install pytest
 
 install:
