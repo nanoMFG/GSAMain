@@ -18,6 +18,8 @@ before_install:
   - conda update -q conda
   # Useful for debugging any issues with conda
   - conda info -a
+  - conda activate base
+  - conda env export
   - conda env create -f conda_env-${TRAVIS_PYTHON_VERSION}.yml
   - conda activate gr-${TRAVIS_PYTHON_VERSION}
   - conda install pytest
