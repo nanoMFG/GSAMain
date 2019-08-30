@@ -1,7 +1,7 @@
 from __future__ import division
 import os
 import sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'gsaraman','src'))
+#sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'gsaraman','src'))
 import numpy as np
 import cv2, sys, time, json, copy, subprocess, os
 from PyQt5 import QtGui, QtCore
@@ -12,6 +12,7 @@ from sqlalchemy import String, Integer, Float, Numeric, Date
 from gresq.config import config
 from gresq.util.csv2db import build_db
 from gsaraman import GSARaman
+#import GSARaman
 from gresq.recipe import Recipe
 from gresq.util.mdf_adaptor import MDFAdaptor, MDFException
 
