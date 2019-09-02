@@ -1,7 +1,4 @@
 from __future__ import division
-import os
-import sys
-#sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'gsaimage','src'))
 import pandas as pd
 import numpy as np
 import sys, operator, os
