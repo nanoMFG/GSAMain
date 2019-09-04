@@ -25,7 +25,7 @@ before_install:
   - conda install pytest
 
 install:
-  - pip install gsaraman
+  - pip install .gsaraman
   - pip install ".[test]" . # install package + test dependencies
 
 script:
