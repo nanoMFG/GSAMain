@@ -54,18 +54,18 @@ class PlotWidget(QtGui.QWidget):
 	def updatePlot(self):
 		x = self.xaxisbox.currentText()
 		y = self.yaxisbox.currentText()
-		scatter_data = self.model.df.loc[:,[x,y]].dropna()
+		scatter_data = self.model.df.loc[:,['id',x,y]].dropna()
 		if x != y:
 			self.scatter_plot.setData(
 				x=scatter_data[x],
 				y=scatter_data[y],
-				data=list(range(len(scatter_data[x])))
+				data=scatter_data['id']
 				)
 		else:
 			self.scatter_plot.setData(
 				x=scatter_data.iloc[:,0],
 				y=scatter_data.iloc[:,0],
-				data=list(range(len(scatter_data[x])))
+				data=scatter_data['id']
 				)
 
 		xbounds = self.scatter_plot.dataBounds(ax=0)

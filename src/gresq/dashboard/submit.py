@@ -714,7 +714,7 @@ class FileUploadTab(QtGui.QWidget):
 			'SEM Image Files': [self.sem_list.item(i).text() for i in range(self.sem_list.count())],
 			'Raman Files': [self.raman_list.item(i).text() for i in range(self.raman_list.count())],
 			'Characteristic Percentage': [self.stackedRamanFormWidget.widget(i).text() for i in range(self.stackedRamanFormWidget.count())],
-			'Raman Wavength': self.wavelength_input.getResponse()['wavelength']['value']}
+			'Raman Wavelength': self.wavelength_input.getResponse()['wavelength']['value']}
 		return r
 
 	def clear(self):
@@ -905,8 +905,8 @@ class ReviewTab(QtGui.QScrollArea):
 			label = QtGui.QLabel("%s"%(name))
 			self.layout.addWidget(label,row,0,QtCore.Qt.AlignLeft|QtCore.Qt.AlignCenter)
 
-		self.layout.addWidget(QtGui.QLabel("Raman Wavength"),self.layout.rowCount(),0)
-		self.layout.addWidget(QtGui.QLabel(files_response['Raman Wavength']),self.layout.rowCount(),1)
+		self.layout.addWidget(QtGui.QLabel("Raman Wavelength"),self.layout.rowCount(),0)
+		self.layout.addWidget(QtGui.QLabel(files_response['Raman Wavelength']),self.layout.rowCount(),1)
 		self.layout.addWidget(QtGui.QLabel("Raman Spectroscopy Files:"),self.layout.rowCount(),0)
 		for k in range(len(files_response["Raman Files"])):
 			row = self.layout.rowCount()
@@ -1087,8 +1087,8 @@ class ReviewTab(QtGui.QScrollArea):
 				rf.filename = os.path.basename(ram)
 				rf.sample_id = s.id
 				rf.url = self.upload_file(ram)
-				if files_response['Raman Wavength'] != None:
-					rf.wavelength = files_response['Raman Wavength']
+				if files_response['Raman Wavelength'] != None:
+					rf.wavelength = files_response['Raman Wavelength']
 				session.add(rf)
 				session.flush()
 
@@ -1312,7 +1312,7 @@ def make_test_dict(test_sem_file=None,test_raman_file=None):
 				rf = raman_file()
 				rf.filename = os.path.basename(ram)
 				rf.sample_id = s.id
-				if files_response['Raman Wavength'] != None:
+				if files_response['Raman Wavelength'] != None:
 					rf.wavelength = 800
 				session.add(rf)
 				session.flush()

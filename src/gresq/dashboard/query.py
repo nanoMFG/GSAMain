@@ -1,6 +1,7 @@
 from __future__ import division
 import os
 import sys
+import threading
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'gsaimage','src'))
 import pandas as pd
 import numpy as np
@@ -51,12 +52,12 @@ preparation_fields = [
 	]
 
 properties_fields = [
+    "growth_coverage",
+    "shape",
     "average_thickness_of_growth",
     "standard_deviation_of_growth",
     "number_of_layers",
-    "growth_coverage",
-    "domain_size",
-    "shape"
+    "domain_size"
     ]
 
 recipe_fields = [
@@ -435,17 +436,24 @@ class PreviewWidget(QtGui.QTabWidget):
                 self.admin_tab = AdminDisplayTab(privileges=privileges)
                 self.addTab(self.admin_tab,'Admin')
 
-    def select(self,model,index):
+    def select(self,model=None,index=None):
         """
-        Select index from ResultsTableModel model.
+        Select sample model and update preview. Can use ResultsTableModel with corresponding index,
+        standalone sample model or a sample id.
 
-        model:              ResultsTableModel object
-        index:              Index from ResultsWidget table.
+        model:              ResultsTableModel object or sample model if index=None. If None, index refers to sample id.
+        index:              Index from ResultsWidget table or sample id if model=None. If None, model refers to a sample model.
         """
 
         with dal.session_scope() as session:
-            i = int(model.df['id'].values[index.row()])
-            s = session.query(sample).filter(sample.id==i)[0]
+            if index:
+                if model:
+                    i = int(model.df['id'].values[index.row()])
+                else:
+                    i = index
+                s = session.query(sample).filter(sample.id==i)[0]
+            elif index==None and model != None:
+                s = model
             self.detail_tab.update(s.properties,s.recipe)
             self.sem_tab.update(s)
             self.recipe_tab.update(s.recipe)
@@ -492,7 +500,7 @@ class ResultsWidget(QtGui.QTabWidget):
                 properties_columns = tuple([getattr(properties,p) for p in properties_fields])
                 raman_columns = tuple([getattr(raman_set,r) for r in raman_fields])
 
-                query_columns = sample_columns+recipe_columns+properties_columns+raman_columns
+                query_columns = sample_columns+raman_columns+recipe_columns+properties_columns
 
                 q = session.query(*query_columns).\
                     join(sample.recipe).\
@@ -570,36 +578,51 @@ class SEMDisplayTab(QtGui.QScrollArea):
 
         self.file_list = QtGui.QListWidget()
         self.sem_info = QtGui.QStackedWidget()
+        self.sample_id = None
+        self.loading_label = QtGui.QLabel('Loading images... Please wait.')
+        self.loading_label.hide()
 
         self.setWidgetResizable(True)
         self.setWidget(self.contentWidget)
 
         self.layout.addWidget(self.file_list,0,0)
         self.layout.addWidget(self.sem_info,0,1)
+        self.layout.addWidget(self.loading_label,1,0)
 
         self.file_list.currentRowChanged.connect(self.sem_info.setCurrentIndex)
 
+    def loadImage(self,sem,s=None):
+        r = requests.get(sem.url)
+        data = r.content
+        img = np.array(Image.open(io.BytesIO(data)))
+
+        image_tab = pg.GraphicsLayoutWidget()
+        wImgBox_VB = image_tab.addViewBox(row=1,col=1)
+        wImgItem = pg.ImageItem()
+        wImgItem.setImage(img)
+        wImgBox_VB.addItem(wImgItem)
+        wImgBox_VB.setAspectLocked(True)
+
+
+        sem_tabs = QtGui.QTabWidget()
+        sem_tabs.addTab(image_tab,"Raw Data")
+
+        if self.sample_id == sem.sample_id:
+            self.file_list.addItem("SEM Image %d"%s)
+            self.sem_info.addWidget(sem_tabs)
+
+
     def update(self,sample_model=None):
-        self.file_list.clear()
         if sample_model != None:
+            if sample_model.id != self.sample_id:
+                self.file_list.clear()
+                for w in [self.sem_info.widget(i) for i in range(self.sem_info.count())]:
+                    self.sem_info.removeWidget(w)
+            self.sample_id = sample_model.id
             for s,sem in enumerate(sample_model.sem_files,1):
-                r = requests.get(sem.url)
-                data = r.content
-                img = np.array(Image.open(io.BytesIO(data)))
-
-                image_tab = pg.GraphicsLayoutWidget()
-                wImgBox_VB = image_tab.addViewBox(row=1,col=1)
-                wImgItem = pg.ImageItem()
-                wImgItem.setImage(img)
-                wImgBox_VB.addItem(wImgItem)
-                wImgBox_VB.setAspectLocked(True)
-
-                self.file_list.addItem("SEM Image %d"%s)
-
-                sem_tabs = QtGui.QTabWidget()
-                sem_tabs.addTab(image_tab,"Raw Data")
-
-                self.sem_info.addWidget(sem_tabs)
+                # t = threading.Thread(target=self.loadImage,args=(sem,s))
+                # t.start()
+                self.loadImage(sem,s)
 
 class ProvenanceDisplayTab(QtGui.QScrollArea):
     def __init__(self,parent=None):
