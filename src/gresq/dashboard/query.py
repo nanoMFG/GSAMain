@@ -202,6 +202,7 @@ class GSAQuery(QtGui.QWidget):
 
         self.primary_selection.activated[str].emit(self.primary_selection.currentText())
         self.secondary_selection.activated[str].emit(self.secondary_selection.currentText())
+        self.results.plotClicked.connect(lambda plot, points: self.preview.select(index=points[0].data()))
 
 
     def generate_field(self,model,field):
@@ -468,6 +469,7 @@ class ResultsWidget(QtGui.QTabWidget):
         - t-SNE:                Allows users to conduct t-SNE visualization on queried data.
         - Plot:                 Allows users to scatter plot queried data.
     """
+    plotClicked = QtCore.pyqtSignal(object, object)
     def __init__(self,parent=None):
         super(ResultsWidget,self).__init__(parent=parent)
         self.setTabPosition(QtGui.QTabWidget.North)
@@ -484,6 +486,8 @@ class ResultsWidget(QtGui.QTabWidget):
         self.addTab(self.results_table,'Query Results')
         self.addTab(self.plot,'Plotting')
         self.addTab(self.tsne,'t-SNE')
+
+        self.plot.sigClicked.connect(lambda v1, v2: self.plotClicked.emit(v1,v2))
 
     def query(self,filters):
         """

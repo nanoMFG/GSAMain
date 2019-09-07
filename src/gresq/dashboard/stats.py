@@ -11,7 +11,7 @@ from gresq.util.models import ItemsetsTableModel, ResultsTableModel
 label_font = QtGui.QFont("Helvetica", 16, QtGui.QFont.Bold)
 
 class PlotWidget(QtGui.QWidget):
-	ptClicked = QtCore.pyqtSignal(pg.ScatterPlotItem, list)
+	sigClicked = QtCore.pyqtSignal(object, object)
 
 	def __init__(self,parent=None):
 		super(PlotWidget,self).__init__(parent=parent)
@@ -30,7 +30,7 @@ class PlotWidget(QtGui.QWidget):
 		self.plot_widget.addItem(self.scatter_plot)
 
 		# Connect signal to slot - slot should be a function in the class defining the display below the plot
-		self.scatter_plot.sigClicked.connect(self.send_sigClick)
+		self.scatter_plot.sigClicked.connect(lambda plot, points: self.sigClicked.emit(plot,points))
 
 		self.xaxisbox.activated.connect(self.updatePlot)
 		self.yaxisbox.activated.connect(self.updatePlot)
@@ -59,9 +59,6 @@ class PlotWidget(QtGui.QWidget):
 				else:
 					self.yaxisbox.addItem(c)
 		self.scatter_plot.clear()
-
-	def send_sigClick(self, plot, points):
-		self.ptClicked.emit(plot, points)
 
 	def updatePlot(self):
 		x = self.xaxisbox.currentText()
