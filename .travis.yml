@@ -25,7 +25,7 @@ before_install:
   - conda install pytest
 
 install:
-  - pip install ".[test]" . # install package + test dependencies
+  - pip install -e ".[test]" . # install package + test dependencies
 
 script:
   - pytest
