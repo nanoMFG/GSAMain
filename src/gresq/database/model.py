@@ -85,7 +85,7 @@ class sample(Base):
     properties = relationship("properties",uselist=False,cascade="save-update, merge, delete")
     raman_analysis = relationship("raman_set",uselist=False,cascade="save-update, merge, delete")
     sem_files = relationship("sem_file",cascade="save-update, merge, delete")
-    raman_files = relationship("raman_file",cascade="save-update, merge, delete")
+    raman_files = relationship("raman_file")
     validated = Column(Boolean,info={'verbose_name':'Validated','std_unit':None},default=False)
 
     def json_encodable(self):
@@ -209,7 +209,8 @@ class recipe(Base):
     @uses_helium.expression
     def uses_helium(cls):
         s = select([preparation_step.helium_flow_rate]).\
-                where(preparation_step.helium_flow_rate != None)
+                where(and_(preparation_step.helium_flow_rate != None,preparation_step.recipe_id==cls.id)).\
+                correlate(cls)
         return exists(s)
 
     @hybrid_property
@@ -219,7 +220,8 @@ class recipe(Base):
     @uses_argon.expression
     def uses_argon(cls):
         s = select([preparation_step.argon_flow_rate]).\
-                where(preparation_step.argon_flow_rate != None)
+                where(and_(preparation_step.argon_flow_rate != None,preparation_step.recipe_id==cls.id)).\
+                correlate(cls)
         return exists(s)
 
     @hybrid_property
@@ -229,7 +231,8 @@ class recipe(Base):
     @uses_hydrogen.expression
     def uses_hydrogen(cls):
         s = select([preparation_step.hydrogen_flow_rate]).\
-                where(preparation_step.hydrogen_flow_rate != None)
+                where(and_(preparation_step.hydrogen_flow_rate != None,preparation_step.recipe_id==cls.id)).\
+                correlate(cls)
         return exists(s)
 
     # PREPARATION STEPS
@@ -606,12 +609,25 @@ class raman_spectrum(Base):
 
 class sem_file(Base):
     __tablename__ = 'sem_file'
+    # id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
     sample_id = Column(Integer,ForeignKey(sample.id),primary_key=True)
     filename = Column(String(64),primary_key=True)
     url = Column(String(256))
 
     def json_encodable(self):
         return {'filename': self.filename}
+
+class sem_analysis(Base):
+    __tablename__ = 'sem_analysis'
+    id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
+    # sem_file_id = Column(Integer,ForeignKey(sem_file.id),primary_key=True)
+    mask_url = Column(String(256))
+    growth_coverage = Column(Float,info={
+        'verbose_name':'Growth Coverage',
+        'std_unit': '%',
+        'conversions':{'%':1},
+        'required': False
+        })
 
 class mdf_forge(Base):
     __tablename__ = 'mdf_forge'
@@ -640,6 +656,8 @@ class GresqEncoder(JSONEncoder):
             raise TypeError(
                 'Object of type %s with value of %s is not JSON serializable' % (
                     type(o), repr(o)))
+
+
 hybrid_recipe_fields = [
     "maximum_temperature",
     "maximum_pressure",
@@ -649,6 +667,8 @@ hybrid_recipe_fields = [
     "uses_hydrogen",
     "uses_argon"
     ]
+
+# Hybrid attributes require their info dictionary values be set outside of class construction.
 
 recipe.maximum_temperature.info['verbose_name'] = 'Maximum Temperature'
 recipe.maximum_temperature.info['std_unit'] = 'C'
