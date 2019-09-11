@@ -1,8 +1,4 @@
 from __future__ import division
-import os
-import sys
-import threading
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'gsaimage','src'))
 import pandas as pd
 import numpy as np
 import sys, operator, os
@@ -639,10 +635,10 @@ class SEMDisplayTab(QtGui.QScrollArea):
             if sample_model.id != self.sample_id:
                 self.file_list.clear()
                 self.progress_bar.reset()
-                
+
                 for w in [self.sem_info.widget(i) for i in range(self.sem_info.count())]:
                     self.sem_info.removeWidget(w)
-                
+
                 self.threads = []
                 self.sample_id = sample_model.id
                 if len(sample_model.sem_files) > 0:

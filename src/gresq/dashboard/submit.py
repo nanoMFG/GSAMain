@@ -1,7 +1,4 @@
 from __future__ import division
-import os
-import sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'gsaraman','src'))
 import numpy as np
 import cv2, sys, time, json, copy, subprocess, os
 from PyQt5 import QtGui, QtCore
