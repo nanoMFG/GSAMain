@@ -11,16 +11,16 @@ from sqlalchemy.sql import exists
 import ast, datetime
 from sqlalchemy import Column, String, Integer, Float, Numeric, ForeignKey, Date, Boolean
 from sqlalchemy.orm import relationship, backref
+from gresq.database import Base
 
-Base = declarative_base()
 
 class DataAccessLayer:
 
     def __init__(self):
         """ Define data access layer attrubutes."""
         self.engine = None
-        self.Session = None 
-        
+        self.Session = None
+
 #engine = create_engine('mysql+mysqlconnector://'+db_user+':'+db_pass+'@'+db_url, connect_args=ssl_args)
 
     def init_db(self,config,privileges={'read':True,'write':False,'validate':False}):
@@ -100,7 +100,7 @@ class sample(Base):
 class recipe(Base):
     __tablename__ = 'recipe'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    sample_id = Column(Integer,ForeignKey(sample.id),info={'verbose_name':'Sample ID'})
+    sample_id = Column(Integer,ForeignKey(sample.id), index=True, info={'verbose_name':'Sample ID'})
     # SUBSTRATE
     thickness = Column(Float,info=
         {'verbose_name':'Thickness',
@@ -123,7 +123,7 @@ class recipe(Base):
 
     # EXPERIMENTAL CONDITIONS:
     catalyst = Column(String(64),info={
-        'verbose_name':'Catalyst', 
+        'verbose_name':'Catalyst',
         'choices':[],
         'std_unit':None,
         'required': True})
@@ -348,7 +348,7 @@ class preparation_step(Base):
             "carbon_source",
             "carbon_source_flow_rate",
             "argon_flow_rate"
-            ] 
+            ]
 
         if self.name == "Cooling":
             params.append('cooling_rate')
@@ -364,8 +364,8 @@ class author(Base):
     __tablename__ = 'author'
 
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    sample_id = Column(Integer,ForeignKey('sample.id'),info={'verbose_name':'Sample ID'})
-    raman_id = Column(Integer,ForeignKey('raman_set.id'),info={'verbose_name':'Raman Set ID'})
+    sample_id = Column(Integer,ForeignKey('sample.id'), index=True, info={'verbose_name':'Sample ID'})
+    raman_id = Column(Integer,ForeignKey('raman_set.id'), index=True, info={'verbose_name':'Raman Set ID'})
     first_name = Column(String(64), info={
         'verbose_name':'First Name',
         'required': False})
@@ -384,7 +384,7 @@ class author(Base):
 class properties(Base):
     __tablename__ = 'properties'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    sample_id = Column(Integer,ForeignKey(sample.id),info={'verbose_name':'Sample ID'})
+    sample_id = Column(Integer,ForeignKey(sample.id), index=True, info={'verbose_name':'Sample ID'})
     average_thickness_of_growth = Column(Float(precision=32),info={
         'verbose_name':'Average Thickness of Growth',
         'std_unit': 'nm',
@@ -439,7 +439,7 @@ class raman_set(Base):
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
     nanohub_userid = Column(Integer,info={'verbose_name':'Nanohub Submitter User ID'})
     map_file = Column(Boolean,info={'verbose_name':'Map File'},default=False)
-    sample_id = Column(Integer,ForeignKey(sample.id),info={'verbose_name':'Sample ID'})
+    sample_id = Column(Integer,ForeignKey(sample.id), index=True, info={'verbose_name':'Sample ID'})
     raman_spectra = relationship("raman_spectrum",cascade="save-update, merge, delete")
     authors = relationship("author")
     experiment_date = Column(Date,default=datetime.date.today,info={
@@ -517,7 +517,7 @@ class raman_set(Base):
 class raman_file(Base):
     __tablename__ = 'raman_file'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    sample_id = Column(Integer,ForeignKey(sample.id))
+    sample_id = Column(Integer,ForeignKey(sample.id), index=True)
     filename = Column(String(64))
     url = Column(String(256))
     wavelength = Column(Float,info={
@@ -539,7 +539,7 @@ class raman_file(Base):
 
 class raman_spectrum(Base):
     __tablename__ = 'raman_spectrum'
-    set_id = Column(Integer,ForeignKey(raman_set.id),info={'verbose_name':'Sample ID'})
+    set_id = Column(Integer,ForeignKey(raman_set.id), index=True, info={'verbose_name':'Sample ID'})
     raman_file_id = Column(Integer,ForeignKey(raman_file.id),primary_key=True)
     raman_file = relationship("raman_file",uselist=False,cascade="save-update, merge, delete")
     xcoord = Column(Integer,info={'verbose_name':'X Coordinate'})
@@ -699,4 +699,3 @@ recipe.uses_argon.info['std_unit'] = None
 
 recipe.uses_hydrogen.info['verbose_name'] = 'Uses Hydrogen'
 recipe.uses_hydrogen.info['std_unit'] = None
-
