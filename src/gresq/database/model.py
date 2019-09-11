@@ -266,15 +266,16 @@ class recipe(Base):
 
 class preparation_step(Base):
     __tablename__ = 'preparation_step'
-    recipe_id = Column(Integer,ForeignKey(recipe.id),primary_key=True,info={'verbose_name':'Recipe ID'})
-    step = Column(Integer,primary_key=True)
-    name = Column(String(16),primary_key=True,info={
+    id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
+    recipe_id = Column(Integer,ForeignKey(recipe.id),info={'verbose_name':'Recipe ID'})
+    step = Column(Integer)
+    name = Column(String(16),info={
         'verbose_name':'Name',
         'choices': ['Annealing','Growing','Cooling'],
         'std_unit': None,
         'required': True
         })
-    duration = Column(Float,primary_key=True,info={
+    duration = Column(Float,info={
         'verbose_name':'Duration',
         'std_unit': 'min',
         'conversions': {'min':1,'sec':1/60.,'hrs':60},
@@ -540,8 +541,9 @@ class raman_file(Base):
 
 class raman_spectrum(Base):
     __tablename__ = 'raman_spectrum'
+    id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
     set_id = Column(Integer,ForeignKey(raman_set.id), index=True, info={'verbose_name':'Sample ID'})
-    raman_file_id = Column(Integer,ForeignKey(raman_file.id),primary_key=True)
+    raman_file_id = Column(Integer,ForeignKey(raman_file.id))
     raman_file = relationship("raman_file",uselist=False,cascade="save-update, merge, delete")
     xcoord = Column(Integer,info={'verbose_name':'X Coordinate'})
     ycoord = Column(Integer,info={'verbose_name':'Y Coordinate'})
@@ -617,8 +619,8 @@ class raman_spectrum(Base):
 class sem_file(Base):
     __tablename__ = 'sem_file'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    sample_id = Column(Integer,ForeignKey(sample.id),primary_key=True)
-    filename = Column(String(64),primary_key=True)
+    sample_id = Column(Integer,ForeignKey(sample.id))
+    filename = Column(String(64))
     url = Column(String(256))
 
     def json_encodable(self):
@@ -627,7 +629,7 @@ class sem_file(Base):
 class sem_analysis(Base):
     __tablename__ = 'sem_analysis'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    sem_file_id = Column(Integer,ForeignKey(sem_file.id),primary_key=True)
+    sem_file_id = Column(Integer,ForeignKey(sem_file.id))
     mask_url = Column(String(256))
     growth_coverage = Column(Float,info={
         'verbose_name':'Growth Coverage',
@@ -635,6 +637,9 @@ class sem_analysis(Base):
         'conversions':{'%':1},
         'required': False
         })
+
+    def json_encodable(self):
+        return {'growth_coverage': {'value':self.growth_coverage,'unit':'%'}}
 
 class mdf_forge(Base):
     __tablename__ = 'mdf_forge'
