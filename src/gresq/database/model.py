@@ -90,6 +90,7 @@ class sample(Base):
 
     def json_encodable(self):
         return {
+            "primary_key": self.id,
             "material_name": self.material_name,
             "experiment_date":self.experiment_date.timetuple(),
             "authors": [s.json_encodable() for s in self.authors],
