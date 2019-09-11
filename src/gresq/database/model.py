@@ -157,6 +157,12 @@ class recipe(Base):
         'conversions': {'C':1},
         'required': False
         })
+    sample_surface_area = Column(Float,info={
+        'verbose_name':'Sample Surface Area',
+        'std_unit': 'mm^2',
+        'conversions':{'mm^2':1},
+        'required': False
+        })
 
     @hybrid_property
     def maximum_temperature(self):
@@ -432,7 +438,7 @@ class raman_set(Base):
     __tablename__ = 'raman_set'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
     nanohub_userid = Column(Integer,info={'verbose_name':'Nanohub Submitter User ID'})
-    # map_file = Column(Boolean,info={'verbose_name':'Map File'},default=False)
+    map_file = Column(Boolean,info={'verbose_name':'Map File'},default=False)
     sample_id = Column(Integer,ForeignKey(sample.id),info={'verbose_name':'Sample ID'})
     raman_spectra = relationship("raman_spectrum",cascade="save-update, merge, delete")
     authors = relationship("author")
@@ -536,8 +542,8 @@ class raman_spectrum(Base):
     set_id = Column(Integer,ForeignKey(raman_set.id),info={'verbose_name':'Sample ID'})
     raman_file_id = Column(Integer,ForeignKey(raman_file.id),primary_key=True)
     raman_file = relationship("raman_file",uselist=False,cascade="save-update, merge, delete")
-    # xcoord = Column(Integer,info={'verbose_name':'X Coordinate'})
-    # ycoord = Column(Integer,info={'verbose_name':'Y Coordinate'})
+    xcoord = Column(Integer,info={'verbose_name':'X Coordinate'})
+    ycoord = Column(Integer,info={'verbose_name':'Y Coordinate'})
     percent = Column(Float,info={
         'verbose_name':'Characteristic Percent',
         'std_unit': '%',
@@ -609,7 +615,7 @@ class raman_spectrum(Base):
 
 class sem_file(Base):
     __tablename__ = 'sem_file'
-    # id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
+    id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
     sample_id = Column(Integer,ForeignKey(sample.id),primary_key=True)
     filename = Column(String(64),primary_key=True)
     url = Column(String(256))
@@ -620,7 +626,7 @@ class sem_file(Base):
 class sem_analysis(Base):
     __tablename__ = 'sem_analysis'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    # sem_file_id = Column(Integer,ForeignKey(sem_file.id),primary_key=True)
+    sem_file_id = Column(Integer,ForeignKey(sem_file.id),primary_key=True)
     mask_url = Column(String(256))
     growth_coverage = Column(Float,info={
         'verbose_name':'Growth Coverage',
