@@ -8,6 +8,8 @@ from gresq.database import sample, preparation_step, dal, Base, mdf_forge, autho
 from sqlalchemy import String, Integer, Float, Numeric, Date
 from gresq.config import config
 from gresq.util.csv2db import build_db
+par = os.path.abspath(os.path.pardir)
+sys.path.append(os.path.join(par,'src','gresq','dashboard', 'gsaraman','src'))
 from gsaraman import GSARaman
 from gresq.recipe import Recipe
 from gresq.util.mdf_adaptor import MDFAdaptor, MDFException

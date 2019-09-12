@@ -91,7 +91,8 @@ raman_fields = [
 
 sample_fields = [
     "id",
-    "experiment_date"
+    "experiment_date",
+    "validated"
 ]
 
 results_fields = sample_fields+properties_fields+raman_fields
