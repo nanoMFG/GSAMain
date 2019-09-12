@@ -22,7 +22,7 @@ properties_key = {
     'growth_coverage': 'PROPERTY: Growth Coverage (%)',
     }
 recipe_key = {
-    # 'PROPERTY: Sample Surface Area (mm$\^2$)': 'sample_surface_area',
+    'sample_surface_area':'PROPERTY: Sample Surface Area (mm$\^2$)',
     'thickness': 'PROPERTY: Thickness ($\mu$m)',
     'tube_diameter': 'ALL CONDITION: Tube Diameter (mm)',
     'tube_length': 'ALL CONDITION: Tube Length (mm)',
@@ -121,206 +121,210 @@ def build_db(session,filepath,sem_raman_path=None):
     author_column = data['CONTRIBUTOR'].copy()
 
     for i in range(data.shape[0]):
-        s = sample()
-        s.material_name = "Graphene"
-        s.validated = True
-        date_string = data[sample_key['experiment_date']][i]
-        if pd.isnull(date_string)==False:
-            s.experiment_date = convert_date(date_string)
-
-        session.add(s)
-        session.commit()
-
-        pr = properties()
-        pr.sample_id = s.id
-        for key,header in properties_key.items():
-            value = data[header][i]
-            if pd.isnull(value) == False:
-                value = convert(value,getattr(properties,key),header=header)
-                setattr(pr,key,value)
-
-        r = recipe()
-        r.sample_id = s.id
-        for key,header in recipe_key.items():
-            value = data[header][i]
-            if pd.isnull(value) == False:
-                value = convert(value,getattr(recipe,key),header=header)
-                setattr(pr,key,value)
-
-        session.add(pr)
-        session.add(r)
-        session.commit()
-
-        total_steps = 0
-
-        for j in range(0,annealing_df.shape[1],9):
-            prep_df = annealing_df.iloc[:,j:j+9].copy()
-            
-            initial_cols = prep_df.columns
-            for col in prep_df.columns:
-                for key,value in preparation_step_key.items():
-                    if value in col and preparation_step_key['carbon_source_flow_rate'] not in col:
-                        prep_df.rename(columns={col:value},inplace=True)
-                    elif value in col and value == preparation_step_key['carbon_source_flow_rate']:
-                        prep_df.rename(columns={col:value},inplace=True)
-            prep = preparation_step()
-            prep.name = 'Annealing'
-            prep.recipe_id = r.id
-            for key,header in preparation_step_key.items():
-                try:
-                    value = prep_df[header][i]
-                    if pd.isnull(value) == False:
-                        value = convert(value,getattr(preparation_step,key),header=header)
-                        setattr(prep,key,value)
-                except Exception as e:
-                    print(initial_cols)
-                    print("Row %s, Header %s:  %s"%(i,header,e))
-                    print("Columns: %s"%prep_df.columns)
-                    print('###################')
-            if prep.duration != None:
-                prep.step = total_steps
-                total_steps += 1
-                session.add(prep)
-                session.commit()   
-
-        for j in range(0,growing_df.shape[1],9):
-            prep_df = growing_df.iloc[:,j:j+9].copy()
-
-            for col in prep_df.columns:
-                for key,value in preparation_step_key.items():
-                    if value in col and preparation_step_key['carbon_source_flow_rate'] not in col:
-                        prep_df.rename(columns={col:value},inplace=True)
-                    elif value in col and value == preparation_step_key['carbon_source_flow_rate']:
-                        prep_df.rename(columns={col:value},inplace=True)
-            prep = preparation_step()
-            prep.name = 'Growing'
-            prep.recipe_id = r.id
-            for key,header in preparation_step_key.items():
-                try:
-                    value = prep_df[header][i]
-                    if pd.isnull(value) == False:
-                        value = convert(value,getattr(preparation_step,key),header=header)
-                        setattr(prep,key,value)
-                except Exception as e:
-                    print("Row %s, Header %s:  %s"%(i,header,e))
-                    print("Columns: %s"%prep_df.columns)
-            if prep.duration != None:
-                prep.step = total_steps
-                total_steps += 1
-                session.add(prep)
-                session.commit() 
-
-        for j in range(0,cooling_df.shape[1],9):
-            prep_df = cooling_df.iloc[:,j:j+9].copy()
-            if prep_df.shape[1]<9:
-                break
-            for col in prep_df.columns:
-                for key,value in preparation_step_key.items():
-                    if value in col and preparation_step_key['carbon_source_flow_rate'] not in col:
-                        prep_df.rename(columns={col:value},inplace=True)
-                    elif value in col and value == preparation_step_key['carbon_source_flow_rate']:
-                        prep_df.rename(columns={col:value},inplace=True)
-            prep = preparation_step()
-            prep.name = 'Cooling'
-            prep.recipe_id = r.id
-            cooling_value = cooling_rate[i]
-            if pd.isnull(cooling_value)==False:
-                prep.cooling_rate=cooling_value
-
-            for key,header in preparation_step_key.items():
-                try:
-                    value = prep_df[header][i]
-                    if pd.isnull(value) == False:
-                        value = convert(value,getattr(preparation_step,key),header=header)
-                        setattr(prep,key,value)
-                except Exception as e:
-                    print("Row %s, Header %s:  %s"%(i,header,e))
-                    print("Columns: %s"%prep_df.columns)
-            if prep.duration != None:
-                prep.step = total_steps
-                total_steps += 1
-                session.add(prep)
-                session.commit()     
-
-
-        ### RAMAN IS A SEPARATE DATASET FROM SAMPLE ###
-        rs = raman_set()
-        rs.sample_id = s.id
-        # rs.experiment_date = provenance_response['sample']['experiment_date']['value']
-        session.add(rs)
-        session.flush()
-
-        reference_id = str(box_folder[i])
-        if os.path.isdir(os.path.join(sem_raman_path,reference_id)):
-            files = os.listdir(os.path.join(sem_raman_path,reference_id))
-            files_response = {'Raman Files':[],'SEM Image Files':[],'Raman Wavelength':532}
-            for f in files:
-                if f.split('.')[-1] == 'txt':
-                    files_response['Raman Files'].append(os.path.join(sem_raman_path,reference_id,f))
-                elif f.split('.')[-1] == 'tif':
-                    files_response['SEM Image Files'].append(os.path.join(sem_raman_path,reference_id,f))
-
-            if len(files_response['Raman Files'])>0:
-                files_response['Characteristic Percentage'] = [1/len(files_response['Raman Files'])]*len(files_response['Raman Files'])
-                for ri,ram in enumerate(files_response['Raman Files']):
-                    rf = raman_file()
-                    rf.filename = os.path.basename(ram)
-                    rf.sample_id = s.id
-                    rf.url = upload_file(ram)
-                    if files_response['Raman Wavelength'] != None:
-                        rf.wavelength = files_response['Raman Wavelength']
-                    session.add(rf)
-                    session.flush()
-
-                    params = auto_fitting(ram)
-                    r = raman_spectrum()
-                    r.raman_file_id = rf.id
-                    r.set_id = rs.id
-                    if files_response['Characteristic Percentage'] != None:
-                        r.percent = float(files_response['Characteristic Percentage'][ri]) 
-                    else:
-                        r.percent = 0.
-                    for peak in params.keys():
-                        for v in params[peak].keys():
-                            key = "%s_%s"%(peak,v)
-                            setattr(r,key,float(params[peak][v]))
-                    session.add(r)
-                    session.flush()
-                
-                rs_fields = [
-                "d_peak_shift",
-                "d_peak_amplitude",
-                "d_fwhm",
-                "g_peak_shift",
-                "g_peak_amplitude",
-                "g_fwhm",
-                "g_prime_peak_shift",
-                "g_prime_peak_amplitude",
-                "g_prime_fwhm"
-                ]
-                for field in rs_fields:
-                    setattr(rs,field,sum([getattr(spect,field)*getattr(spect,'percent')/100. for spect in rs.raman_spectra]))
-                rs.d_to_g = sum([getattr(spect,'d_peak_amplitude')/getattr(spect,'g_peak_amplitude')*getattr(spect,'percent')/100. for spect in rs.raman_spectra])
-                rs.gp_to_g = sum([getattr(spect,'g_prime_peak_amplitude')/getattr(spect,'g_peak_amplitude')*getattr(spect,'percent')/100. for spect in rs.raman_spectra])
-                session.flush()
-
-            if len(files_response['SEM Image Files'])>0:
-                for f in files_response['SEM Image Files']:
-                    sf = sem_file()
-                    sf.sample_id = s.id
-                    sf.filename = os.path.basename(f)
-                    sf.url = upload_file(f)
-                    session.add(sf)
-                    session.flush()
-
-        auth = author()
-        auth.first_name = 'Kaihao'
-        auth.last_name = 'Zhang'
-        auth.institution = 'University of Illinois at Urbana-Champaign'
-
         if 'Kaihao' in author_column[i]:
-            auth.sample_id = s.id
-            auth.raman_id = rs.id
-            session.add(auth)
+            s = sample()
+            s.material_name = "Graphene"
+            s.validated = True
+            date_string = data[sample_key['experiment_date']][i]
+            if pd.isnull(date_string)==False:
+                s.experiment_date = convert_date(date_string)
 
-        session.commit()
+            session.add(s)
+            session.flush()
+
+            pr = properties()
+            pr.sample_id = s.id
+            for key,header in properties_key.items():
+                value = data[header][i]
+                if pd.isnull(value) == False:
+                    value = convert(value,getattr(properties,key),header=header)
+                    setattr(pr,key,value)
+
+            r = recipe()
+            r.sample_id = s.id
+            for key,header in recipe_key.items():
+                value = data[header][i]
+                if pd.isnull(value) == False:
+                    value = convert(value,getattr(recipe,key),header=header)
+                    setattr(r,key,value)
+            session.add(pr)
+            session.add(r)
+            session.commit()
+
+            total_steps = 0
+
+            for j in range(0,annealing_df.shape[1],9):
+                prep_df = annealing_df.iloc[:,j:j+9].copy()
+                
+                initial_cols = prep_df.columns
+                for col in prep_df.columns:
+                    for key,value in preparation_step_key.items():
+                        if value in col and preparation_step_key['carbon_source_flow_rate'] not in col:
+                            prep_df.rename(columns={col:value},inplace=True)
+                        elif value in col and value == preparation_step_key['carbon_source_flow_rate']:
+                            prep_df.rename(columns={col:value},inplace=True)
+                prep = preparation_step()
+                prep.name = 'Annealing'
+                prep.recipe_id = r.id
+                for key,header in preparation_step_key.items():
+                    try:
+                        value = prep_df[header][i]
+                        if pd.isnull(value) == False:
+                            value = convert(value,getattr(preparation_step,key),header=header)
+                            setattr(prep,key,value)
+                    except Exception as e:
+                        print('###################')
+                        print("%s Row %s Column %s"%(prep.name,i,j)) 
+                        print("Header:  '%s'"%header)
+                        print(e)
+                if prep.duration != None:
+                    prep.step = total_steps
+                    total_steps += 1
+                    session.add(prep)
+                    session.commit()   
+
+            for j in range(0,growing_df.shape[1],9):
+                prep_df = growing_df.iloc[:,j:j+9].copy()
+
+                for col in prep_df.columns:
+                    for key,value in preparation_step_key.items():
+                        if value in col and preparation_step_key['carbon_source_flow_rate'] not in col:
+                            prep_df.rename(columns={col:value},inplace=True)
+                        elif value in col and value == preparation_step_key['carbon_source_flow_rate']:
+                            prep_df.rename(columns={col:value},inplace=True)
+                prep = preparation_step()
+                prep.name = 'Growing'
+                prep.recipe_id = r.id
+                for key,header in preparation_step_key.items():
+                    try:
+                        value = prep_df[header][i]
+                        if pd.isnull(value) == False:
+                            value = convert(value,getattr(preparation_step,key),header=header)
+                            setattr(prep,key,value)
+                    except Exception as e:
+                        print('###################')
+                        print("%s Row %s Column %s"%(prep.name,i,j)) 
+                        print("Header:  '%s'"%header)
+                        print(e)
+                if prep.duration != None:
+                    prep.step = total_steps
+                    total_steps += 1
+                    session.add(prep)
+                    session.commit() 
+
+            for j in range(0,cooling_df.shape[1],9):
+                prep_df = cooling_df.iloc[:,j:j+9].copy()
+                if prep_df.shape[1]<9:
+                    break
+                for col in prep_df.columns:
+                    for key,value in preparation_step_key.items():
+                        if value in col and preparation_step_key['carbon_source_flow_rate'] not in col:
+                            prep_df.rename(columns={col:value},inplace=True)
+                        elif value in col and value == preparation_step_key['carbon_source_flow_rate']:
+                            prep_df.rename(columns={col:value},inplace=True)
+                prep = preparation_step()
+                prep.name = 'Cooling'
+                prep.recipe_id = r.id
+                cooling_value = cooling_rate[i]
+                if pd.isnull(cooling_value)==False:
+                    prep.cooling_rate=cooling_value
+
+                for key,header in preparation_step_key.items():
+                    try:
+                        value = prep_df[header][i]
+                        if pd.isnull(value) == False:
+                            value = convert(value,getattr(preparation_step,key),header=header)
+                            setattr(prep,key,value)
+                    except Exception as e:
+                        print('###################')
+                        print("%s Row %s Column %s"%(prep.name,i,j)) 
+                        print("Header:  '%s'"%header)
+                        print(e)
+                if prep.duration != None:
+                    prep.step = total_steps
+                    total_steps += 1
+                    session.add(prep)
+                    session.commit()     
+
+
+            ### RAMAN IS A SEPARATE DATASET FROM SAMPLE ###
+            rs = raman_set()
+            rs.sample_id = s.id
+            rs.experiment_date = s.experiment_date
+            session.add(rs)
+            session.flush()
+
+            reference_id = str(box_folder[i])
+            if os.path.isdir(os.path.join(sem_raman_path,reference_id)):
+                files = os.listdir(os.path.join(sem_raman_path,reference_id))
+                files_response = {'Raman Files':[],'SEM Image Files':[],'Raman Wavelength':532}
+                for f in files:
+                    if f.split('.')[-1] == 'txt':
+                        files_response['Raman Files'].append(os.path.join(sem_raman_path,reference_id,f))
+                    elif f.split('.')[-1] == 'tif':
+                        files_response['SEM Image Files'].append(os.path.join(sem_raman_path,reference_id,f))
+
+                if len(files_response['Raman Files'])>0:
+                    files_response['Characteristic Percentage'] = [1/len(files_response['Raman Files'])]*len(files_response['Raman Files'])
+                    for ri,ram in enumerate(files_response['Raman Files']):
+                        rf = raman_file()
+                        rf.filename = os.path.basename(ram)
+                        rf.sample_id = s.id
+                        rf.url = upload_file(ram)
+                        if files_response['Raman Wavelength'] != None:
+                            rf.wavelength = files_response['Raman Wavelength']
+                        session.add(rf)
+                        session.flush()
+
+                        params = auto_fitting(ram)
+                        r = raman_spectrum()
+                        r.raman_file_id = rf.id
+                        r.set_id = rs.id
+                        if files_response['Characteristic Percentage'] != None:
+                            r.percent = float(files_response['Characteristic Percentage'][ri]) 
+                        else:
+                            r.percent = 0.
+                        for peak in params.keys():
+                            for v in params[peak].keys():
+                                key = "%s_%s"%(peak,v)
+                                setattr(r,key,float(params[peak][v]))
+                        session.add(r)
+                        session.flush()
+                    
+                    rs_fields = [
+                    "d_peak_shift",
+                    "d_peak_amplitude",
+                    "d_fwhm",
+                    "g_peak_shift",
+                    "g_peak_amplitude",
+                    "g_fwhm",
+                    "g_prime_peak_shift",
+                    "g_prime_peak_amplitude",
+                    "g_prime_fwhm"
+                    ]
+                    for field in rs_fields:
+                        setattr(rs,field,sum([getattr(spect,field)*getattr(spect,'percent')/100. for spect in rs.raman_spectra]))
+                    rs.d_to_g = sum([getattr(spect,'d_peak_amplitude')/getattr(spect,'g_peak_amplitude')*getattr(spect,'percent')/100. for spect in rs.raman_spectra])
+                    rs.gp_to_g = sum([getattr(spect,'g_prime_peak_amplitude')/getattr(spect,'g_peak_amplitude')*getattr(spect,'percent')/100. for spect in rs.raman_spectra])
+                    session.flush()
+
+                if len(files_response['SEM Image Files'])>0:
+                    for f in files_response['SEM Image Files']:
+                        sf = sem_file()
+                        sf.sample_id = s.id
+                        sf.filename = os.path.basename(f)
+                        sf.url = upload_file(f)
+                        session.add(sf)
+                        session.flush()
+
+            auth = author()
+            auth.first_name = 'Kaihao'
+            auth.last_name = 'Zhang'
+            auth.institution = 'University of Illinois at Urbana-Champaign'
+
+            if 'Kaihao' in author_column[i]:
+                auth.sample_id = s.id
+                auth.raman_id = rs.id
+                session.add(auth)
+
+            session.commit()

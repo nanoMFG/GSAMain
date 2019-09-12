@@ -89,7 +89,12 @@ raman_fields = [
     "d_to_g"
 ]
 
-results_fields = recipe_fields+hybrid_recipe_fields+properties_fields+raman_fields
+sample_fields = [
+    "id",
+    "experiment_date"
+]
+
+results_fields = sample_fields+properties_fields+raman_fields
 
 selection_list = {
     'Experimental Conditions':{'fields':recipe_fields,'model':recipe},
@@ -514,7 +519,7 @@ class ResultsWidget(QtGui.QTabWidget):
 
         self.results_table.setModel(self.results_model)
         for c in range(self.results_model.columnCount(parent=None)):
-            if self.results_model.df.columns[c] not in properties_fields+raman_fields:
+            if self.results_model.df.columns[c] not in results_fields:
                 self.results_table.hideColumn(c)
         self.results_table.resizeColumnsToContents()
         self.plot.setModel(self.results_model,xfields=recipe_fields+hybrid_recipe_fields,yfields=raman_fields+properties_fields)

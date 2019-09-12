@@ -167,7 +167,7 @@ class recipe(Base):
 
     @hybrid_property
     def maximum_temperature(self):
-        return max([p.furnace_temperature for p in self.preparation_steps])
+        return max([p.furnace_temperature for p in self.preparation_steps if p.furnace_temperature!=None])
 
     @maximum_temperature.expression
     def maximum_temperature(cls):
@@ -177,7 +177,7 @@ class recipe(Base):
 
     @hybrid_property
     def maximum_pressure(self):
-        return max([p.furnace_pressure for p in self.preparation_steps])
+        return max([p.furnace_pressure for p in self.preparation_steps if p.furnace_pressure!=None])
 
     @maximum_pressure.expression
     def maximum_pressure(cls):
@@ -187,7 +187,7 @@ class recipe(Base):
 
     @hybrid_property
     def average_carbon_flow_rate(self):
-        steps = [p.carbon_source_flow_rate for p in self.preparation_steps]
+        steps = [p.carbon_source_flow_rate for p in self.preparation_steps if p.carbon_source_flow_rate!=None]
         return sum(steps)/len(steps)
 
     @average_carbon_flow_rate.expression
