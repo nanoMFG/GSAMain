@@ -13,59 +13,6 @@ from sqlalchemy import Column, String, Integer, Float, Numeric, ForeignKey, Date
 from sqlalchemy.orm import relationship, backref
 from gresq.database import Base
 
-
-class DataAccessLayer:
-
-    def __init__(self):
-        """ Define data access layer attrubutes."""
-        self.engine = None
-        self.Session = None
-
-#engine = create_engine('mysql+mysqlconnector://'+db_user+':'+db_pass+'@'+db_url, connect_args=ssl_args)
-
-    def init_db(self,config,privileges={'read':True,'write':False,'validate':False}):
-        """Initialize database connection.
-
-        The current initializer is specific for mysql+mysqlconnector with SSL arguments.
-        Future version of this should be bable to initiate non-SSL connection with any connector.
-        """
-        self.privileges = privileges
-        #print(config.DATABASEURI)
-        #print(config.DATABASEARGS)
-        if (config.DATABASEARGS == None):
-            self.engine = create_engine(config.DATABASEURI)
-        else:
-            self.engine = create_engine(config.DATABASEURI,connect_args=ast.literal_eval(config.DATABASEARGS))
-        Base.metadata.create_all(bind=self.engine)
-        self.Session = scoped_session(sessionmaker(autocommit=False,
-                                         autoflush=True,
-                                         bind=self.engine))
-        Base.query = self.Session.query_property()
-
-
-    def abort_ro(*args,**kwargs):
-        return
-
-    @contextmanager
-    def session_scope(self,autocommit=False):
-        """Provide a transactional scope around a series of operations."""
-        session = self.Session()
-        if self.privileges['write'] == False:
-            session.flush = self.abort_ro
-        try:
-            yield session
-            if autocommit:
-                session.commit()
-        except:
-            session.rollback()
-            raise
-        finally:
-            session.close()
-
-
-dal = DataAccessLayer()
-
-
 class sample(Base):
     __tablename__ = 'sample'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID','std_unit':None})
