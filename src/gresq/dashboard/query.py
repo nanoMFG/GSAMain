@@ -65,7 +65,8 @@ recipe_fields = [
     "thickness",
     "diameter",
     "length",
-    "dewpoint",
+    "sample_surface_area",
+    "dewpoint"
     ]
 
 hybrid_recipe_fields = [
