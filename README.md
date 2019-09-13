@@ -62,6 +62,7 @@ End with an example of getting some data out of the system or using it for a lit
 -->
 From the repository root:<br>
 ```
+pip install ./gsaraman
 pip install .
 ```
 or for development:<br/>
