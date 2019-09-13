@@ -1,8 +1,6 @@
 
-# from sqlalchemy_utils.types.password import PasswordType
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker, relationship
-from sqlalchemy.ext.declarative import declarative_base
 from contextlib import contextmanager
 from gresq.config import Config
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
