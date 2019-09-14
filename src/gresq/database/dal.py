@@ -8,18 +8,21 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from gresq.database import Base
 
-class DataAccessLayer:
+# Uncomment to hav all SQL dumped to the console.
+#import logging
+#logging.basicConfig()
+#logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
+class DataAccessLayer:
     def __init__(self):
         """ Define data access layer attributes."""
         self.engine = None
         self.Session = None
-        self.privileges = {'read': True, 'write': False, 'validate': False}
+        self.privileges = {"read": True, "write": False, "validate": False}
 
-#engine = create_engine('mysql+mysqlconnector://'+db_user+':'+db_pass+'@'+db_url, connect_args=ssl_args)
-
-    def init_db(self, config, privileges={
-                'read': True, 'write': False, 'validate': False}):
+    def init_db(
+        self, config, privileges={"read": True, "write": False, "validate": False}
+    ):
         """Initialize database connection for a given configuration.
 
         Args:
@@ -31,13 +34,12 @@ class DataAccessLayer:
             self.engine = create_engine(config.DATABASEURI)
         else:
             self.engine = create_engine(
-                config.DATABASEURI,
-                connect_args=ast.literal_eval(
-                    config.DATABASEARGS))
+                config.DATABASEURI, connect_args=ast.literal_eval(config.DATABASEARGS)
+            )
         Base.metadata.create_all(bind=self.engine)
-        self.Session = scoped_session(sessionmaker(autocommit=False,
-                                                   autoflush=True,
-                                                   bind=self.engine))
+        self.Session = scoped_session(
+            sessionmaker(autocommit=False, autoflush=True, bind=self.engine)
+        )
         Base.query = self.Session.query_property()
 
     def abort_ro(self, *args, **kwargs):
@@ -47,7 +49,7 @@ class DataAccessLayer:
     def session_scope(self, autocommit=False):
         """Provide a transactional scope around a series of operations."""
         session = self.Session()
-        if self.privileges['write'] == False:
+        if self.privileges["write"] == False:
             session.flush = self.abort_ro
         try:
             yield session

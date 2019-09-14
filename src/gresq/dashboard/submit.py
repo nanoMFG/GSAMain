@@ -1,7 +1,4 @@
 from __future__ import division
-import os
-import sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'gsaraman','src'))
 import numpy as np
 import cv2, sys, time, json, copy, subprocess, os
 from PyQt5 import QtGui, QtCore
@@ -44,6 +41,7 @@ recipe_fields = [
 	"thickness",
 	"diameter",
 	"length",
+	"sample_surface_area",
 	"dewpoint"
 ]
 
@@ -82,7 +80,7 @@ class GSASubmit(QtGui.QTabWidget):
 		self.preparation = PreparationTab()
 		self.provenance = ProvenanceTab()
 		self.file_upload = FileUploadTab(mode=self.mode)
-		self.review = ReviewTab(box_config_path=box_config_path)
+		self.review = ReviewTab(box_config_path=box_config_path,mode=self.mode)
 
 		self.setTabPosition(QtGui.QTabWidget.South)
 		self.addTab(self.preparation,'Preparation')
@@ -192,7 +190,9 @@ class FieldsFormWidget(QtGui.QScrollArea):
 
 				if 'conversions' in info.keys():
 					self.units_input[field] = QtGui.QComboBox()
-					self.units_input[field].addItems(info['conversions'])
+					self.units_input[field].addItems(info['conversions'].keys())
+					if 'std_unit' in info.keys():
+						self.units_input[field].setCurrentIndex(self.units_input[field].findText(info['std_unit']))
 
 				self.layout.addWidget(self.input_widgets[field],row,3*col+1)
 				if field in self.units_input.keys():
@@ -732,12 +732,13 @@ class ReviewTab(QtGui.QScrollArea):
 
 	box_config_path:	Path to box configuration file
 	"""
-	def __init__(self,parent=None, box_config_path=None):
+	def __init__(self,parent=None,box_config_path=None,mode='local'):
 		super(ReviewTab,self).__init__(parent=parent)
 		self.properties_response = None
 		self.preparation_response = None
 		self.files_response = None
 		self.box_config_path = box_config_path
+		self.mode = mode
 		self.submitButton = QtGui.QPushButton('Submit')
 
 	def zipdir(self, path, ziph):
@@ -1027,6 +1028,8 @@ class ReviewTab(QtGui.QScrollArea):
 			Ensures base pressure input in properties.
 			Ensures total characteristic percentages add up to 100.
 			Ensures at least one author.
+			Ensures there is a carbon source.
+			Ensures Raman files are formatted correctly.
 
 		Returns dictionary containing:
 		json:			json encodable dictionary of 'sample' model.
@@ -1057,6 +1060,8 @@ class ReviewTab(QtGui.QScrollArea):
 		with dal.session_scope() as session:
 			### SAMPLE DATASET ###
 			s = sample()
+			if self.mode == 'nanohub':
+				s.nanohub_userid = os.getuid()
 			for field,item in provenance_response['sample'].items():
 				value = item['value']
 				if value != None:

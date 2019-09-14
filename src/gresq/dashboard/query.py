@@ -1,8 +1,4 @@
 from __future__ import division
-import os
-import sys
-import threading
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'gsaimage','src'))
 import pandas as pd
 import numpy as np
 import sys, operator, os
@@ -69,7 +65,8 @@ recipe_fields = [
     "thickness",
     "diameter",
     "length",
-    "dewpoint",
+    "sample_surface_area",
+    "dewpoint"
     ]
 
 hybrid_recipe_fields = [
@@ -93,7 +90,13 @@ raman_fields = [
     "d_to_g"
 ]
 
-results_fields = recipe_fields+hybrid_recipe_fields+properties_fields+raman_fields
+sample_fields = [
+    "id",
+    "experiment_date",
+    "validated"
+]
+
+results_fields = sample_fields+properties_fields+raman_fields
 
 selection_list = {
     'Experimental Conditions':{'fields':recipe_fields,'model':recipe},
@@ -470,6 +473,7 @@ class ResultsWidget(QtGui.QTabWidget):
         - Plot:                 Allows users to scatter plot queried data.
     """
     plotClicked = QtCore.pyqtSignal(object, object)
+    tsneClicked = QtCore.pyqtSignal(object, object)
     def __init__(self,parent=None):
         super(ResultsWidget,self).__init__(parent=parent)
         self.setTabPosition(QtGui.QTabWidget.North)
@@ -487,7 +491,7 @@ class ResultsWidget(QtGui.QTabWidget):
         self.addTab(self.plot,'Plotting')
         self.addTab(self.tsne,'t-SNE')
 
-        self.plot.sigClicked.connect(lambda v1, v2: self.plotClicked.emit(v1,v2))
+        self.plot.sigClicked.connect(lambda plot, points: self.plotClicked.emit(plot,points))
 
     def query(self,filters):
         """
@@ -517,7 +521,7 @@ class ResultsWidget(QtGui.QTabWidget):
 
         self.results_table.setModel(self.results_model)
         for c in range(self.results_model.columnCount(parent=None)):
-            if self.results_model.df.columns[c] not in properties_fields+raman_fields:
+            if self.results_model.df.columns[c] not in results_fields:
                 self.results_table.hideColumn(c)
         self.results_table.resizeColumnsToContents()
         self.plot.setModel(self.results_model,xfields=recipe_fields+hybrid_recipe_fields,yfields=raman_fields+properties_fields)
@@ -573,6 +577,24 @@ class FieldsDisplayWidget(QtGui.QScrollArea):
                     value = ''
             self.fields[field]['value'].setText(str(value))
 
+class DownloadThread(QtCore.QThread):
+    imageDownloaded = QtCore.pyqtSignal(object,int)
+    def __init__(self,url,thread_id):
+        super(DownloadThread,self).__init__()
+        self.url = url
+        self.thread_id = thread_id
+        self.img = None
+
+        self.finished.connect(lambda: self.imageDownloaded.emit(self.img,self.thread_id))
+
+    def __del__(self):
+        self.wait()
+
+    def run(self):
+        r = requests.get(self.url)
+        data = r.content
+        self.img = np.array(Image.open(io.BytesIO(data)))
+
 class SEMDisplayTab(QtGui.QScrollArea):
     def __init__(self,parent=None):
         super(SEMDisplayTab,self).__init__(parent=parent)
@@ -580,26 +602,25 @@ class SEMDisplayTab(QtGui.QScrollArea):
         self.layout = QtGui.QGridLayout(self.contentWidget)
         self.layout.setAlignment(QtCore.Qt.AlignTop)
 
+        self.progress_bar = QtGui.QProgressBar()
         self.file_list = QtGui.QListWidget()
         self.sem_info = QtGui.QStackedWidget()
         self.sample_id = None
-        self.loading_label = QtGui.QLabel('Loading images... Please wait.')
-        self.loading_label.hide()
+        self.threads = []
 
         self.setWidgetResizable(True)
         self.setWidget(self.contentWidget)
 
-        self.layout.addWidget(self.file_list,0,0)
-        self.layout.addWidget(self.sem_info,0,1)
-        self.layout.addWidget(self.loading_label,1,0)
+        self.file_list.setFixedWidth(100)
+        self.progress_bar.setFixedWidth(100)
+
+        self.layout.addWidget(self.file_list,0,0,1,1)
+        self.layout.addWidget(self.sem_info,0,1,2,1)
+        self.layout.addWidget(self.progress_bar,1,0,1,1)
 
         self.file_list.currentRowChanged.connect(self.sem_info.setCurrentIndex)
 
-    def loadImage(self,sem,s=None):
-        r = requests.get(sem.url)
-        data = r.content
-        img = np.array(Image.open(io.BytesIO(data)))
-
+    def loadImage(self,img,thread_id):
         image_tab = pg.GraphicsLayoutWidget()
         wImgBox_VB = image_tab.addViewBox(row=1,col=1)
         wImgItem = pg.ImageItem()
@@ -611,22 +632,32 @@ class SEMDisplayTab(QtGui.QScrollArea):
         sem_tabs = QtGui.QTabWidget()
         sem_tabs.addTab(image_tab,"Raw Data")
 
-        if self.sample_id == sem.sample_id:
-            self.file_list.addItem("SEM Image %d"%s)
+        if self.sample_id == thread_id:
+            self.file_list.addItem("SEM Image %s"%str(self.file_list.count()+1))
             self.sem_info.addWidget(sem_tabs)
-
+            self.progress_bar.setValue(100*sum([t.isFinished() for t in self.threads])/len(self.threads))
 
     def update(self,sample_model=None):
         if sample_model != None:
             if sample_model.id != self.sample_id:
                 self.file_list.clear()
+                self.progress_bar.reset()
+
                 for w in [self.sem_info.widget(i) for i in range(self.sem_info.count())]:
                     self.sem_info.removeWidget(w)
-            self.sample_id = sample_model.id
-            for s,sem in enumerate(sample_model.sem_files,1):
-                # t = threading.Thread(target=self.loadImage,args=(sem,s))
-                # t.start()
-                self.loadImage(sem,s)
+
+                self.threads = []
+                self.sample_id = sample_model.id
+                if len(sample_model.sem_files) > 0:
+                    self.progress_bar.setValue(1)
+                    for sem in sample_model.sem_files:
+                        thread = DownloadThread(url=sem.url,thread_id=sem.sample_id)
+                        thread.imageDownloaded.connect(self.loadImage)
+                        thread.start()
+                        print('Thread started.')
+                        self.threads.append(thread)
+                else:
+                    self.progress_bar.setValue(100)
 
 class ProvenanceDisplayTab(QtGui.QScrollArea):
     def __init__(self,parent=None):

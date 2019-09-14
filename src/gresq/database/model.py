@@ -1,8 +1,6 @@
 
-# from sqlalchemy_utils.types.password import PasswordType
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker, relationship
-from sqlalchemy.ext.declarative import declarative_base
 from contextlib import contextmanager
 from gresq.config import Config
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
@@ -11,60 +9,7 @@ from sqlalchemy.sql import exists
 import ast, datetime
 from sqlalchemy import Column, String, Integer, Float, Numeric, ForeignKey, Date, Boolean
 from sqlalchemy.orm import relationship, backref
-
-Base = declarative_base()
-
-class DataAccessLayer:
-
-    def __init__(self):
-        """ Define data access layer attrubutes."""
-        self.engine = None
-        self.Session = None 
-        
-#engine = create_engine('mysql+mysqlconnector://'+db_user+':'+db_pass+'@'+db_url, connect_args=ssl_args)
-
-    def init_db(self,config,privileges={'read':True,'write':False,'validate':False}):
-        """Initialize database connection.
-
-        The current initializer is specific for mysql+mysqlconnector with SSL arguments.
-        Future version of this should be bable to initiate non-SSL connection with any connector.
-        """
-        self.privileges = privileges
-        #print(config.DATABASEURI)
-        #print(config.DATABASEARGS)
-        if (config.DATABASEARGS == None):
-            self.engine = create_engine(config.DATABASEURI)
-        else:
-            self.engine = create_engine(config.DATABASEURI,connect_args=ast.literal_eval(config.DATABASEARGS))
-        Base.metadata.create_all(bind=self.engine)
-        self.Session = scoped_session(sessionmaker(autocommit=False,
-                                         autoflush=True,
-                                         bind=self.engine))
-        Base.query = self.Session.query_property()
-
-
-    def abort_ro(*args,**kwargs):
-        return
-
-    @contextmanager
-    def session_scope(self,autocommit=False):
-        """Provide a transactional scope around a series of operations."""
-        session = self.Session()
-        if self.privileges['write'] == False:
-            session.flush = self.abort_ro
-        try:
-            yield session
-            if autocommit:
-                session.commit()
-        except:
-            session.rollback()
-            raise
-        finally:
-            session.close()
-
-
-dal = DataAccessLayer()
-
+from gresq.database import Base
 
 class sample(Base):
     __tablename__ = 'sample'
@@ -85,11 +30,12 @@ class sample(Base):
     properties = relationship("properties",uselist=False,cascade="save-update, merge, delete")
     raman_analysis = relationship("raman_set",uselist=False,cascade="save-update, merge, delete")
     sem_files = relationship("sem_file",cascade="save-update, merge, delete")
-    raman_files = relationship("raman_file",cascade="save-update, merge, delete")
+    raman_files = relationship("raman_file")
     validated = Column(Boolean,info={'verbose_name':'Validated','std_unit':None},default=False)
 
     def json_encodable(self):
         return {
+            "primary_key": self.id,
             "material_name": self.material_name,
             "experiment_date":self.experiment_date.timetuple(),
             "authors": [s.json_encodable() for s in self.authors],
@@ -100,7 +46,7 @@ class sample(Base):
 class recipe(Base):
     __tablename__ = 'recipe'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    sample_id = Column(Integer,ForeignKey(sample.id),info={'verbose_name':'Sample ID'})
+    sample_id = Column(Integer,ForeignKey(sample.id), index=True, info={'verbose_name':'Sample ID'})
     # SUBSTRATE
     thickness = Column(Float,info=
         {'verbose_name':'Thickness',
@@ -123,7 +69,7 @@ class recipe(Base):
 
     # EXPERIMENTAL CONDITIONS:
     catalyst = Column(String(64),info={
-        'verbose_name':'Catalyst', 
+        'verbose_name':'Catalyst',
         'choices':[],
         'std_unit':None,
         'required': True})
@@ -157,10 +103,16 @@ class recipe(Base):
         'conversions': {'C':1},
         'required': False
         })
+    sample_surface_area = Column(Float,info={
+        'verbose_name':'Sample Surface Area',
+        'std_unit': 'mm^2',
+        'conversions':{'mm^2':1},
+        'required': False
+        })
 
     @hybrid_property
     def maximum_temperature(self):
-        return max([p.furnace_temperature for p in self.preparation_steps])
+        return max([p.furnace_temperature for p in self.preparation_steps if p.furnace_temperature!=None])
 
     @maximum_temperature.expression
     def maximum_temperature(cls):
@@ -170,7 +122,7 @@ class recipe(Base):
 
     @hybrid_property
     def maximum_pressure(self):
-        return max([p.furnace_pressure for p in self.preparation_steps])
+        return max([p.furnace_pressure for p in self.preparation_steps if p.furnace_pressure!=None])
 
     @maximum_pressure.expression
     def maximum_pressure(cls):
@@ -180,7 +132,7 @@ class recipe(Base):
 
     @hybrid_property
     def average_carbon_flow_rate(self):
-        steps = [p.carbon_source_flow_rate for p in self.preparation_steps]
+        steps = [p.carbon_source_flow_rate for p in self.preparation_steps if p.carbon_source_flow_rate!=None]
         return sum(steps)/len(steps)
 
     @average_carbon_flow_rate.expression
@@ -209,7 +161,8 @@ class recipe(Base):
     @uses_helium.expression
     def uses_helium(cls):
         s = select([preparation_step.helium_flow_rate]).\
-                where(preparation_step.helium_flow_rate != None)
+                where(and_(preparation_step.helium_flow_rate != None,preparation_step.recipe_id==cls.id)).\
+                correlate(cls)
         return exists(s)
 
     @hybrid_property
@@ -219,7 +172,8 @@ class recipe(Base):
     @uses_argon.expression
     def uses_argon(cls):
         s = select([preparation_step.argon_flow_rate]).\
-                where(preparation_step.argon_flow_rate != None)
+                where(and_(preparation_step.argon_flow_rate != None,preparation_step.recipe_id==cls.id)).\
+                correlate(cls)
         return exists(s)
 
     @hybrid_property
@@ -229,7 +183,8 @@ class recipe(Base):
     @uses_hydrogen.expression
     def uses_hydrogen(cls):
         s = select([preparation_step.hydrogen_flow_rate]).\
-                where(preparation_step.hydrogen_flow_rate != None)
+                where(and_(preparation_step.hydrogen_flow_rate != None,preparation_step.recipe_id==cls.id)).\
+                correlate(cls)
         return exists(s)
 
     # PREPARATION STEPS
@@ -256,15 +211,16 @@ class recipe(Base):
 
 class preparation_step(Base):
     __tablename__ = 'preparation_step'
-    recipe_id = Column(Integer,ForeignKey(recipe.id),primary_key=True,info={'verbose_name':'Recipe ID'})
-    step = Column(Integer,primary_key=True)
-    name = Column(String(16),primary_key=True,info={
+    id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
+    recipe_id = Column(Integer,ForeignKey(recipe.id),info={'verbose_name':'Recipe ID'})
+    step = Column(Integer)
+    name = Column(String(16),info={
         'verbose_name':'Name',
         'choices': ['Annealing','Growing','Cooling'],
         'std_unit': None,
         'required': True
         })
-    duration = Column(Float,primary_key=True,info={
+    duration = Column(Float,info={
         'verbose_name':'Duration',
         'std_unit': 'min',
         'conversions': {'min':1,'sec':1/60.,'hrs':60},
@@ -339,7 +295,7 @@ class preparation_step(Base):
             "carbon_source",
             "carbon_source_flow_rate",
             "argon_flow_rate"
-            ] 
+            ]
 
         if self.name == "Cooling":
             params.append('cooling_rate')
@@ -355,8 +311,8 @@ class author(Base):
     __tablename__ = 'author'
 
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    sample_id = Column(Integer,ForeignKey('sample.id'),info={'verbose_name':'Sample ID'})
-    raman_id = Column(Integer,ForeignKey('raman_set.id'),info={'verbose_name':'Raman Set ID'})
+    sample_id = Column(Integer,ForeignKey('sample.id'), index=True, info={'verbose_name':'Sample ID'})
+    raman_id = Column(Integer,ForeignKey('raman_set.id'), index=True, info={'verbose_name':'Raman Set ID'})
     first_name = Column(String(64), info={
         'verbose_name':'First Name',
         'required': False})
@@ -375,7 +331,7 @@ class author(Base):
 class properties(Base):
     __tablename__ = 'properties'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    sample_id = Column(Integer,ForeignKey(sample.id),info={'verbose_name':'Sample ID'})
+    sample_id = Column(Integer,ForeignKey(sample.id), index=True, info={'verbose_name':'Sample ID'})
     average_thickness_of_growth = Column(Float(precision=32),info={
         'verbose_name':'Average Thickness of Growth',
         'std_unit': 'nm',
@@ -429,8 +385,8 @@ class raman_set(Base):
     __tablename__ = 'raman_set'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
     nanohub_userid = Column(Integer,info={'verbose_name':'Nanohub Submitter User ID'})
-    # map_file = Column(Boolean,info={'verbose_name':'Map File'},default=False)
-    sample_id = Column(Integer,ForeignKey(sample.id),info={'verbose_name':'Sample ID'})
+    map_file = Column(Boolean,info={'verbose_name':'Map File'},default=False)
+    sample_id = Column(Integer,ForeignKey(sample.id), index=True, info={'verbose_name':'Sample ID'})
     raman_spectra = relationship("raman_spectrum",cascade="save-update, merge, delete")
     authors = relationship("author")
     experiment_date = Column(Date,default=datetime.date.today,info={
@@ -508,7 +464,7 @@ class raman_set(Base):
 class raman_file(Base):
     __tablename__ = 'raman_file'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    sample_id = Column(Integer,ForeignKey(sample.id))
+    sample_id = Column(Integer,ForeignKey(sample.id), index=True)
     filename = Column(String(64))
     url = Column(String(256))
     wavelength = Column(Float,info={
@@ -530,11 +486,12 @@ class raman_file(Base):
 
 class raman_spectrum(Base):
     __tablename__ = 'raman_spectrum'
-    set_id = Column(Integer,ForeignKey(raman_set.id),info={'verbose_name':'Sample ID'})
-    raman_file_id = Column(Integer,ForeignKey(raman_file.id),primary_key=True)
+    id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
+    set_id = Column(Integer,ForeignKey(raman_set.id), index=True, info={'verbose_name':'Sample ID'})
+    raman_file_id = Column(Integer,ForeignKey(raman_file.id))
     raman_file = relationship("raman_file",uselist=False,cascade="save-update, merge, delete")
-    # xcoord = Column(Integer,info={'verbose_name':'X Coordinate'})
-    # ycoord = Column(Integer,info={'verbose_name':'Y Coordinate'})
+    xcoord = Column(Integer,info={'verbose_name':'X Coordinate'})
+    ycoord = Column(Integer,info={'verbose_name':'Y Coordinate'})
     percent = Column(Float,info={
         'verbose_name':'Characteristic Percent',
         'std_unit': '%',
@@ -606,12 +563,28 @@ class raman_spectrum(Base):
 
 class sem_file(Base):
     __tablename__ = 'sem_file'
-    sample_id = Column(Integer,ForeignKey(sample.id),primary_key=True)
-    filename = Column(String(64),primary_key=True)
+    id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
+    sample_id = Column(Integer,ForeignKey(sample.id))
+    filename = Column(String(64))
     url = Column(String(256))
 
     def json_encodable(self):
         return {'filename': self.filename}
+
+class sem_analysis(Base):
+    __tablename__ = 'sem_analysis'
+    id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
+    sem_file_id = Column(Integer,ForeignKey(sem_file.id))
+    mask_url = Column(String(256))
+    growth_coverage = Column(Float,info={
+        'verbose_name':'Growth Coverage',
+        'std_unit': '%',
+        'conversions':{'%':1},
+        'required': False
+        })
+
+    def json_encodable(self):
+        return {'growth_coverage': {'value':self.growth_coverage,'unit':'%'}}
 
 class mdf_forge(Base):
     __tablename__ = 'mdf_forge'
@@ -640,6 +613,8 @@ class GresqEncoder(JSONEncoder):
             raise TypeError(
                 'Object of type %s with value of %s is not JSON serializable' % (
                     type(o), repr(o)))
+
+
 hybrid_recipe_fields = [
     "maximum_temperature",
     "maximum_pressure",
@@ -649,6 +624,8 @@ hybrid_recipe_fields = [
     "uses_hydrogen",
     "uses_argon"
     ]
+
+# Hybrid attributes require their info dictionary values be set outside of class construction.
 
 recipe.maximum_temperature.info['verbose_name'] = 'Maximum Temperature'
 recipe.maximum_temperature.info['std_unit'] = 'C'
@@ -673,4 +650,3 @@ recipe.uses_argon.info['std_unit'] = None
 
 recipe.uses_hydrogen.info['verbose_name'] = 'Uses Hydrogen'
 recipe.uses_hydrogen.info['std_unit'] = None
-

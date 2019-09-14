@@ -3,12 +3,13 @@
 BOX_CONFIG='/data/tools/gresq/box_config.json'
 DB_CONFIG='/data/tools/gresq/db_config.py'
 DB_MODE='development'
-
-/usr/bin/invoke_app "$@" -C "python @tool/bin/run_gresq.pyc \
+#/usr/bin/invoke_app "$@" -C "python @tool/bin/run_gresq.pyc \
+/usr/bin/invoke_app "$@" -C "python -m gresq  \
                              --nanohub --box_config_path ${BOX_CONFIG} 
                              --db_config_path ${DB_CONFIG} \
                              --db_mode ${DB_MODE} \
                              | tee ${SESSIONDIR}/gresq.log" \
                          -u anaconda3-5.1 \
                          -u pyqtgraph-0.10.0 \
+                         -e PYTHONPATH=@tool/bin:${PYTHONPATH}
                          -t gresq 

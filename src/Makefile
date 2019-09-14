@@ -1,53 +1,25 @@
 
-#COMPILE = ./py3_compilefiles
-COMPILE = . /etc/environ.sh; use -e -r anaconda3-5.1; python -m compileall
 mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
 current_dir := $(dir $(mkfile_path))
 DESTDIR := $(realpath ${current_dir}../bin)
-#DESTDIR = ../bin
-DATADIR = ../data
-DATADESTDIR = ../bin/data
-INSTALL = install -D --mode 0444
-SUBDIRS := gresq gresq/util gresq/database gresq/dashboard \
-           gresq/dashboard/gsaimage/src/gsaimage \
-		   gresq/dashboard/gsaraman/src/gsaraman
 
-# Edit the CYPYTHON_SUFFIX to match python version
-# Add src files to SRCS as needed
-CPYTHON_SUFFIX = cpython-36
-SRCS := run_gresq.py
-DATAFILES := varmap.csv varmap2.csv recipe_2018_11_08.csv
+all:
+	@echo "Run 'make install'"
 
-DATAOBJS := $(patsubst %,${DATADESTDIR}/%,${DATAFILES})
+gsaraman:
+	cd .. && pip install -t ${DESTDIR} ./gsaraman
 
-# Generate a list of objects
-OBJS:= $(patsubst %.py,%.pyc,${SRCS})
+gresq: gsaraman
+	cd .. && pip install -t ${DESTDIR} .
 
-all: ${OBJS} ${SUBDIRS}
+install: gresq
 
-$(SUBDIRS):
-	$(MAKE) -C $@ $(MAKECMDGOALS) DESTDIR=${DESTDIR}/$@
-
-# Implict rules to generate *.pyc targets
-__pycache__/%.${CPYTHON_SUFFIX}.pyc: %.py
-	${COMPILE} $<
-
-%.pyc: __pycache__/%.${CPYTHON_SUFFIX}.pyc
-	cp $< $@
-
-${DATADESTDIR}/%:
-	${INSTALL} ${DATADIR}/$(@F) $@
-
-install: $(addprefix install_,${OBJS}) ${SUBDIRS} ${DATAOBJS}
-
-$(addprefix install_,$(OBJS)): install_%: %
-	${INSTALL} $< $(DESTDIR)/$<
-
-clean: ${SUBDIRS}
-	rm -rf *.pyc __pycache__
+clean:
+	rm -rf ${DESTDIR}/gresq
+	rm -rf ${DESTDIR}/bin
+	rm -rf ${DESTDIR}/GrResQ*
+	rm -rf ${DESTDIR}/gsaraman
 
 distclean: clean
-	rm -rf ${DESTDIR}/*.pyc
-	rm -rf ${DATADESTDIR}
 
-.PHONY: install all clean distclean ${SUBDIRS}
+.PHONY: all install clean distclean
