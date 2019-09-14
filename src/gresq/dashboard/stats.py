@@ -12,6 +12,8 @@ label_font = QtGui.QFont("Helvetica", 16, QtGui.QFont.Bold)
 
 class PlotWidget(QtGui.QWidget):
 	sigClicked = QtCore.pyqtSignal(object, object)
+	
+	#selectedBrush = QtGui.QBrush(QtGui.QColor(0, 255, 0))
 
 	def __init__(self,parent=None):
 		super(PlotWidget,self).__init__(parent=parent)
@@ -30,7 +32,8 @@ class PlotWidget(QtGui.QWidget):
 		self.plot_widget.addItem(self.scatter_plot)
 
 		# Connect signal to slot - slot should be a function in the class defining the display below the plot
-		self.scatter_plot.sigClicked.connect(lambda plot, points: self.sigClicked.emit(plot,points))
+		# self.scatter_plot.sigClicked.connect(lambda plot, points: self.sigClicked.emit(plot,points))
+		self.scatter_plot.sigClicked.connect(self.onClickedPoint)
 
 		self.xaxisbox.activated.connect(self.updatePlot)
 		self.yaxisbox.activated.connect(self.updatePlot)
@@ -41,6 +44,15 @@ class PlotWidget(QtGui.QWidget):
 		self.layout.addWidget(self.yaxisbox,1,1,1,1)
 		self.layout.addWidget(self.plot_widget,2,0,1,2)
 
+	def onClickedPoint(self, plot, points):
+		# First, set color of all points in plot
+		for pt in self.scatter_plot.points():
+			pt.setBrush(255, 0, 0)
+		# Second, set color of selected point
+		if len(points) > 0:
+		 	points[0].setBrush(0, 255, 0)
+
+		self.sigClicked.emit(plot, points)
 
 	def setModel(self,model,xfields=None,yfields=None):
 		self.model = model
@@ -66,17 +78,19 @@ class PlotWidget(QtGui.QWidget):
 		scatter_data = self.model.df.loc[:,[x,y, "id"]].dropna()
 
 		# Find the id of each row corresponding to an (x, y) point in the plot
-		
+		defaultBrush = QtGui.QBrush(QtGui.QColor(255, 0, 0))
 		if x != y:
 			self.scatter_plot.setData(
 				x=scatter_data[x],
 				y=scatter_data[y],
+				brush= defaultBrush,
 				data=scatter_data["id"].tolist()
 				)
 		else:
 			self.scatter_plot.setData(
 				x=scatter_data.iloc[:,0],
 				y=scatter_data.iloc[:,0],
+				brush= defaultBrush,
 				data=scatter_data["id"].tolist()
 				)
 
