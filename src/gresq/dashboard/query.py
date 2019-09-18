@@ -102,7 +102,8 @@ selection_list = {
     'Experimental Conditions':{'fields':recipe_fields,'model':recipe},
     'Preparation': {'fields':preparation_fields,'model':preparation_step},
     'Properties': {'fields':properties_fields,'model':properties},
-    'Raman Analysis': {'fields':raman_fields,'model':raman_set}
+    'Raman Analysis': {'fields':raman_fields,'model':raman_set},
+    'Provenance Information': {'fields':author_fields,'model':author}
     }
 
 sql_validator = {
@@ -419,11 +420,12 @@ class PreviewWidget(QtGui.QTabWidget):
     """
     def __init__(self,privileges=None,parent=None):
         super(PreviewWidget,self).__init__(parent=parent)
-
+        self.privileges = privileges
         self.detail_tab = DetailWidget()
         self.sem_tab = SEMDisplayTab()
         self.recipe_tab = RecipeDisplayTab()
         self.provenance_tab = ProvenanceDisplayTab()
+        self.admin_tab = None
         self.setTabPosition(QtGui.QTabWidget.South)
 
         self.addTab(self.detail_tab,'Details')
@@ -459,7 +461,8 @@ class PreviewWidget(QtGui.QTabWidget):
             self.sem_tab.update(s)
             self.recipe_tab.update(s.recipe)
             self.provenance_tab.update(s.authors)
-            self.admin_tab.update(s)
+            if self.admin_tab:
+                self.admin_tab.update(s)
 
 class ResultsWidget(QtGui.QTabWidget):
     """
@@ -512,6 +515,7 @@ class ResultsWidget(QtGui.QTabWidget):
                     join(sample.properties).\
                     outerjoin(recipe.preparation_steps).\
                     outerjoin(raman_set).\
+                    outerjoin(author).\
                     filter(*filters).distinct()
 
                 self.results_model.read_sqlalchemy(q.statement,session,models=[sample,recipe,properties,raman_set])
