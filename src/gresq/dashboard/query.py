@@ -12,7 +12,7 @@ from PIL import Image
 from gresq.util.models import ResultsTableModel
 from gresq.util.box_adaptor import BoxAdaptor
 from gresq.dashboard.stats import TSNEWidget, PlotWidget
-from gresq.util.csv2db2 import build_db
+# from gresq.util.csv2db2 import build_db
 from gresq.database import sample, preparation_step, dal, Base, mdf_forge, properties, recipe, raman_set, author
 from sqlalchemy import String, Integer, Float, Numeric
 from gresq.config import config
@@ -164,9 +164,9 @@ class GSAQuery(QtGui.QWidget):
         self.results.setSizePolicy(QtGui.QSizePolicy.Maximum,QtGui.QSizePolicy.Preferred)
 
         self.preview = PreviewWidget(privileges=self.privileges)
-        self.preview.admin_tab.updateQuery.connect(lambda: self.query(self.filters))
-        self.preview.admin_tab.queryUnvalidated.connect(lambda: self.query([sample.validated.is_(False)]))
-        # self.results.plot.scatter_plot.sigClicked.connect(lambda x: self.preview.select(self.results.results_model,x[0]))
+        if self.privileges['validate'] or self.privileges['write']:
+            self.preview.admin_tab.updateQuery.connect(lambda: self.query(self.filters))
+            self.preview.admin_tab.queryUnvalidated.connect(lambda: self.query([sample.validated.is_(False)]))
 
         self.addFilterBtn = QtGui.QPushButton('Add Filter')
         self.addFilterBtn.clicked.connect(lambda: self.addFilter(self.filter_fields.currentWidget()))
@@ -176,9 +176,6 @@ class GSAQuery(QtGui.QWidget):
 
         searchLabel = QtGui.QLabel('Query')
         searchLabel.setFont(label_font)
-
-        # previewLabel = QtGui.QLabel('Preview')
-        # previewLabel.setFont(label_font)
 
         resultsLabel = QtGui.QLabel('Results')
         resultsLabel.setFont(label_font)
@@ -905,10 +902,6 @@ class AdminDisplayTab(QtGui.QScrollArea):
 
 if __name__ == '__main__':
     dal.init_db(config['development'])
-    # Base.metadata.drop_all(bind=dal.engine)
-    # Base.metadata.create_all(bind=dal.engine)
-    # with dal.session_scope() as session:
-    #   build_db(session,os.path.join(os.getcwd(),'../data'))
     app = QtGui.QApplication([])
     query = GSAQuery()
     query.show()
