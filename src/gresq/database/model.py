@@ -4,12 +4,30 @@ from sqlalchemy.orm import scoped_session, sessionmaker, relationship
 from contextlib import contextmanager
 from gresq.config import Config
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
+from sqlalchemy.ext import compiler
 from sqlalchemy import select, func, and_, or_
-from sqlalchemy.sql import exists
+from sqlalchemy.sql import exists, expression
 import ast, datetime
 from sqlalchemy import Column, String, Integer, Float, Numeric, ForeignKey, Date, Boolean
 from sqlalchemy.orm import relationship, backref
 from gresq.database import Base
+
+
+class group_concat(expression.FunctionElement):
+    name = "group_concat"
+
+
+@compiler.compiles(group_concat, 'mysql')
+def _group_concat_mysql(element, compiler, **kw):
+    if len(element.clauses) == 2:
+        separator = compiler.process(element.clauses.clauses[1])
+    else:
+        separator = ', '
+
+    return 'GROUP_CONCAT(%s SEPARATOR %s)'.format(
+        compiler.process(element.clauses.clauses[0]),
+        separator,
+    )
 
 class sample(Base):
     __tablename__ = 'sample'
@@ -32,6 +50,16 @@ class sample(Base):
     sem_files = relationship("sem_file",cascade="save-update, merge, delete")
     raman_files = relationship("raman_file")
     validated = Column(Boolean,info={'verbose_name':'Validated','std_unit':None},default=False)
+
+    @hybrid_property
+    def author_last_names(self):
+        return ', '.join(sorted([a.last_name for a in self.authors if a.last_name]))
+
+    @author_last_names.expression
+    def author_last_names(cls):
+        selection = select([func.group_concat(author.last_name)]).\
+                where(author.sample_id==cls.id).\
+                correlate(cls)
 
     def json_encodable(self):
         return {
@@ -315,11 +343,21 @@ class author(Base):
     raman_id = Column(Integer,ForeignKey('raman_set.id'), index=True, info={'verbose_name':'Raman Set ID'})
     first_name = Column(String(64), info={
         'verbose_name':'First Name',
+        'std_unit': None,
         'required': False})
     last_name = Column(String(64), info={
         'verbose_name':'Last Name',
+        'std_unit': None,
         'required': False})
-    institution = Column(String(64), info={'verbose_name':'Institution'})
+    institution = Column(String(64), info={
+        'verbose_name':'Institution',
+        'std_unit': None,
+        'required': False
+        })
+
+    @hybrid_property
+    def full_name_and_institution(self):
+        return "%s, %s   (%s)"%(self.last_name,self.first_name,self.institution)
 
     def json_encodable(self):
         return {
@@ -574,14 +612,17 @@ class sem_file(Base):
 class sem_analysis(Base):
     __tablename__ = 'sem_analysis'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
+    # sample_id = Column(Integer,ForeignKey(sample.id))
     sem_file_id = Column(Integer,ForeignKey(sem_file.id))
     mask_url = Column(String(256))
+    # validated = Column(Boolean,info={'verbose_name':'Validated','std_unit':None},default=False)
     growth_coverage = Column(Float,info={
         'verbose_name':'Growth Coverage',
         'std_unit': '%',
         'conversions':{'%':1},
         'required': False
         })
+    # characteristic_sem = Column(Boolean,info={'verbose_name':'Characteristic SEM','std_unit':None},default=False)
 
     def json_encodable(self):
         return {'growth_coverage': {'value':self.growth_coverage,'unit':'%'}}
@@ -625,6 +666,10 @@ hybrid_recipe_fields = [
     "uses_argon"
     ]
 
+hybrid_author_fields = [
+    "full_name_and_institution"
+]
+
 # Hybrid attributes require their info dictionary values be set outside of class construction.
 
 recipe.maximum_temperature.info['verbose_name'] = 'Maximum Temperature'
@@ -650,3 +695,6 @@ recipe.uses_argon.info['std_unit'] = None
 
 recipe.uses_hydrogen.info['verbose_name'] = 'Uses Hydrogen'
 recipe.uses_hydrogen.info['std_unit'] = None
+
+author.full_name_and_institution.info['verbose_name'] = "Author"
+author.full_name_and_institution.info['std_unit'] = None

@@ -13,7 +13,7 @@ from gresq.util.models import ResultsTableModel
 from gresq.util.box_adaptor import BoxAdaptor
 from gresq.dashboard.stats import TSNEWidget, PlotWidget
 # from gresq.util.csv2db2 import build_db
-from gresq.database import sample, preparation_step, dal, Base, mdf_forge, properties, recipe, raman_set, author
+from gresq.database import sample, preparation_step, dal, Base, mdf_forge, properties, recipe, raman_set, author, raman_spectrum
 from sqlalchemy import String, Integer, Float, Numeric
 from gresq.config import config
 import scipy
@@ -90,6 +90,19 @@ raman_fields = [
     "d_to_g"
 ]
 
+spectrum_fields = [
+    "percent",
+    "d_peak_shift",
+    "d_peak_amplitude",
+    "d_fwhm",
+    "g_peak_shift",
+    "g_peak_amplitude",
+    "g_fwhm",
+    "g_prime_peak_shift",
+    "g_prime_peak_amplitude",
+    "g_prime_fwhm"    
+]
+
 sample_fields = [
     "id",
     "experiment_date",
@@ -122,6 +135,18 @@ operators = {
 }
 
 label_font = QtGui.QFont("Helvetica", 28, QtGui.QFont.Bold)
+
+def convertScripts(text):
+    if '^' in text:
+        words = text.split('^')
+        new_text = "%s<sup>%s</sup>"%(words[0],words[1])
+    elif '_' in text:
+        words = text.split('_')
+        new_text = "%s<sub>%s</sub>"%(words[0],words[1])
+    else:
+        new_text = text
+
+    return new_text
 
 class GSAQuery(QtGui.QWidget):
     """
@@ -423,6 +448,7 @@ class PreviewWidget(QtGui.QTabWidget):
         self.privileges = privileges
         self.detail_tab = DetailWidget()
         self.sem_tab = SEMDisplayTab()
+        self.raman_tab = RamanDisplayTab()
         self.recipe_tab = RecipeDisplayTab()
         self.provenance_tab = ProvenanceDisplayTab()
         self.admin_tab = None
@@ -430,7 +456,7 @@ class PreviewWidget(QtGui.QTabWidget):
 
         self.addTab(self.detail_tab,'Details')
         self.addTab(self.sem_tab,'SEM')
-        self.addTab(QtGui.QWidget(),'Raman')
+        self.addTab(self.raman_tab,'Raman')
         self.addTab(self.recipe_tab,'Recipe')
         self.addTab(self.provenance_tab,'Provenance')
 
@@ -459,6 +485,7 @@ class PreviewWidget(QtGui.QTabWidget):
                 s = model
             self.detail_tab.update(s.properties,s.recipe)
             self.sem_tab.update(s)
+            self.raman_tab.update(s)
             self.recipe_tab.update(s.recipe)
             self.provenance_tab.update(s.authors)
             if self.admin_tab:
@@ -502,7 +529,7 @@ class ResultsWidget(QtGui.QTabWidget):
         self.results_model = ResultsTableModel()
         if len(filters)>0:
             with dal.session_scope() as session:
-                all_sample_fields = [c.key for c in sample.__table__.columns]
+                all_sample_fields = [c.key for c in sample.__table__.columns] #+['author_last_names']
                 sample_columns = tuple([getattr(sample,s) for s in all_sample_fields])
                 recipe_columns = tuple([getattr(recipe,r) for r in recipe_fields+hybrid_recipe_fields])
                 properties_columns = tuple([getattr(properties,p) for p in properties_fields])
@@ -544,13 +571,19 @@ class FieldsDisplayWidget(QtGui.QScrollArea):
 
         for f,field in enumerate(fields):
             self.fields[field] = {}
-            self.fields[field]['label'] = QtGui.QLabel(getattr(model,field).info['verbose_name']+':')
+            info = getattr(model,field).info
+            if info['std_unit']:
+                unit = convertScripts(info['std_unit'])
+                label = "%s (%s):"%(info['verbose_name'],unit)
+            else:
+                label = "%s:"%(info['verbose_name'])
+            self.fields[field]['label'] = QtGui.QLabel(label)
             self.fields[field]['label'].setWordWrap(True)
             # self.fields[field]['label'].setMaximumWidth(120)
             # self.fields[field]['label'].setMinimumHeight(self.fields[field]['label'].sizeHint().height())
             self.fields[field]['value'] = QtGui.QLabel()
             self.fields[field]['value'].setMinimumWidth(50)
-            self.fields[field]['value'].setAlignment(QtCore.Qt.AlignRight)
+            self.fields[field]['value'].setAlignment(QtCore.Qt.AlignCenter)
             self.layout.addWidget(self.fields[field]['label'],f%elements_per_col,2*(f//elements_per_col))
             self.layout.addWidget(self.fields[field]['value'],f%elements_per_col,2*(f//elements_per_col)+1)
 
@@ -579,22 +612,21 @@ class FieldsDisplayWidget(QtGui.QScrollArea):
             self.fields[field]['value'].setText(str(value))
 
 class DownloadThread(QtCore.QThread):
-    imageDownloaded = QtCore.pyqtSignal(object,int)
+    downloadFinished = QtCore.pyqtSignal(object,int)
     def __init__(self,url,thread_id):
         super(DownloadThread,self).__init__()
         self.url = url
         self.thread_id = thread_id
-        self.img = None
+        self.data = None
 
-        self.finished.connect(lambda: self.imageDownloaded.emit(self.img,self.thread_id))
+        self.finished.connect(lambda: self.downloadFinished.emit(self.data,self.thread_id))
 
     def __del__(self):
         self.wait()
 
     def run(self):
         r = requests.get(self.url)
-        data = r.content
-        self.img = np.array(Image.open(io.BytesIO(data)))
+        self.data = r.content
 
 class SEMDisplayTab(QtGui.QScrollArea):
     def __init__(self,parent=None):
@@ -621,7 +653,8 @@ class SEMDisplayTab(QtGui.QScrollArea):
 
         self.file_list.currentRowChanged.connect(self.sem_info.setCurrentIndex)
 
-    def loadImage(self,img,thread_id):
+    def loadImage(self,data,thread_id):
+        img = np.array(Image.open(io.BytesIO(data)))
         image_tab = pg.GraphicsLayoutWidget()
         wImgBox_VB = image_tab.addViewBox(row=1,col=1)
         wImgItem = pg.ImageItem()
@@ -653,7 +686,7 @@ class SEMDisplayTab(QtGui.QScrollArea):
                     self.progress_bar.setValue(1)
                     for sem in sample_model.sem_files:
                         thread = DownloadThread(url=sem.url,thread_id=sem.sample_id)
-                        thread.imageDownloaded.connect(self.loadImage)
+                        thread.downloadFinished.connect(self.loadImage)
                         thread.start()
                         print('Thread started.')
                         self.threads.append(thread)
@@ -679,7 +712,7 @@ class ProvenanceDisplayTab(QtGui.QScrollArea):
         self.author_widgets = []
 
         for a,auth in enumerate(author_models):
-            self.author_widgets.append(FieldsDisplayWidget(fields=author_fields,model=author))
+            self.author_widgets.append(FieldsDisplayWidget(fields=["full_name_and_institution"],model=author))
             self.author_widgets[-1].setData(auth)
             self.layout.addWidget(self.author_widgets[-1],a,0)
 
@@ -693,8 +726,57 @@ class RamanDisplayTab(QtGui.QScrollArea):
         self.setWidgetResizable(True)
         self.setWidget(self.contentWidget)
 
-    def update(self,sample_json=None):
-        pass
+        self.progress_bar = QtGui.QProgressBar()
+        self.file_list = QtGui.QListWidget()
+        self.raman_info = QtGui.QStackedWidget()
+        self.weighted_values = FieldsDisplayWidget(fields=raman_fields,model=raman_set,elements_per_col=1)
+        self.sample_id = None
+        self.threads = []
+
+        self.file_list.setFixedWidth(130)
+        self.progress_bar.setFixedWidth(130)
+
+        self.layout.addWidget(self.file_list,0,0,1,1)
+        self.layout.addWidget(self.raman_info,0,1,1,1)
+        self.layout.addWidget(self.weighted_values,1,1,1,1)
+        self.layout.addWidget(self.progress_bar,1,0,1,1)
+
+    def loadSpectrum(self,data,thread_id,spectrum_model):
+        raman_tabs = QtGui.QTabWidget()
+        spectrum_plot_tab = QtGui.QWidget()
+        spectrum_properties_tab = FieldsDisplayWidget(fields=spectrum_fields,model=raman_spectrum)
+        spectrum_properties_tab.setData(spectrum_model)
+        raman_tabs.addTab(spectrum_plot_tab,"Spectrum")
+        raman_tabs.addTab(spectrum_properties_tab,"Properties")
+
+        if self.sample_id == thread_id:
+            self.file_list.addItem("Spectrum %s (%s%%)"%(str(self.file_list.count()+1),round(spectrum_model.percent,2)))
+            self.raman_info.addWidget(raman_tabs)
+            self.progress_bar.setValue(100*sum([t.isFinished() for t in self.threads])/len(self.threads))
+
+    def update(self,sample_model=None):
+        if sample_model != None:
+            if sample_model.id != self.sample_id:
+                self.file_list.clear()
+                self.progress_bar.reset()
+
+                for w in [self.raman_info.widget(i) for i in range(self.raman_info.count())]:
+                    self.raman_info.removeWidget(w)
+
+                self.threads = []
+                self.sample_id = sample_model.id
+                raman_analysis = sample_model.raman_analysis
+                self.weighted_values.setData(raman_analysis)
+                if len(raman_analysis.raman_spectra) > 0:
+                    self.progress_bar.setValue(1)
+                    for spectrum in raman_analysis.raman_spectra:
+                        thread = DownloadThread(url=spectrum.raman_file.url,thread_id=raman_analysis.sample_id)
+                        thread.downloadFinished.connect(lambda x,y: self.loadSpectrum(x,y,spectrum))
+                        thread.start()
+                        print('Thread started.')
+                        self.threads.append(thread)
+                else:
+                    self.progress_bar.setValue(100)
 
 class RecipeDisplayTab(QtGui.QScrollArea):
     def __init__(self,parent=None):

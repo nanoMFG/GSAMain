@@ -11,6 +11,7 @@ from gresq.util.csv2db import build_db
 from gsaraman import GSARaman
 from gresq.recipe import Recipe
 from gresq.util.mdf_adaptor import MDFAdaptor, MDFException
+from gresq.dashboard.query import convertScripts
 
 
 sample_fields = [
@@ -101,7 +102,8 @@ class GSASubmit(QtGui.QTabWidget):
 			properties_response = self.properties.getResponse(),
 			preparation_response = self.preparation.getResponse(),
 			files_response = self.file_upload.getResponse(),
-			provenance_response = self.provenance.getResponse()
+			provenance_response = self.provenance.getResponse(),
+			validator_response = self.properties.validate() + self.preparation.validate() + self.file_upload.validate() + self.provenance.validate()
 			))
 
 		self.provenance.nextButton.clicked.connect(lambda: self.setCurrentWidget(self.review))
@@ -322,6 +324,20 @@ class ProvenanceTab(QtGui.QWidget):
 		self.remove_author_btn.clicked.connect(self.removeAuthor)
 		self.clearButton.clicked.connect(self.clear)
 
+	def validate_authors(self,provenance_response):
+		if len(provenance_response['author'])==0:
+			return "You must have at least one author."
+		for a,auth in enumerate(provenance_response['author']):
+			if auth['last_name']['value']==None or auth['first_name']['value']==None:
+				return "Author %s (input: %s, %s) must have a valid first and last name"%(a,auth['last_name']['value'],auth['first_name']['value'])
+			if auth['institution']['value']==None:
+				return "Author [%s, %s] must have a valid institution"%(auth['last_name']['value'],auth['first_name']['value'])
+		return True
+
+	def validate(self):
+		response = self.getResponse()
+		return [self.validate_authors(response)]
+
 	def addAuthor(self):
 		"""
 		Add another author. Adds new entry to author list and creates new author input widget.
@@ -399,6 +415,9 @@ class PropertiesTab(QtGui.QWidget):
 
 		self.clearButton.clicked.connect(self.clear)
 
+	def validate(self):
+		return []
+
 	def getResponse(self):
 		return self.properties_form.getResponse()
 
@@ -463,6 +482,63 @@ class PreparationTab(QtGui.QWidget):
 			name_widget.setCurrentIndex(step)
 			name_widget.activated[str].emit(name_widget.currentText())
 
+	def validate(self):
+		response = self.getResponse()
+		return [
+				self.validate_preparation(response),
+				self.validate_temperature(response),
+				self.validate_pressure(response),
+				self.validate_base_pressure(response),
+				self.validate_duration(response),
+				self.validate_carbon_source(response)
+				]
+
+	def validate_preparation(self,preparation_response):
+		if len(preparation_response['preparation_step'])==0:
+			return "Missing preparation steps."
+		else:
+			return True
+
+	def validate_temperature(self,preparation_response):
+		for s,step in enumerate(preparation_response['preparation_step']):
+			if step['furnace_temperature']['value'] == None:
+				return "Missing input for field '%s' for Preparation Step %s (%s)."\
+					%(preparation_step.furnace_temperature.info['verbose_name'],s,step['name']['value'])
+		return True
+
+	def validate_pressure(self,preparation_response):
+		for s,step in enumerate(preparation_response['preparation_step']):
+			if step['furnace_pressure']['value'] == None:
+				return "Missing input for field '%s' for Preparation Step %s (%s)."\
+					%(preparation_step.furnace_pressure.info['verbose_name'],s,step['name']['value'])
+		return True
+
+	def validate_base_pressure(self,preparation_response):
+		if preparation_response['recipe']['base_pressure']['value'] == None:
+			return "Missing input for field '%s' in Preparation."%(recipe.base_pressure.info['verbose_name'])
+		else:
+			return True
+
+	def validate_duration(self,preparation_response):
+		for s,step in enumerate(preparation_response['preparation_step']):
+			if step['duration']['value'] == None:
+				return "Missing input for field '%s' for preparation Step %s (%s)."\
+					%(preparation_step.duration.info['verbose_name'],s,step['name']['value'])
+		return True
+
+	def validate_carbon_source(self,preparation_response):
+		list_of_sources = [step["carbon_source"]["value"] for step
+					  in preparation_response['preparation_step']
+					  if step["carbon_source"]["value"] and step["name"]["value"]=='Growing']
+		list_of_flows = [step["carbon_source_flow_rate"]["value"] for step
+					  in preparation_response['preparation_step']
+					  if step["carbon_source_flow_rate"]["value"] and step["name"]["value"]=='Growing']
+		if len(list_of_sources) == 0:
+			return "You must have at least one carbon source."
+		if len(list_of_flows) != len(list_of_sources):
+			return "You must have a flow rate for each carbon source."
+		return True
+
 	def addStep(self):
 		"""
 		Add another step. Adds new entry to step list and creates new step input widget.
@@ -474,11 +550,11 @@ class PreparationTab(QtGui.QWidget):
 		item = self.steps_list.item(idx)
 		w.input_widgets['name'].activated[str].connect(item.setText)
 		w.input_widgets['name'].activated[str].connect(
-			lambda x: w.input_widgets['carbon_source'].hide() if x!='Growing' else w.input_widgets['carbon_source'].show())
+			lambda x: w.input_widgets['carbon_source'].hide() if x not in ['Growing','Cooling'] else w.input_widgets['carbon_source'].show())
 		w.input_widgets['name'].activated[str].connect(
-			lambda x: w.input_widgets['carbon_source_flow_rate'].hide() if x!='Growing' else w.input_widgets['carbon_source_flow_rate'].show())
+			lambda x: w.input_widgets['carbon_source_flow_rate'].hide() if x not in ['Growing','Cooling'] else w.input_widgets['carbon_source_flow_rate'].show())
 		w.input_widgets['name'].activated[str].connect(
-			lambda x: w.units_input['carbon_source_flow_rate'].hide() if x!='Growing' else w.units_input['carbon_source_flow_rate'].show())
+			lambda x: w.units_input['carbon_source_flow_rate'].hide() if x not in ['Growing','Cooling'] else w.units_input['carbon_source_flow_rate'].show())
 		w.input_widgets['name'].activated[str].emit(w.input_widgets['name'].currentText())
 
 	def removeStep(self):
@@ -551,14 +627,7 @@ class PreparationTab(QtGui.QWidget):
 	def handle_send_to_oscm(self):
 		preparation_response = self.getResponse()
 
-		validator_response = [
-			ReviewTab.validate_preparation(preparation_response),
-			ReviewTab.validate_temperature(preparation_response),
-			ReviewTab.validate_pressure(preparation_response),
-			ReviewTab.validate_duration(preparation_response),
-			ReviewTab.validate_base_pressure(preparation_response),
-			ReviewTab.validate_carbon_source(preparation_response)
-			]
+		validator_response = self.validate()
 
 		if any([v!=True for v in validator_response]):
 			error_dialog = QtGui.QMessageBox(self)
@@ -700,6 +769,34 @@ class FileUploadTab(QtGui.QWidget):
 				return
 		else:
 				return
+
+	def validate_percentages(self,files_response):
+		if len(files_response['Raman Files'])>0:
+			try:
+				sm = []
+				for i in files_response['Characteristic Percentage']:
+					if i != '':
+						sm.append(float(i))
+				sm = sum(sm)
+			except:
+				return "Please make sure you have input a characteristic percentage for all Raman spectra."
+			if sm != 100:
+				return "Characteristic percentages must sum to 100%. They currently sum to %s."%sm
+			return True
+		else:
+			return True
+
+	def validate_raman_files(self,files_response):
+		for ri,ram in enumerate(files_response['Raman Files']):
+			try:
+				params = GSARaman.auto_fitting(ram)
+			except:
+				return 'File formatting issue with file: %s'%ram
+		return True
+
+	def validate(self):
+		response = self.getResponse()
+		return [self.validate_percentages(response),self.validate_raman_files(response)]
 
 	def getResponse(self):
 		"""
@@ -843,7 +940,8 @@ class ReviewTab(QtGui.QScrollArea):
 			info = getattr(properties,field).info
 			row = self.layout.rowCount()
 			value = properties_response[field]['value']
-			unit = properties_response[field]['unit']
+			unit = convertScripts(properties_response[field]['unit'])
+			
 			label = QtGui.QLabel(info['verbose_name'])
 			self.layout.addWidget(label,row,0,QtCore.Qt.AlignLeft|QtCore.Qt.AlignCenter)
 			self.layout.addWidget(QtGui.QLabel(str(value)),row,1,QtCore.Qt.AlignRight|QtCore.Qt.AlignCenter)
@@ -864,7 +962,7 @@ class ReviewTab(QtGui.QScrollArea):
 			info = getattr(recipe,field).info
 			row = self.layout.rowCount()
 			value = recipe_response[field]['value']
-			unit = recipe_response[field]['unit']
+			unit = convertScripts(recipe_response[field]['unit'])
 			label = QtGui.QLabel(info['verbose_name'])
 			self.layout.addWidget(label,row,0,QtCore.Qt.AlignLeft|QtCore.Qt.AlignCenter)
 			self.layout.addWidget(QtGui.QLabel(str(value)),row,1,QtCore.Qt.AlignRight|QtCore.Qt.AlignCenter)
@@ -883,7 +981,7 @@ class ReviewTab(QtGui.QScrollArea):
 				info = getattr(preparation_step,field).info
 				row = self.layout.rowCount()
 				value = step_response[field]['value']
-				unit = step_response[field]['unit']
+				unit = convertScripts(step_response[field]['unit'])
 				label = QtGui.QLabel(info['verbose_name'])
 				self.layout.addWidget(label,row,0,QtCore.Qt.AlignLeft|QtCore.Qt.AlignCenter)
 				self.layout.addWidget(QtGui.QLabel(str(value)),row,1,QtCore.Qt.AlignRight|QtCore.Qt.AlignCenter)
@@ -921,97 +1019,7 @@ class ReviewTab(QtGui.QScrollArea):
 		self.setWidget(self.contentWidget)
 		self.setWidgetResizable(True)
 
-	@staticmethod
-	def validate_temperature(preparation_response):
-		for s,step in enumerate(preparation_response['preparation_step']):
-			if step['furnace_temperature']['value'] == None:
-				return "Missing input for field '%s' for Preparation Step %s (%s)."\
-					%(preparation_step.furnace_temperature.info['verbose_name'],s,step['name']['value'])
-		return True
-
-	@staticmethod
-	def validate_pressure(preparation_response):
-		for s,step in enumerate(preparation_response['preparation_step']):
-			if step['furnace_pressure']['value'] == None:
-				return "Missing input for field '%s' for Preparation Step %s (%s)."\
-					%(preparation_step.furnace_pressure.info['verbose_name'],s,step['name']['value'])
-		return True
-
-	@staticmethod
-	def validate_base_pressure(preparation_response):
-		if preparation_response['recipe']['base_pressure']['value'] == None:
-			return "Missing input for field '%s' in Preparation."%(recipe.base_pressure.info['verbose_name'])
-		else:
-			return True
-
-	@staticmethod
-	def validate_duration(preparation_response):
-		for s,step in enumerate(preparation_response['preparation_step']):
-			if step['duration']['value'] == None:
-				return "Missing input for field '%s' for preparation Step %s (%s)."\
-					%(preparation_step.duration.info['verbose_name'],s,step['name']['value'])
-		return True
-
-	@staticmethod
-	def validate_carbon_source(preparation_response):
-		list_of_sources = [step["carbon_source"]["value"] for step
-					  in preparation_response['preparation_step']
-					  if step["carbon_source"]["value"] and step["name"]["value"]=='Growing']
-		list_of_flows = [step["carbon_source_flow_rate"]["value"] for step
-					  in preparation_response['preparation_step']
-					  if step["carbon_source_flow_rate"]["value"] and step["name"]["value"]=='Growing']
-		if len(list_of_sources) == 0:
-			return "You must have at least one carbon source."
-		if len(list_of_flows) != len(list_of_sources):
-			return "You must have a flow rate for each carbon source."
-		return True
-
-	@staticmethod
-	def validate_percentages(files_response):
-		if len(files_response['Raman Files'])>0:
-			try:
-				sm = []
-				for i in files_response['Characteristic Percentage']:
-					if i != '':
-						sm.append(float(i))
-				sm = sum(sm)
-			except:
-				return "Please make sure you have input a characteristic percentage for all Raman spectra."
-			if sm != 100:
-				return "Characteristic percentages must sum to 100%. They currently sum to %s."%sm
-			return True
-		else:
-			return True
-
-	@staticmethod
-	def validate_authors(provenance_response):
-		if len(provenance_response['author'])==0:
-			return "You must have at least one author."
-		for a,auth in enumerate(provenance_response['author']):
-			if auth['last_name']['value']==None or auth['first_name']['value']==None:
-				return "Author %s (input: %s, %s) must have a valid first and last name"%(a,auth['last_name']['value'],auth['first_name']['value'])
-			if auth['institution']['value']==None:
-				return "Author [%s, %s] must have a valid institution"%(auth['last_name']['value'],auth['first_name']['value'])
-		return True
-
-	@staticmethod
-	def validate_preparation(preparation_response):
-		if len(preparation_response['preparation_step'])==0:
-			return "Missing preparation steps."
-		else:
-			return True
-
-	@staticmethod
-	def validate_raman_files(files_response):
-		for ri,ram in enumerate(files_response['Raman Files']):
-			try:
-				params = GSARaman.auto_fitting(ram)
-			except:
-				return 'File formatting issue with file: %s'%ram
-		return True
-
-
-	def submit(self,properties_response,preparation_response,files_response, provenance_response):
+	def submit(self,properties_response,preparation_response,files_response, provenance_response, validator_response=[]):
 		"""
 		Checks and validates responses. If invalid, displays message box with problems.
 		Otherwise, it submits the full, validated response and returns the output response dictionary.
@@ -1036,18 +1044,6 @@ class ReviewTab(QtGui.QScrollArea):
 		**kwargs:		All entries from files_response
 
 		"""
-
-		validator_response = [
-			ReviewTab.validate_preparation(preparation_response),
-			ReviewTab.validate_temperature(preparation_response),
-			ReviewTab.validate_pressure(preparation_response),
-			ReviewTab.validate_duration(preparation_response),
-			ReviewTab.validate_base_pressure(preparation_response),
-			ReviewTab.validate_percentages(files_response),
-			ReviewTab.validate_authors(provenance_response),
-			ReviewTab.validate_carbon_source(preparation_response),
-			ReviewTab.validate_raman_files(files_response)
-			]
 
 		if any([v!=True for v in validator_response]):
 			error_dialog = QtGui.QMessageBox(self)
@@ -1360,8 +1356,6 @@ def make_test_dict(test_sem_file=None,test_raman_file=None):
 if __name__ == '__main__':
 	os.system("source gresq/sql_source.sh")
 	dal.init_db(config['development'],privileges={'read':True,'write':True,'validate':False})
-	# Base.metadata.drop_all(bind=dal.engine)
-	# Base.metadata.create_all(bind=dal.engine)
 
 	app = QtGui.QApplication([])
 	submit = GSASubmit(box_config_path='box_config.json',privileges={'read':True,'write':True,'validate':False})
