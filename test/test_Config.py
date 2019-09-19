@@ -3,6 +3,8 @@ import importlib
 import pytest
 import gresq.config
 
+#from gresq.testing import fixtures
+
 vars_dict = {'DEV_DATABASE_URL' : '', 'DEV_DATABASE_ARGS' : '',
              'DEV_DATABASE_URL_READ' : '', 'DEV_DATABASE_ARGS_READ' : '',
              'DEV_DATABASE_URL_WRITE' : '', 'DEV_DATABASE_ARGS_WRITE' : '',
@@ -36,26 +38,33 @@ def set_multi_env_vars():
 def unset_env_vars():
     """unset environment and secrets file to test defaults
     """
+    #print("unsetting env")
     for k in vars_dict.keys():
         val = os.getenv(k)
         if val:
+            #print(f"unsetting {k} = {os.environ[k]}")
             vars_dict[k] = val
-            os.unsetenv(k)
+            #os.unsetenv(k)
             del os.environ[k]
 
     yield
 
     # Teardown, put things back the way they were...
+    #print ("resetting env")
     for k, v in vars_dict.items():
-        if vars_dict[k] != '':
-            os.putenv(k, v)
-            setattr(os.environ,k,v)
+        if v != '':
+            #print (f"setting: {k} = {v}")
+            #os.putenv(k, v)
+            #setattr(os.environ,k,v)
+            os.environ[k]=v
+            #print(os.environ[k])
         vars_dict[k] = ''
 
 @pytest.fixture
 def make_file_secrets(request):
+    #print("setting file secrets")
     tmpfile = getattr(request.module, "tmp_secrets_file", "/tmp/testsecrets.py")
-    prefix = getattr(request.module, "config_prefix", "DEV_DATABASE")
+    prefix = getattr(request.module, "config_prefix", "TEST_DATABASE")
     db_url = prefix + '_URL'
     db_args = prefix + '_ARGS'
     with open(tmpfile, 'w') as f:
@@ -68,6 +77,7 @@ def make_file_secrets(request):
 
 @pytest.fixture
 def make_env_secrets(request):
+    #print("setting env secrets")
     check_url = 'check_env_secrets_url'
     check_args ='check_env_secrets_args'
     prefix = getattr(request.module, "config_prefix", "TEST_DATABASE")
@@ -78,7 +88,7 @@ def make_env_secrets(request):
     os.environ.putenv(url_k, url_v)
     os.environ.putenv(args_k, args_v)
     os.environ[url_k] = url_v
-    os.environ[args_k]=args_v
+    os.environ[args_k]= args_v
 
 
 

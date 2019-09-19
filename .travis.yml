@@ -3,14 +3,30 @@ os:
   - linux
 python:
   - 3.6
-  - 3.7
 before_install:
-  - python --version
-  - pip install -U pip
-  - pip install -U pytest
-  - pip install codecov
+  - sudo apt-get update
+  # We do this conditionally because it saves us some downloading if the
+  # version is the same.
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+    elif [["$TRAVIS_OS_NAME" == "osx"]]; then
+      wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh;
+    fi
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - hash -r
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+  # Useful for debugging any issues with conda
+  - conda info -a
+  - conda env create -f .conda/env_gresq_${TRAVIS_OS_NAME}_${TRAVIS_PYTHON_VERSION}.yml
+  - source $(conda info --root)/etc/profile.d/conda.sh
+  - conda activate env_gresq_${TRAVIS_OS_NAME}_${TRAVIS_PYTHON_VERSION}
+  - conda install pytest
+
 install:
+  - pip install ./gsaraman
   - pip install ".[test]" . # install package + test dependencies
-script: pytest # run tests
-after_success:
-  - codecov # submit coverage
+
+script:
+  - pytest

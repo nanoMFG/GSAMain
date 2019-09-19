@@ -1,7 +1,4 @@
 from __future__ import division
-import os
-import sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),'gsaimage','src'))
 import pandas as pd
 import numpy as np
 import sys, operator, os
@@ -15,7 +12,7 @@ from PIL import Image
 from gresq.util.models import ResultsTableModel
 from gresq.util.box_adaptor import BoxAdaptor
 from gresq.dashboard.stats import TSNEWidget, PlotWidget
-from gresq.util.csv2db2 import build_db
+# from gresq.util.csv2db2 import build_db
 from gresq.database import sample, preparation_step, dal, Base, mdf_forge, properties, recipe, raman_set, author
 from sqlalchemy import String, Integer, Float, Numeric
 from gresq.config import config
@@ -51,12 +48,12 @@ preparation_fields = [
 	]
 
 properties_fields = [
+    "growth_coverage",
+    "shape",
     "average_thickness_of_growth",
     "standard_deviation_of_growth",
     "number_of_layers",
-    "growth_coverage",
-    "domain_size",
-    "shape"
+    "domain_size"
     ]
 
 recipe_fields = [
@@ -68,7 +65,8 @@ recipe_fields = [
     "thickness",
     "diameter",
     "length",
-    "dewpoint",
+    "sample_surface_area",
+    "dewpoint"
     ]
 
 hybrid_recipe_fields = [
@@ -92,13 +90,20 @@ raman_fields = [
     "d_to_g"
 ]
 
-results_fields = recipe_fields+hybrid_recipe_fields+properties_fields+raman_fields
+sample_fields = [
+    "id",
+    "experiment_date",
+    "validated"
+]
+
+results_fields = sample_fields+properties_fields+raman_fields
 
 selection_list = {
     'Experimental Conditions':{'fields':recipe_fields,'model':recipe},
     'Preparation': {'fields':preparation_fields,'model':preparation_step},
     'Properties': {'fields':properties_fields,'model':properties},
-    'Raman Analysis': {'fields':raman_fields,'model':raman_set}
+    'Raman Analysis': {'fields':raman_fields,'model':raman_set},
+    'Provenance Information': {'fields':author_fields,'model':author}
     }
 
 sql_validator = {
@@ -160,9 +165,9 @@ class GSAQuery(QtGui.QWidget):
         self.results.setSizePolicy(QtGui.QSizePolicy.Maximum,QtGui.QSizePolicy.Preferred)
 
         self.preview = PreviewWidget(privileges=self.privileges)
-        self.preview.admin_tab.updateQuery.connect(lambda: self.query(self.filters))
-        self.preview.admin_tab.queryUnvalidated.connect(lambda: self.query([sample.validated.is_(False)]))
-        # self.results.plot.scatter_plot.sigClicked.connect(lambda x: self.preview.select(self.results.results_model,x[0]))
+        if self.privileges['validate'] or self.privileges['write']:
+            self.preview.admin_tab.updateQuery.connect(lambda: self.query(self.filters))
+            self.preview.admin_tab.queryUnvalidated.connect(lambda: self.query([sample.validated.is_(False)]))
 
         self.addFilterBtn = QtGui.QPushButton('Add Filter')
         self.addFilterBtn.clicked.connect(lambda: self.addFilter(self.filter_fields.currentWidget()))
@@ -172,9 +177,6 @@ class GSAQuery(QtGui.QWidget):
 
         searchLabel = QtGui.QLabel('Query')
         searchLabel.setFont(label_font)
-
-        # previewLabel = QtGui.QLabel('Preview')
-        # previewLabel.setFont(label_font)
 
         resultsLabel = QtGui.QLabel('Results')
         resultsLabel.setFont(label_font)
@@ -201,6 +203,7 @@ class GSAQuery(QtGui.QWidget):
 
         self.primary_selection.activated[str].emit(self.primary_selection.currentText())
         self.secondary_selection.activated[str].emit(self.secondary_selection.currentText())
+        self.results.plotClicked.connect(lambda plot, points: self.preview.select(index=points[0].data()))
 
 
     def generate_field(self,model,field):
@@ -417,11 +420,12 @@ class PreviewWidget(QtGui.QTabWidget):
     """
     def __init__(self,privileges=None,parent=None):
         super(PreviewWidget,self).__init__(parent=parent)
-
+        self.privileges = privileges
         self.detail_tab = DetailWidget()
         self.sem_tab = SEMDisplayTab()
         self.recipe_tab = RecipeDisplayTab()
         self.provenance_tab = ProvenanceDisplayTab()
+        self.admin_tab = None
         self.setTabPosition(QtGui.QTabWidget.South)
 
         self.addTab(self.detail_tab,'Details')
@@ -435,22 +439,30 @@ class PreviewWidget(QtGui.QTabWidget):
                 self.admin_tab = AdminDisplayTab(privileges=privileges)
                 self.addTab(self.admin_tab,'Admin')
 
-    def select(self,model,index):
+    def select(self,model=None,index=None):
         """
-        Select index from ResultsTableModel model.
+        Select sample model and update preview. Can use ResultsTableModel with corresponding index,
+        standalone sample model or a sample id.
 
-        model:              ResultsTableModel object
-        index:              Index from ResultsWidget table.
+        model:              ResultsTableModel object or sample model if index=None. If None, index refers to sample id.
+        index:              Index from ResultsWidget table or sample id if model=None. If None, model refers to a sample model.
         """
 
         with dal.session_scope() as session:
-            i = int(model.df['id'].values[index.row()])
-            s = session.query(sample).filter(sample.id==i)[0]
+            if index:
+                if model:
+                    i = int(model.df['id'].values[index.row()])
+                else:
+                    i = index
+                s = session.query(sample).filter(sample.id==i)[0]
+            elif index==None and model != None:
+                s = model
             self.detail_tab.update(s.properties,s.recipe)
             self.sem_tab.update(s)
             self.recipe_tab.update(s.recipe)
             self.provenance_tab.update(s.authors)
-            self.admin_tab.update(s)
+            if self.admin_tab:
+                self.admin_tab.update(s)
 
 class ResultsWidget(QtGui.QTabWidget):
     """
@@ -460,6 +472,8 @@ class ResultsWidget(QtGui.QTabWidget):
         - t-SNE:                Allows users to conduct t-SNE visualization on queried data.
         - Plot:                 Allows users to scatter plot queried data.
     """
+    plotClicked = QtCore.pyqtSignal(object, object)
+    tsneClicked = QtCore.pyqtSignal(object, object)
     def __init__(self,parent=None):
         super(ResultsWidget,self).__init__(parent=parent)
         self.setTabPosition(QtGui.QTabWidget.North)
@@ -477,6 +491,8 @@ class ResultsWidget(QtGui.QTabWidget):
         self.addTab(self.plot,'Plotting')
         self.addTab(self.tsne,'t-SNE')
 
+        self.plot.sigClicked.connect(lambda plot, points: self.plotClicked.emit(plot,points))
+
     def query(self,filters):
         """
         Queries SQL database using list of sqlalchemy filters.
@@ -492,20 +508,21 @@ class ResultsWidget(QtGui.QTabWidget):
                 properties_columns = tuple([getattr(properties,p) for p in properties_fields])
                 raman_columns = tuple([getattr(raman_set,r) for r in raman_fields])
 
-                query_columns = sample_columns+recipe_columns+properties_columns+raman_columns
+                query_columns = sample_columns+raman_columns+recipe_columns+properties_columns
 
                 q = session.query(*query_columns).\
                     join(sample.recipe).\
                     join(sample.properties).\
                     outerjoin(recipe.preparation_steps).\
                     outerjoin(raman_set).\
+                    outerjoin(author).\
                     filter(*filters).distinct()
 
                 self.results_model.read_sqlalchemy(q.statement,session,models=[sample,recipe,properties,raman_set])
 
         self.results_table.setModel(self.results_model)
         for c in range(self.results_model.columnCount(parent=None)):
-            if self.results_model.df.columns[c] not in properties_fields+raman_fields:
+            if self.results_model.df.columns[c] not in results_fields:
                 self.results_table.hideColumn(c)
         self.results_table.resizeColumnsToContents()
         self.plot.setModel(self.results_model,xfields=recipe_fields+hybrid_recipe_fields,yfields=raman_fields+properties_fields)
@@ -561,6 +578,24 @@ class FieldsDisplayWidget(QtGui.QScrollArea):
                     value = ''
             self.fields[field]['value'].setText(str(value))
 
+class DownloadThread(QtCore.QThread):
+    imageDownloaded = QtCore.pyqtSignal(object,int)
+    def __init__(self,url,thread_id):
+        super(DownloadThread,self).__init__()
+        self.url = url
+        self.thread_id = thread_id
+        self.img = None
+
+        self.finished.connect(lambda: self.imageDownloaded.emit(self.img,self.thread_id))
+
+    def __del__(self):
+        self.wait()
+
+    def run(self):
+        r = requests.get(self.url)
+        data = r.content
+        self.img = np.array(Image.open(io.BytesIO(data)))
+
 class SEMDisplayTab(QtGui.QScrollArea):
     def __init__(self,parent=None):
         super(SEMDisplayTab,self).__init__(parent=parent)
@@ -568,38 +603,62 @@ class SEMDisplayTab(QtGui.QScrollArea):
         self.layout = QtGui.QGridLayout(self.contentWidget)
         self.layout.setAlignment(QtCore.Qt.AlignTop)
 
+        self.progress_bar = QtGui.QProgressBar()
         self.file_list = QtGui.QListWidget()
         self.sem_info = QtGui.QStackedWidget()
+        self.sample_id = None
+        self.threads = []
 
         self.setWidgetResizable(True)
         self.setWidget(self.contentWidget)
 
-        self.layout.addWidget(self.file_list,0,0)
-        self.layout.addWidget(self.sem_info,0,1)
+        self.file_list.setFixedWidth(100)
+        self.progress_bar.setFixedWidth(100)
+
+        self.layout.addWidget(self.file_list,0,0,1,1)
+        self.layout.addWidget(self.sem_info,0,1,2,1)
+        self.layout.addWidget(self.progress_bar,1,0,1,1)
 
         self.file_list.currentRowChanged.connect(self.sem_info.setCurrentIndex)
 
+    def loadImage(self,img,thread_id):
+        image_tab = pg.GraphicsLayoutWidget()
+        wImgBox_VB = image_tab.addViewBox(row=1,col=1)
+        wImgItem = pg.ImageItem()
+        wImgItem.setImage(img)
+        wImgBox_VB.addItem(wImgItem)
+        wImgBox_VB.setAspectLocked(True)
+
+
+        sem_tabs = QtGui.QTabWidget()
+        sem_tabs.addTab(image_tab,"Raw Data")
+
+        if self.sample_id == thread_id:
+            self.file_list.addItem("SEM Image %s"%str(self.file_list.count()+1))
+            self.sem_info.addWidget(sem_tabs)
+            self.progress_bar.setValue(100*sum([t.isFinished() for t in self.threads])/len(self.threads))
+
     def update(self,sample_model=None):
-        self.file_list.clear()
         if sample_model != None:
-            for s,sem in enumerate(sample_model.sem_files,1):
-                r = requests.get(sem.url)
-                data = r.content
-                img = np.array(Image.open(io.BytesIO(data)))
+            if sample_model.id != self.sample_id:
+                self.file_list.clear()
+                self.progress_bar.reset()
 
-                image_tab = pg.GraphicsLayoutWidget()
-                wImgBox_VB = image_tab.addViewBox(row=1,col=1)
-                wImgItem = pg.ImageItem()
-                wImgItem.setImage(img)
-                wImgBox_VB.addItem(wImgItem)
-                wImgBox_VB.setAspectLocked(True)
+                for w in [self.sem_info.widget(i) for i in range(self.sem_info.count())]:
+                    self.sem_info.removeWidget(w)
 
-                self.file_list.addItem("SEM Image %d"%s)
-
-                sem_tabs = QtGui.QTabWidget()
-                sem_tabs.addTab(image_tab,"Raw Data")
-
-                self.sem_info.addWidget(sem_tabs)
+                self.threads = []
+                self.sample_id = sample_model.id
+                if len(sample_model.sem_files) > 0:
+                    self.progress_bar.setValue(1)
+                    for sem in sample_model.sem_files:
+                        thread = DownloadThread(url=sem.url,thread_id=sem.sample_id)
+                        thread.imageDownloaded.connect(self.loadImage)
+                        thread.start()
+                        print('Thread started.')
+                        self.threads.append(thread)
+                else:
+                    self.progress_bar.setValue(100)
 
 class ProvenanceDisplayTab(QtGui.QScrollArea):
     def __init__(self,parent=None):
@@ -847,10 +906,6 @@ class AdminDisplayTab(QtGui.QScrollArea):
 
 if __name__ == '__main__':
     dal.init_db(config['development'])
-    # Base.metadata.drop_all(bind=dal.engine)
-    # Base.metadata.create_all(bind=dal.engine)
-    # with dal.session_scope() as session:
-    #   build_db(session,os.path.join(os.getcwd(),'../data'))
     app = QtGui.QApplication([])
     query = GSAQuery()
     query.show()

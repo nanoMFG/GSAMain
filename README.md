@@ -32,6 +32,16 @@ $python -m gresq
 <!-- 
 What things you need to install the software and how to install them -->
 
+#### Using Conda
+
+Install anaconda3 or miniconda3, then:<br/>
+
+```
+conda create --name gresq-3.6 python=3.6
+conda env create -f <srcdir>/.conda/env_gresq_[osx|linux]_3.6.yml
+conda activate env_gresq_[osx|linux]_3.6.yml
+```
+
 ### Installing
 <!--
 A step by step series of examples that tell you have to get a development env running
@@ -50,10 +60,24 @@ until finished
 
 End with an example of getting some data out of the system or using it for a little demo
 -->
+From the repository root:<br>
+```
+pip install ./gsaraman
+pip install .
+```
+or for development:<br/>
+```
+pip install -e .
+```
 
 ## Running the tests
 
 <!-- Explain how to run the automated tests for this system -->
+
+After installing, run the following from the repostory root:
+```
+pytest
+```
 
 ### Break down into end to end tests
 

@@ -11,6 +11,8 @@ from gresq.util.models import ItemsetsTableModel, ResultsTableModel
 label_font = QtGui.QFont("Helvetica", 16, QtGui.QFont.Bold)
 
 class PlotWidget(QtGui.QWidget):
+	sigClicked = QtCore.pyqtSignal(object, object)
+
 	def __init__(self,parent=None):
 		super(PlotWidget,self).__init__(parent=parent)
 		self.layout = QtGui.QGridLayout(self)
@@ -21,8 +23,14 @@ class PlotWidget(QtGui.QWidget):
 		self.yaxisbox = QtGui.QComboBox()
 		self.zaxisbox = QtGui.QComboBox()
 		self.plot_widget = pg.PlotWidget()
+
+		# self.scatter_plot emits signal when point is clicked
+		# How to catch signal?
 		self.scatter_plot = pg.ScatterPlotItem()
 		self.plot_widget.addItem(self.scatter_plot)
+
+		# Connect signal to slot - slot should be a function in the class defining the display below the plot
+		self.scatter_plot.sigClicked.connect(lambda plot, points: self.sigClicked.emit(plot,points))
 
 		self.xaxisbox.activated.connect(self.updatePlot)
 		self.yaxisbox.activated.connect(self.updatePlot)
@@ -32,6 +40,7 @@ class PlotWidget(QtGui.QWidget):
 		self.layout.addWidget(self.xaxisbox,1,0,1,1)
 		self.layout.addWidget(self.yaxisbox,1,1,1,1)
 		self.layout.addWidget(self.plot_widget,2,0,1,2)
+
 
 	def setModel(self,model,xfields=None,yfields=None):
 		self.model = model
@@ -54,18 +63,21 @@ class PlotWidget(QtGui.QWidget):
 	def updatePlot(self):
 		x = self.xaxisbox.currentText()
 		y = self.yaxisbox.currentText()
-		scatter_data = self.model.df.loc[:,[x,y]].dropna()
+		scatter_data = self.model.df.loc[:,[x,y, "id"]].dropna()
+
+		# Find the id of each row corresponding to an (x, y) point in the plot
+		
 		if x != y:
 			self.scatter_plot.setData(
 				x=scatter_data[x],
 				y=scatter_data[y],
-				data=list(range(len(scatter_data[x])))
+				data=scatter_data["id"].tolist()
 				)
 		else:
 			self.scatter_plot.setData(
 				x=scatter_data.iloc[:,0],
 				y=scatter_data.iloc[:,0],
-				data=list(range(len(scatter_data[x])))
+				data=scatter_data["id"].tolist()
 				)
 
 		xbounds = self.scatter_plot.dataBounds(ax=0)
