@@ -241,6 +241,7 @@ class FeatureSelectionItem(QtGui.QWidget):
 
 		self.feature_list = QtGui.QListWidget()
 		self.feature_list.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+		self.feature_list.itemSelectionChanged.connect(self.manualFeatureChange)
 
 		self.min_support = 0.5
 
@@ -258,6 +259,7 @@ class FeatureSelectionItem(QtGui.QWidget):
 		self.min_support_edit.setValidator(QtGui.QDoubleValidator(0,1,3))
 
 		self.go_button = QtGui.QPushButton('Go to Plot >>>')
+		self.go_button.setEnabled(False)
 
 		itemsets_label = QtGui.QLabel('Frequent Feature Sets')
 		itemsets_label.setFont(label_font)
@@ -273,6 +275,13 @@ class FeatureSelectionItem(QtGui.QWidget):
 		self.layout.addWidget(manual_label,3,0)
 		self.layout.addWidget(self.feature_list,4,0,1,3)
 		self.layout.addWidget(self.go_button,5,0,1,3)
+
+	# Only allow plotting after features are selected
+	def manualFeatureChange(self):
+		if (len(self.feature_list.selectedItems()) == 0):
+			self.go_button.setEnabled(False)
+		else:
+			self.go_button.setEnabled(True)
 
 	def setModel(self,model):
 		self.model = model
