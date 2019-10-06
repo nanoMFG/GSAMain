@@ -4,7 +4,7 @@ import numpy as np
 from pandas.api.types import is_numeric_dtype
 import copy
 from sklearn.manifold import TSNE
-from PyQt5 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore, QtWidgets
 from gresq.database import sample, preparation_step, dal, Base
 from gresq.util.models import ItemsetsTableModel, ResultsTableModel
 
@@ -30,6 +30,7 @@ class PlotWidget(QtGui.QWidget):
 		# How to catch signal?
 		self.scatter_plot = pg.ScatterPlotItem()
 		self.plot_widget.addItem(self.scatter_plot)
+		self.selectedPt = None
 
 		# Connect signal to slot - slot should be a function in the class defining the display below the plot
 		# self.scatter_plot.sigClicked.connect(lambda plot, points: self.sigClicked.emit(plot,points))
@@ -45,13 +46,12 @@ class PlotWidget(QtGui.QWidget):
 		self.layout.addWidget(self.plot_widget,2,0,1,2)
 
 	def onClickedPoint(self, plot, points):
-		# First, set color of all points in plot
-		for pt in self.scatter_plot.points():
-			pt.setBrush(255, 0, 0)
-		# Second, set color of selected point
-		if len(points) > 0:
-		 	points[0].setBrush(0, 255, 0)
-
+		newPt = points[0]
+		newPt.setBrush(0, 0, 255)
+		if (self.selectedPt != None):
+			if (self.selectedPt.pos() != newPt.pos()):
+				self.selectedPt.setBrush(211, 211, 211)
+		self.selectedPt = newPt
 		self.sigClicked.emit(plot, points)
 
 	def setModel(self,model,xfields=None,yfields=None):
@@ -78,7 +78,7 @@ class PlotWidget(QtGui.QWidget):
 		scatter_data = self.model.df.loc[:,[x,y, "id"]].dropna()
 
 		# Find the id of each row corresponding to an (x, y) point in the plot
-		defaultBrush = QtGui.QBrush(QtGui.QColor(255, 0, 0))
+		defaultBrush = QtGui.QBrush(QtGui.QColor(211, 211, 211))
 		if x != y:
 			self.scatter_plot.setData(
 				x=scatter_data[x],
@@ -104,11 +104,13 @@ class PlotWidget(QtGui.QWidget):
 		self.plot_widget.setLabel(text=y,axis='left')
 
 class TSNEWidget(QtGui.QStackedWidget):
+	tsneClicked = QtCore.pyqtSignal(object, object)
 	def __init__(self,parent=None):
 		super(TSNEWidget,self).__init__(parent=parent)
 		self.itemsets_model = ItemsetsTableModel()
 
 		self.tsne = TSNEPlot()
+		self.tsne.tsneClicked.connect(lambda plot, points: self.tsneClicked.emit(plot, points))
 		self.feature = FeatureSelectionItem()
 		self.addWidget(self.feature)
 		self.addWidget(self.tsne)
@@ -128,6 +130,7 @@ class TSNEWidget(QtGui.QStackedWidget):
 		self.tsne.setModel(self.results_model)
 
 class TSNEPlot(QtGui.QWidget):
+	tsneClicked = QtCore.pyqtSignal(object, object)
 	def __init__(self,parent=None):
 		super(TSNEPlot,self).__init__(parent=parent)
 		self.model = ResultsTableModel()
@@ -140,7 +143,9 @@ class TSNEPlot(QtGui.QWidget):
 		self.lr = 200.
 
 		self.plot_widget = pg.PlotWidget()
-		self.tsne_plot = pg.ScatterPlotItem(symbol="o", size=10, pen=pg.mkPen(0.2),brush=pg.mkBrush(0.7),antialias=True)
+		self.tsne_plot = pg.ScatterPlotItem(symbol="o", size=10, pen=pg.mkPen(width=0.2, color='b'),brush=pg.mkBrush(0.7),antialias=True)
+		self.tsne_plot.sigClicked.connect(self.pointClicked)
+		self.selectedPt = None
 		self.plot_widget.hideAxis('left')
 		self.plot_widget.hideAxis('bottom')
 		self.plot_widget.addItem(self.tsne_plot)
@@ -175,6 +180,16 @@ class TSNEPlot(QtGui.QWidget):
 		self.layout.addWidget(self.back_button,9,0,1,3)
 
 		self.select_feature.activated[str].connect(self.setBrushes)
+
+	def pointClicked(self, plot, points):
+		# Mark clicked point - give it an extra thick border
+		newPt = points[0]
+		newPt.setPen(pg.mkPen(width=0.4, color='r'))
+		if (self.selectedPt != None):
+			if (self.selectedPt.pos() != newPt.pos()):
+				self.selectedPt.setPen(pg.mkPen(width=0.2, color='b'))
+		self.selectedPt = newPt
+		self.tsneClicked.emit(plot, points)
 
 	def setModel(self,model):
 		self.model = model
@@ -220,11 +235,24 @@ class TSNEPlot(QtGui.QWidget):
 		if None not in ybounds:
 			self.plot_widget.setYRange(*ybounds)
 
+	def showError(self, msg):
+		error_msg = QtWidgets.QErrorMessage()
+		error_msg.setWindowTitle("GrResQ: Warning")
+		error_msg.showMessage(msg)
+		error_msg.exec_()
+
 	def run(self,features):
 		self.features = features
 		self.tsne = TSNE(random_state=self.random_seed)
 		self.nonnull_indexes = ~self.model.df[self.features].isnull().any(1)
-		self.tsne.fit(self.model.df[self.features][self.nonnull_indexes])
+		tsne_input = self.model.df[self.features][self.nonnull_indexes]
+		if (tsne_input.empty):
+			self.showError("Input dataframe should not be empty.")
+			return
+		elif(tsne_input.shape[0] < 2):
+			self.showError("TSNE fit requires a minimum of 2 samples.")
+			return
+		self.tsne.fit(tsne_input)
 		self.tsne_plot.clear()
 		self.tsne_plot.setData(
 			x=self.tsne.embedding_[:,0],
@@ -241,7 +269,7 @@ class FeatureSelectionItem(QtGui.QWidget):
 
 		self.feature_list = QtGui.QListWidget()
 		self.feature_list.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
-		self.feature_list.itemSelectionChanged.connect(self.manualFeatureChange)
+		self.feature_list.itemSelectionChanged.connect(self.featureChange)
 
 		self.min_support = 0.5
 
@@ -253,6 +281,7 @@ class FeatureSelectionItem(QtGui.QWidget):
 		self.itemsets_view.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
 		self.itemsets_view.setSortingEnabled(True)
 		self.itemsets_view.activated.connect(lambda x: self.select_features(self.model,x))
+		
 
 		self.min_support_edit = QtGui.QLineEdit(str(self.min_support))
 		self.min_support_edit.setFixedWidth(75)
@@ -275,9 +304,9 @@ class FeatureSelectionItem(QtGui.QWidget):
 		self.layout.addWidget(manual_label,3,0)
 		self.layout.addWidget(self.feature_list,4,0,1,3)
 		self.layout.addWidget(self.go_button,5,0,1,3)
-
+		
 	# Only allow plotting after features are selected
-	def manualFeatureChange(self):
+	def featureChange(self):
 		if (len(self.feature_list.selectedItems()) == 0):
 			self.go_button.setEnabled(False)
 		else:

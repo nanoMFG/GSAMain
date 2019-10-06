@@ -229,6 +229,7 @@ class GSAQuery(QtGui.QWidget):
         self.primary_selection.activated[str].emit(self.primary_selection.currentText())
         self.secondary_selection.activated[str].emit(self.secondary_selection.currentText())
         self.results.plotClicked.connect(lambda plot, points: self.preview.select(index=points[0].data()))
+        self.results.tsneClicked.connect(lambda plot, points: self.preview.select(index=points[0].data()))
 
 
     def generate_field(self,model,field):
@@ -483,6 +484,12 @@ class PreviewWidget(QtGui.QTabWidget):
                 s = session.query(sample).filter(sample.id==i)[0]
             elif index==None and model != None:
                 s = model
+            else:
+                # index == None and model == none
+                error_msg = QtWidgets.QErrorMessage()
+                error_msg.showMessage("Both model and index are unable to be found.")
+                error_msg.exec_()
+                return
             self.detail_tab.update(s.properties,s.recipe)
             self.sem_tab.update(s)
             self.raman_tab.update(s)
@@ -519,6 +526,7 @@ class ResultsWidget(QtGui.QTabWidget):
         self.addTab(self.tsne,'t-SNE')
 
         self.plot.sigClicked.connect(lambda plot, points: self.plotClicked.emit(plot,points))
+        self.tsne.tsneClicked.connect(lambda plot, points: self.plotClicked.emit(plot,points))
 
     def query(self,filters):
         """
