@@ -178,8 +178,18 @@ class TSNEPlot(QtGui.QWidget):
 		self.layout.addWidget(self.plot_widget,4,0,4,3)
 		self.layout.addWidget(self.select_feature,8,0,1,3)
 		self.layout.addWidget(self.back_button,9,0,1,3)
+		self.layout.addWidget(Legend(), 1, 2, 1, 2)
 
 		self.select_feature.activated[str].connect(self.setBrushes)
+		
+
+		# 2,2
+		# 1, 2
+
+	# def drawLegend(self):
+	# 	qp = QtGui.QPainter(self)
+	# 	color = QtGui.QColor(255, 0, 0)
+	# 	qp.fillRect(2, 2, 1, 2, color)
 
 	def pointClicked(self, plot, points):
 		# Mark clicked point - give it an extra thick border
@@ -329,3 +339,25 @@ class FeatureSelectionItem(QtGui.QWidget):
 
 	def get_selected_features(self):
 		return [s.text() for s in self.feature_list.selectedItems()]
+
+
+class Legend(QtGui.QWidget):
+	def __init__(self):
+		super().__init__()
+		self.initUI()
+
+	def initUI(self):
+		self.setGeometry(0, 0, 300, 50)
+
+	def paintEvent(self, event):
+		qp = QtGui.QPainter(self)
+		g = QtGui.QLinearGradient(0.0, 0.0, self.width(), 0)
+		color1 = QtGui.QColor(QtCore.Qt.blue)
+		color1.setHsl(225, 128, 128)
+		color2 = QtGui.QColor(QtCore.Qt.yellow)
+		color2.setHsl(45, 128, 128)
+		g.setColorAt(0, color1)
+		g.setColorAt(1, color2)
+		qp.fillRect(0, 0, self.width(), self.height(), g)
+
+
