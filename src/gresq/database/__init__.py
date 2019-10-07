@@ -28,3 +28,4 @@ from .model import raman_file
 from .model import raman_spectrum
 from .model import sem_file
 from .model import mdf_forge
+from .model import sem_analysis
