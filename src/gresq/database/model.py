@@ -48,11 +48,11 @@ class sample(Base):
     properties = relationship("properties",uselist=False,cascade="save-update, merge, delete")
     
     raman_analysis = relationship("raman_set",uselist=False,cascade="save-update, merge, delete")
-    raman_files = relationship("raman_file",back_populates="sample_id")
+    raman_files = relationship("raman_file", back_populates="sample_model")
 
-    sem_files = relationship("sem_file",cascade="save-update, merge, delete")
-    primary_sem_file_id = Column(Integer,ForeignKey("sem_analysis.id",use_alter=True),index=True)
-    primary_sem_file = relationship("sem_file",primaryjoin="sem_file.id==primary_sem_file_id",uselist=False)
+    sem_files = relationship("sem_file",back_populates="sample", cascade="save-update, merge, delete")
+    #primary_sem_file_id = Column(Integer,ForeignKey("sem_analysis.id",use_alter=True),index=True)
+    #primary_sem_file = relationship("sem_file",primaryjoin="sem_file.id==primary_sem_file_id",uselist=False)
 
     validated = Column(Boolean,info={'verbose_name':'Validated','std_unit':None},default=False)
 
@@ -524,6 +524,7 @@ class raman_file(Base):
         'conversions': {'nm':1},
         'required': True
         })
+    sample_model = relationship("sample", back_populates = "raman_files")
 
     def json_encodable(self):
         params = [
@@ -615,8 +616,10 @@ class raman_spectrum(Base):
 class sem_analysis(Base):
     __tablename__ = 'sem_analysis'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    sem_file_id = Column(Integer,ForeignKey("sem_file.id"),index=True)
-    sem_file_model = relationship("sem_file",primaryjoin="sem_analysis.sem_file_id==id",back_populates="analyses")
+    sem_file_id = Column(Integer, ForeignKey("sem_file.id"), index=True)
+    sem_file = relationship(
+        "sem_file", back_populates="analyses", foreign_keys=[sem_file_id]
+        )
 
     mask_url = Column(String(256))
     px_per_um = Column(Integer,info={'verbose_name':'Pixels/um'})
@@ -642,10 +645,22 @@ class sem_file(Base):
     filename = Column(String(64))
     url = Column(String(256))
 
-    default_analysis_id = Column(Integer,ForeignKey("sem_analysis.id",use_alter=True),index=True)
+    sample = relationship("sample", back_populates = "sem_files")
 
-    default_analysis = relationship("sem_analysis",primaryjoin="sem_analysis.id==default_analysis_id")
-    analyses = relationship("sem_analysis",primaryjoin="sem_analysis.sem_file_id==id")
+    default_analysis_id = Column(
+        Integer, ForeignKey("sem_analysis.id", name="fk_defaul_analysis_id", use_alter=True), index=True
+        )
+
+    default_analysis = relationship(
+        "sem_analysis",
+        primaryjoin = default_analysis_id==sem_analysis.id,
+        foreign_keys = [default_analysis_id], post_update=True
+        )
+
+    analyses = relationship(
+        "sem_analysis", primaryjoin = id==sem_analysis.sem_file_id,
+        back_populates="sem_file"
+        )
 
     def json_encodable(self):
         return {
