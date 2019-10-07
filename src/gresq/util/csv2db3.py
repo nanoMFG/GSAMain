@@ -11,7 +11,7 @@ import datetime
 from datetime import date
 par = os.path.abspath(os.path.pardir)
 sys.path.append(os.path.join(par,'src','gresq','dashboard', 'gsaraman','src'))
-from gsaraman import auto_fitting
+from gsaraman.gsaraman import auto_fitting
 sample_key = {
     'experiment_date': 'DATE'
 }
