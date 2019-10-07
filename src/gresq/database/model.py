@@ -51,8 +51,11 @@ class sample(Base):
     raman_files = relationship("raman_file", back_populates="sample_model")
 
     sem_files = relationship("sem_file",back_populates="sample", cascade="save-update, merge, delete")
-    #primary_sem_file_id = Column(Integer,ForeignKey("sem_analysis.id",use_alter=True),index=True)
-    #primary_sem_file = relationship("sem_file",primaryjoin="sem_file.id==primary_sem_file_id",uselist=False)
+    primary_sem_file_id = Column(Integer,ForeignKey("sem_analysis.id",use_alter=True),index=True)
+    primary_sem_file = relationship(
+        "sem_file", primaryjoin="sample.primary_sem_file_id==sem_file.id", 
+        foreign_keys = [primary_sem_file_id],
+        uselist=False, post_update=True)
 
     validated = Column(Boolean,info={'verbose_name':'Validated','std_unit':None},default=False)
 
@@ -648,17 +651,17 @@ class sem_file(Base):
     sample = relationship("sample", back_populates = "sem_files")
 
     default_analysis_id = Column(
-        Integer, ForeignKey("sem_analysis.id", name="fk_defaul_analysis_id", use_alter=True), index=True
+        Integer, ForeignKey("sem_analysis.id", use_alter=True), index=True
         )
 
     default_analysis = relationship(
         "sem_analysis",
-        primaryjoin = default_analysis_id==sem_analysis.id,
+        primaryjoin = "sem_file.default_analysis_id==sem_analysis.id",
         foreign_keys = [default_analysis_id], post_update=True
         )
 
     analyses = relationship(
-        "sem_analysis", primaryjoin = id==sem_analysis.sem_file_id,
+        "sem_analysis", primaryjoin = "sem_file.id==sem_analysis.sem_file_id",
         back_populates="sem_file"
         )
 
