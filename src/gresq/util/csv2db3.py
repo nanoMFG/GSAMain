@@ -265,7 +265,7 @@ def build_db(session,filepath,sem_raman_path=None):
                         files_response['SEM Image Files'].append(os.path.join(sem_raman_path,reference_id,f))
 
                 if len(files_response['Raman Files'])>0:
-                    files_response['Characteristic Percentage'] = [1/len(files_response['Raman Files'])]*len(files_response['Raman Files'])
+                    files_response['Characteristic Percentage'] = [100/len(files_response['Raman Files'])]*len(files_response['Raman Files'])
                     for ri,ram in enumerate(files_response['Raman Files']):
                         rf = raman_file()
                         rf.filename = os.path.basename(ram)

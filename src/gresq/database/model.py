@@ -46,17 +46,30 @@ class sample(Base):
         })
     recipe = relationship("recipe",uselist=False,cascade="save-update, merge, delete")
     properties = relationship("properties",uselist=False,cascade="save-update, merge, delete")
+    
     raman_analysis = relationship("raman_set",uselist=False,cascade="save-update, merge, delete")
+    raman_files = relationship("raman_file",back_populates="sample_id")
+
     sem_files = relationship("sem_file",cascade="save-update, merge, delete")
-    raman_files = relationship("raman_file")
+    primary_sem_file_id = Column(Integer,ForeignKey("sem_analysis.id",use_alter=True),index=True)
+    primary_sem_file = relationship("sem_file",primaryjoin="sem_file.id==primary_sem_file_id",uselist=False)
+
     validated = Column(Boolean,info={'verbose_name':'Validated','std_unit':None},default=False)
+
+    @hybrid_property
+    def primary_sem_analysis(self):
+        return self.primary_sem_file.default_analysis
+
+    @hybrid_property
+    def sem_analyses(self):
+        return [s.default_analysis for s in self.sem_files]
 
     @hybrid_property
     def author_last_names(self):
         return ', '.join(sorted([a.last_name for a in self.authors if a.last_name]))
 
     @author_last_names.expression
-    def author_last_names(cls):
+    def author_last_names(cls): # BROKEN
         selection = select([func.group_concat(author.last_name)]).\
                 where(author.sample_id==cls.id).\
                 correlate(cls)
@@ -240,7 +253,7 @@ class recipe(Base):
 class preparation_step(Base):
     __tablename__ = 'preparation_step'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    recipe_id = Column(Integer,ForeignKey(recipe.id),info={'verbose_name':'Recipe ID'})
+    recipe_id = Column(Integer,ForeignKey(recipe.id),info={'verbose_name':'Recipe ID'},index=True)
     step = Column(Integer)
     name = Column(String(16),info={
         'verbose_name':'Name',
@@ -525,7 +538,7 @@ class raman_file(Base):
 class raman_spectrum(Base):
     __tablename__ = 'raman_spectrum'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    set_id = Column(Integer,ForeignKey(raman_set.id), index=True, info={'verbose_name':'Sample ID'})
+    set_id = Column(Integer,ForeignKey(raman_set.id), index=True, info={'verbose_name':'Raman Set ID'})
     raman_file_id = Column(Integer,ForeignKey(raman_file.id))
     raman_file = relationship("raman_file",uselist=False,cascade="save-update, merge, delete")
     xcoord = Column(Integer,info={'verbose_name':'X Coordinate'})
@@ -599,33 +612,46 @@ class raman_spectrum(Base):
 
         return json_dict
 
-class sem_file(Base):
-    __tablename__ = 'sem_file'
-    id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    sample_id = Column(Integer,ForeignKey(sample.id))
-    filename = Column(String(64))
-    url = Column(String(256))
-
-    def json_encodable(self):
-        return {'filename': self.filename}
-
 class sem_analysis(Base):
     __tablename__ = 'sem_analysis'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
-    # sample_id = Column(Integer,ForeignKey(sample.id))
-    sem_file_id = Column(Integer,ForeignKey(sem_file.id))
+    sem_file_id = Column(Integer,ForeignKey("sem_file.id"),index=True)
+    sem_file_model = relationship("sem_file",primaryjoin="sem_analysis.sem_file_id==id",back_populates="analyses")
+
     mask_url = Column(String(256))
-    # validated = Column(Boolean,info={'verbose_name':'Validated','std_unit':None},default=False)
+    px_per_um = Column(Integer,info={'verbose_name':'Pixels/um'})
     growth_coverage = Column(Float,info={
         'verbose_name':'Growth Coverage',
         'std_unit': '%',
         'conversions':{'%':1},
         'required': False
         })
-    # characteristic_sem = Column(Boolean,info={'verbose_name':'Characteristic SEM','std_unit':None},default=False)
+    automated = Column(Boolean,info={'verbose_name':'Automated Detection','std_unit':None},default=False)
 
     def json_encodable(self):
-        return {'growth_coverage': {'value':self.growth_coverage,'unit':'%'}}
+        return {
+            'growth_coverage': {'value':self.growth_coverage,'unit':'%'},
+            'px_per_um': {'value':self.px_per_um,'unit':'1/um'},
+            'automated': {'value':self.automated,'unit':None}
+            }
+
+class sem_file(Base):
+    __tablename__ = 'sem_file'
+    id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
+    sample_id = Column(Integer,ForeignKey(sample.id),index=True)
+    filename = Column(String(64))
+    url = Column(String(256))
+
+    default_analysis_id = Column(Integer,ForeignKey("sem_analysis.id",use_alter=True),index=True)
+
+    default_analysis = relationship("sem_analysis",primaryjoin="sem_analysis.id==default_analysis_id")
+    analyses = relationship("sem_analysis",primaryjoin="sem_analysis.sem_file_id==id")
+
+    def json_encodable(self):
+        return {
+            'filename': self.filename
+            }
+
 
 class mdf_forge(Base):
     __tablename__ = 'mdf_forge'
