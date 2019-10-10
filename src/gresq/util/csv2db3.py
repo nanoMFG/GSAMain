@@ -58,8 +58,7 @@ def convert(value,field,header=None):
     else:
         return str(value)
 
-def upload_file(file_path,folder_name=None):
-    box_config_path='/Users/Joshua_Schiller/Dropbox/GSAMain/src/box_config.json'
+def upload_file(file_path,folder_name=None,box_config_path='/Users/Joshua_Schiller/Dropbox/GSAMain/src/box_config.json'):
     box_adaptor = BoxAdaptor(box_config_path)
     upload_folder = box_adaptor.create_upload_folder(folder_name=folder_name)
     box_file = box_adaptor.upload_file(upload_folder,file_path,str(uuid.uuid4()))
