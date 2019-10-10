@@ -7,7 +7,9 @@ from gresq.util.csv2db3 import build_db
 
 config_prefix = 'TEST_DATABASE'
 config_suffix = '_ADMIN'
-csv2db_file = os.environ["CSV2DB_FILE"]
+#csv2db_file = os.environ["CSV2DB_FILE"]
+BOX_CONFIG_PATH = os.environ["BOX_CONFIG_PATH"]
+csv2db_file = os.path.join(os.getcwd(),'data', 'SEM_Raman_Data')
 
 
 @pytest.fixture
@@ -30,7 +32,8 @@ class TestDataAccessLayer:
 
     def test_csv2db3_build_db(self, dal_conn):
         with dal.session_scope() as session:
-            build_db(session, os.path.join(os.getcwd(),'data'), csv2db_file)
+            build_db(session, os.path.join(os.getcwd(),'data'), csv2db_file, nrun=34, box_config_path=BOX_CONFIG_PATH)
+            #Base.metadata.drop_all(bind=dal.engine)
 
         
         
