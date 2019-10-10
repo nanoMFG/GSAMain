@@ -100,7 +100,7 @@ def convert_db(data):
     return data
 
 
-def build_db(session,filepath,sem_raman_path=None,nrun=None):
+def build_db(session,filepath,sem_raman_path=None,nrun=None, box_config_path=None):
     data = pd.read_csv(os.path.join(filepath,'recipe_2019-08-27.csv'))
     data = convert_db(data)
 
@@ -272,7 +272,7 @@ def build_db(session,filepath,sem_raman_path=None,nrun=None):
                         rf = raman_file()
                         rf.filename = os.path.basename(ram)
                         rf.sample_id = s.id
-                        rf.url = upload_file(ram)
+                        rf.url = upload_file(ram, box_config_path=box_config_path)
                         if files_response['Raman Wavelength'] != None:
                             rf.wavelength = files_response['Raman Wavelength']
                         session.add(rf)
@@ -315,7 +315,7 @@ def build_db(session,filepath,sem_raman_path=None,nrun=None):
                         sf = sem_file()
                         sf.sample_id = s.id
                         sf.filename = os.path.basename(f)
-                        sf.url = upload_file(f)
+                        sf.url = upload_file(f, box_config_path=box_config_path)
                         session.add(sf)
                         session.flush()
 
