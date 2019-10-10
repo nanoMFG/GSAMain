@@ -101,7 +101,7 @@ def convert_db(data):
     return data
 
 
-def build_db(session,filepath,sem_raman_path=None):
+def build_db(session,filepath,sem_raman_path=None,nrun=None):
     data = pd.read_csv(os.path.join(filepath,'recipe_2019-08-27.csv'))
     data = convert_db(data)
 
@@ -120,7 +120,10 @@ def build_db(session,filepath,sem_raman_path=None):
     box_folder = data['BOX FOLDER'].copy()
     author_column = data['CONTRIBUTOR'].copy()
 
-    for i in range(data.shape[0]):
+    if nrun == None:
+        nrun = data.shape[0]
+
+    for i in range(nrun):
         if 'Kaihao' in author_column[i]:
             s = sample()
             s.material_name = "Graphene"
