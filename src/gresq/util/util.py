@@ -2,6 +2,7 @@ from PyQt5 import QtGui, QtCore
 import pandas as pd
 import copy
 import io
+import requests
 from mlxtend.frequent_patterns import apriori
 from gresq.database import sample, preparation_step, dal, Base, mdf_forge, properties, recipe, raman_set, author, raman_spectrum,  sem_file , sem_analysis
 
