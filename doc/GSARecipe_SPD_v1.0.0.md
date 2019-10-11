@@ -77,6 +77,7 @@ Experience level
 Type of interaction
 Provide links to any user surveys, questionnaires, interviews, feedback or other relevant information.-->
 |          | Tasks          | Access        | Features Used |
+| --- | --- | --- | --- |
 Submitter  | Submits graphene recipes and associate SEM/Raman data | Read and write | Uses submit tool / query tool
 Querier    | Uses tool primarily for search and analysis | Read only | Uses query tool
 Validator  | Verifies submissions and performs post processing on inputted data | Read / Write / Validate | Uses admin tools
