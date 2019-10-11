@@ -54,14 +54,10 @@ The OSCM client for Gr-resQ is just one component of OSCM stack. This component 
 As mentioned before, this component is divided into 3 software parts. The first release will consist of the first 2 components listed below.  
 
 #### Release Notes v1.0.0
-##### Planned Features
-1. OSCM Client python package (90%) => HTTP request: Authentication, Users, Resources, Facilities, Transactions (jobs and files)
-2. OSCM adaptor (70%) => python functions: Authentication, Users, Resources, Facilities, Transactions, jobs, mdf
-3. OSCM GUI (0%)
-
-##### Not Done
-1. OSCM adaptor
-2. OSCM GUI
+##### Features
+1. OSCM Client python package (100%) => HTTP request: Authentication, Users, Resources, Facilities, Transactions (jobs and files)
+2. OSCM adaptor (100%) => python functions: Authentication, Users, Resources, Facilities, Transactions, jobs, mdf
+3. OSCM GUI (100%)
 
 ### 2.3 Scope and Limitations for Subsequent Releases
 <!--Short summary of  future envisioned roadmap for subsequent efforts.-->
