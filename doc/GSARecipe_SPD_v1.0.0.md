@@ -29,8 +29,8 @@ Chemical vapor deposition (CVD) synthesis of graphene depends on numerous input 
 
 ### 1.2 References
 <!--List any documents or background material that are relevant.  Links are useful. For instance, a link to a wiki or readme page in the project repository, or link to a uploaded file (doc, pdf, ppt, etc.).-->
-https://en.wikipedia.org/wiki/Graphene
-https://en.wikipedia.org/wiki/Chemical_vapor_deposition
+- https://en.wikipedia.org/wiki/Graphene
+- https://en.wikipedia.org/wiki/Chemical_vapor_deposition
 
 ## 2 Overview and Major Planned Features
 <!--Provide and overview characterising this proposed release.  Describe how users will interact with each proposed feature. Include a schematic/diagram to illustrate an overview of proposed software and achitecture componets for the project-->
@@ -61,7 +61,7 @@ This release will be constrained to primary functionality: submission, query and
 
 ### 2.3 Operating Environment
 <!--Describe the target environment.  Identify components or application that are needed.  Describe technical infrastructure need to support the application.-->
-python environment utilizing the pyqt framework. Database utilizes MySQL backend with a SQLAlchemy ORM. Other requirements are listed in the requirements.txt file. 
+python environment utilizing the pyqt framework. Database utilizes MySQL backend with a SQLAlchemy ORM. Other requirements are listed in the requirements.txt file. Designed to work locally or on nanohub.org.
 
 <!-- ### 2.4 Design and Implementation Constraints -->
 <!--This could include pre-existing code that needs to be incorporated ,a certain programming language or toolkit and software dependencies.  Describe the origin and rationale for each constraint.-->
