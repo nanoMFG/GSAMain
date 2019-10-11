@@ -104,7 +104,7 @@ OSCM User  | Submits recipes to OSCM | Read or write | Uses submit tool along wi
 
 ### 4.1 Data Dictionary
 <!--Summarize inputs and outputs for the application.-->
-[dbmodel_figure.pdf](https://github.com/nanoMFG/GSAMain/files/3718356/dbmodel_figure.pdf)
+![dbmodel_figure](https://user-images.githubusercontent.com/12614221/66664982-30df8700-ec13-11e9-8302-8b6b788cba45.png)
 
 ### 4.2 Usability and Performance
 <!--Summarize usability requirements such as easy of adoption for new users (eg example data),  inline documentation, avoiding errors, efficient interaction, etc.  Describe performance expectations  and/or document challenges.  Note you can reference user requirements from above if needed. -->
