@@ -12,42 +12,58 @@ Name | Role | github user | nanohub user | email | status
 ---|---|---|---|---|---
 Elif Ertekin | PI | elifleaf | Elif Ertekin | ertekin@illinois.edu | active
 Sameh Tawfick | PI | -- | -- | tawfick@illinois.edu | active
-Kevin Cruse | developer | kevcruse96 | kcruse2  | kevcruse96@gmail.com  | active
+Joshua Schiller | developer | jaschil2 | -- | jaschil2@illinois.edu | active
+Darren Adams | developer | dadamsncsa | -- | dadams@illinois.edu | active
+Kevin Cruse | developer | kevcruse96 | kcruse2  | kevcruse96@gmail.com  | inactive
 
 **nanoMFG Github Team(s):** @GSAMain
 **nanoHUB Group(s):** Gr-ResQ
 
 ## 1. Introduction
 <!-- A  concise description of the current iteration of work. -->
+The Gr-ResQ tool provides a platform for users to submit their recipes and associated output data, query/analyze existing recipe data and directly connect to the OSCM platform.
 
 ### 1.1 Purpose and Vision Statement
 <!--Why are we building this tool? What is the key benefit? How does it relate to existing tools and existing software? How does it fit into the overall objectives for the nanoMFG node? Who will use it?-->
+Chemical vapor deposition (CVD) synthesis of graphene depends on numerous input parameters, which can each have a significant effect on the outcome yield. Moreover, the results of most experiments are diffusely scattered in the literature and often times presented in a non-standardized form. Consequently, it can be difficult for researchers to learn and improve on the results of prior work. In order to expedite the process, Gr-ResQ provides a platform for researchers to pool the results of their experiments into a centralized database, whose data can then be analyzed to determine best practices or recipes.
 
 ### 1.2 References
 <!--List any documents or background material that are relevant.  Links are useful. For instance, a link to a wiki or readme page in the project repository, or link to a uploaded file (doc, pdf, ppt, etc.).-->
+https://en.wikipedia.org/wiki/Graphene
+https://en.wikipedia.org/wiki/Chemical_vapor_deposition
 
 ## 2 Overview and Major Planned Features
 <!--Provide and overview characterising this proposed release.  Describe how users will interact with each proposed feature. Include a schematic/diagram to illustrate an overview of proposed software and achitecture componets for the project-->
 
-### 2.1 Product Background and Strategic Fit
+<img width="743" alt="Screen Shot 2019-10-10 at 6 46 21 PM" src="https://user-images.githubusercontent.com/12614221/66614426-a5bcad80-eb8e-11e9-81b8-48cf18cfffb4.png">
+
+The work in this repository involves the construction of a submission tool to collect graphene recipe data, a query tool to search for and visualize the data and associated analysis tools. The analyses allow for SEM segmentation to determine graphene coverage of a substrate, automatic processing of Raman spectroscopy data to extract graphene characteristics as well as statistical tools to view the recipes. In addition, Gr-ResQ is connected to OSCM to facilitate the creation of new experiments directly from the platform. The data on the platform is then stored in the Materials Data Facility (MDF) for greater open source access to other researchers.
+
+<!--### 2.1 Product Background and Strategic Fit -->
 <!--Provide context for the proposed product.  Is this a completely new projects, or next version of an existing project? This can include a description of any contextual research, or the status of any existing prototype application.  If this SPD describes a component, describe its relationship to larger system. Can include diagrams.-->
 
 ### 2.2 Scope and Limitations for Current Release
 <!--List the all planned goals/features for this release.  These should be links to issues.  Add a new subsection for each release.  Equally important, document feature you explicity are not doing at this time-->
+[Image segmentation of SEM images](https://github.com/nanoMFG/GSAMain/issues/77)
+[Submit graphene recipe and associated data](https://github.com/nanoMFG/GSAMain/issues/78)
+[Query graphene data](https://github.com/nanoMFG/GSAMain/issues/79)
+[Visualize recipe data in database](https://github.com/nanoMFG/GSAMain/issues/80)
+[Analysis on graphene data](https://github.com/nanoMFG/GSAMain/issues/81)
 
-
-##### 2.2.1 Planned Features
+<!-- ##### 2.2.1 Planned Features -->
 
 #### 2.2.2 Release Notes 
-##### v#.#.#
+##### v0.9.0
 
 ### 2.3 Scope and Limitations for Subsequent Releases
 <!--Short summary of  future envisioned roadmap for subsequent efforts.-->
+This release will be constrained to primary functionality: submission, query and validation. Future releases will allow image segmentation (both manual and automatic) as well as possible machine learning integration.
 
 ### 2.3 Operating Environment
 <!--Describe the target environment.  Identify components or application that are needed.  Describe technical infrastructure need to support the application.-->
+python environment utilizing the pyqt framework. Database utilizes MySQL backend with a SQLAlchemy ORM. Other requirements are listed in the requirements.txt file. 
 
-### 2.4 Design and Implementation Constraints
+<!-- ### 2.4 Design and Implementation Constraints -->
 <!--This could include pre-existing code that needs to be incorporated ,a certain programming language or toolkit and software dependencies.  Describe the origin and rationale for each constraint.-->
 
 ## 3 User Interaction and Design
