@@ -44,11 +44,11 @@ The work in this repository involves the construction of a submission tool to co
 
 ### 2.2 Scope and Limitations for Current Release
 <!--List the all planned goals/features for this release.  These should be links to issues.  Add a new subsection for each release.  Equally important, document feature you explicity are not doing at this time-->
-[Image segmentation of SEM images](https://github.com/nanoMFG/GSAMain/issues/77)
-[Submit graphene recipe and associated data](https://github.com/nanoMFG/GSAMain/issues/78)
-[Query graphene data](https://github.com/nanoMFG/GSAMain/issues/79)
-[Visualize recipe data in database](https://github.com/nanoMFG/GSAMain/issues/80)
-[Analysis on graphene data](https://github.com/nanoMFG/GSAMain/issues/81)
+- [Image segmentation of SEM images](https://github.com/nanoMFG/GSAMain/issues/77)
+- [Submit graphene recipe and associated data](https://github.com/nanoMFG/GSAMain/issues/78)
+- [Query graphene data](https://github.com/nanoMFG/GSAMain/issues/79)
+- [Visualize recipe data in database](https://github.com/nanoMFG/GSAMain/issues/80)
+- [Analysis on graphene data](https://github.com/nanoMFG/GSAMain/issues/81)
 
 <!-- ##### 2.2.1 Planned Features -->
 
