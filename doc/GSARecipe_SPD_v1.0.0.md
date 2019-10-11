@@ -44,6 +44,7 @@ The work in this repository involves the construction of a submission tool to co
 
 ### 2.2 Scope and Limitations for Current Release
 <!--List the all planned goals/features for this release.  These should be links to issues.  Add a new subsection for each release.  Equally important, document feature you explicity are not doing at this time-->
+
 - [Image segmentation of SEM images](https://github.com/nanoMFG/GSAMain/issues/77)
 - [Submit graphene recipe and associated data](https://github.com/nanoMFG/GSAMain/issues/78)
 - [Query graphene data](https://github.com/nanoMFG/GSAMain/issues/79)
@@ -103,9 +104,14 @@ OSCM User  | Submits recipes to OSCM | Read or write | Uses submit tool along wi
 
 ### 4.1 Data Dictionary
 <!--Summarize inputs and outputs for the application.-->
+[dbmodel_figure.pdf](https://github.com/nanoMFG/GSAMain/files/3718356/dbmodel_figure.pdf)
 
 ### 4.2 Usability and Performance
 <!--Summarize usability requirements such as easy of adoption for new users (eg example data),  inline documentation, avoiding errors, efficient interaction, etc.  Describe performance expectations  and/or document challenges.  Note you can reference user requirements from above if needed. -->
+
+- Inputs are validated for submit tool before submission to database and then further manually validated by a validator
+- Tool tips can be added in future versions
+- Tutorial with input definitions will be included with general release
 
 ### 4.3 Testing, Verification and Validation
 <!--Describe What data is necessary to verify the basic functionality of the application.  Provide a testing plan that includes a list of issues for each planned activity.  Describe data sets that are needed to test validation.-->
@@ -114,3 +120,7 @@ OSCM User  | Submits recipes to OSCM | Read or write | Uses submit tool along wi
 <!--Identify and document possible sources of uncertainty. Categorize with standard labels, such as parametric, structural, algorithmic, experimental, interpolation.
 
 <!-- Develop a plan for measuring and documenting uncertainty, e.g., using forward propagation or inverse UQ, and showing it in the application, if applicable.-->
+
+- Program will see minor release for beta testing to group members before general release
+- Data is released with program for testing database and functionality
+- pytest integration
