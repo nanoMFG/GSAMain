@@ -1,7 +1,7 @@
 # nanoMFG Software Planning Document
 <!-- Replace text below with long title of project:short-name -->
 ## Graphene Recipe Profile Visualization: nanocool
-### Target Release: 1.0.0 : June 30, 2019
+### Target Release: 1.0.0 : November, 2019
 
 ## Development Team
 <!-- Complete table for all team members 
