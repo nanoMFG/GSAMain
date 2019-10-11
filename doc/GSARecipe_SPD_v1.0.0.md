@@ -14,6 +14,7 @@ Elif Ertekin | PI | elifleaf | Elif Ertekin | ertekin@illinois.edu | active
 Sameh Tawfick | PI | -- | -- | tawfick@illinois.edu | active
 Joshua Schiller | developer | jaschil2 | -- | jaschil2@illinois.edu | active
 Darren Adams | developer | dadamsncsa | -- | dadams@illinois.edu | active
+Ricardo Toro | developer | torosant | -- | torosant@illinois.edu | active
 Kevin Cruse | developer | kevcruse96 | kcruse2  | kevcruse96@gmail.com  | inactive
 
 **nanoMFG Github Team(s):** @GSAMain
