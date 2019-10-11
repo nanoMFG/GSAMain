@@ -76,17 +76,26 @@ Features used
 Experience level
 Type of interaction
 Provide links to any user surveys, questionnaires, interviews, feedback or other relevant information.-->
+|          | Tasks          | Access        | Features Used |
+Submitter  | Submits graphene recipes and associate SEM/Raman data | Read and write | Uses submit tool / query tool
+Querier    | Uses tool primarily for search and analysis | Read only | Uses query tool
+Validator  | Verifies submissions and performs post processing on inputted data | Read / Write / Validate | Uses admin tools
+OSCM User  | Submits recipes to OSCM | Read or write | Uses submit tool along with OSCM interface
 
-### 3.2 User Requirements
+<!-- ### 3.2 User Requirements -->
 <!-- Provide a list of issue links to document the main set of user requirements to be satisfied by this release.  Use the user requirement template to draft thense issues.  A well written user requirement should be easy to justify (Rational) and should be testable.  List in order of priority as must have, should have or nice to have for each use case. -->
 
 ### 3.3 Proposed User Interface
 <!--Could include drawn mockups, screenshots of prototypes, comparison to existing software and other descriptions.-->
 
-### 3.4 Documentation Plan
+<img width="1259" alt="Screen Shot 2019-09-13 at 1 04 14 PM" src="https://user-images.githubusercontent.com/12614221/66623029-8bdf9280-ebaf-11e9-98d1-5730c79d8b52.png">
+
+<img width="1259" alt="Screen Shot 2019-09-13 at 1 05 48 PM" src="https://user-images.githubusercontent.com/12614221/66623058-b29dc900-ebaf-11e9-9d20-30fb013e27d2.png">
+
+<!-- ### 3.4 Documentation Plan -->
 <!-- List planned documentation activities -->
 
-### 3.5 User Outreach Plan
+<!-- ### 3.5 User Outreach Plan -->
 <!-- List upcoming activities designed to elicit user feedback and/or engage new users.  Use issues for activities that will be completed this iteration-->
 
 ## 4. Data And Quality Attributes
@@ -100,7 +109,7 @@ Provide links to any user surveys, questionnaires, interviews, feedback or other
 ### 4.3 Testing, Verification and Validation
 <!--Describe What data is necessary to verify the basic functionality of the application.  Provide a testing plan that includes a list of issues for each planned activity.  Describe data sets that are needed to test validation.-->
 
-### 4.4 Uncertainty Quantification
+<!-- ### 4.4 Uncertainty Quantification -->
 <!--Identify and document possible sources of uncertainty. Categorize with standard labels, such as parametric, structural, algorithmic, experimental, interpolation.
 
-Develop a plan for measuring and documenting uncertainty, e.g., using forward propagation or inverse UQ, and showing it in the application, if applicable.-->
+<!-- Develop a plan for measuring and documenting uncertainty, e.g., using forward propagation or inverse UQ, and showing it in the application, if applicable.-->
