@@ -33,7 +33,7 @@ class sample(Base):
     __tablename__ = 'sample'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID','std_unit':None})
     nanohub_userid = Column(Integer,info={'verbose_name':'Nanohub Submitter User ID','std_unit':None})
-    authors = relationship("author")
+    authors = relationship("author",lazy='subquery')
     experiment_date = Column(Date,info={
         'verbose_name':'Experiment Date',
         'required':True,
@@ -47,11 +47,16 @@ class sample(Base):
     recipe = relationship("recipe",uselist=False,cascade="save-update, merge, delete")
     properties = relationship("properties",uselist=False,cascade="save-update, merge, delete")
     
-    raman_analysis = relationship("raman_set",uselist=False,cascade="save-update, merge, delete")
+    raman_analysis = relationship("raman_set",
+        uselist=False,
+        lazy='subquery',
+        cascade="save-update, merge, delete")
     raman_files = relationship("raman_file", back_populates="sample_model")
 
     sem_files = relationship("sem_file",back_populates="sample", cascade="save-update, merge, delete")
-    primary_sem_file_id = Column(Integer,ForeignKey("sem_analysis.id",use_alter=True),index=True)
+    primary_sem_file_id = Column(Integer,ForeignKey("sem_analysis.id",use_alter=True),
+        index=True,
+        info={'verbose_name':'Primary SEM File ID','std_unit':None})
     primary_sem_file = relationship(
         "sem_file", primaryjoin="sample.primary_sem_file_id==sem_file.id", 
         foreign_keys = [primary_sem_file_id],
@@ -441,7 +446,9 @@ class raman_set(Base):
     nanohub_userid = Column(Integer,info={'verbose_name':'Nanohub Submitter User ID'})
     map_file = Column(Boolean,info={'verbose_name':'Map File'},default=False)
     sample_id = Column(Integer,ForeignKey(sample.id), index=True, info={'verbose_name':'Sample ID'})
-    raman_spectra = relationship("raman_spectrum",cascade="save-update, merge, delete")
+    raman_spectra = relationship("raman_spectrum",
+        lazy='subquery',
+        cascade="save-update, merge, delete")
     authors = relationship("author")
     experiment_date = Column(Date,default=datetime.date.today,info={
         'verbose_name':'Experiment Date',
@@ -544,7 +551,10 @@ class raman_spectrum(Base):
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
     set_id = Column(Integer,ForeignKey(raman_set.id), index=True, info={'verbose_name':'Raman Set ID'})
     raman_file_id = Column(Integer,ForeignKey(raman_file.id))
-    raman_file = relationship("raman_file",uselist=False,cascade="save-update, merge, delete")
+    raman_file = relationship("raman_file",
+        uselist=False,
+        lazy='subquery',
+        cascade="save-update, merge, delete")
     xcoord = Column(Integer,info={'verbose_name':'X Coordinate'})
     ycoord = Column(Integer,info={'verbose_name':'Y Coordinate'})
     percent = Column(Float,info={
@@ -621,7 +631,9 @@ class sem_analysis(Base):
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
     sem_file_id = Column(Integer, ForeignKey("sem_file.id"), index=True)
     sem_file = relationship(
-        "sem_file", back_populates="analyses", foreign_keys=[sem_file_id]
+        "sem_file", back_populates="analyses", 
+        foreign_keys=[sem_file_id],
+        lazy='subquery'
         )
 
     mask_url = Column(String(256))
@@ -648,21 +660,27 @@ class sem_file(Base):
     filename = Column(String(64))
     url = Column(String(256))
 
-    sample = relationship("sample", back_populates = "sem_files")
+    sample = relationship("sample", 
+        back_populates = "sem_files")
 
     default_analysis_id = Column(
-        Integer, ForeignKey("sem_analysis.id", use_alter=True), index=True
+        Integer, ForeignKey("sem_analysis.id", use_alter=True), 
+        index=True
         )
 
     default_analysis = relationship(
         "sem_analysis",
         primaryjoin = "sem_file.default_analysis_id==sem_analysis.id",
-        foreign_keys = [default_analysis_id], post_update=True
+        foreign_keys = [default_analysis_id], 
+        post_update=True,
+        lazy='subquery'
         )
 
     analyses = relationship(
-        "sem_analysis", primaryjoin = "sem_file.id==sem_analysis.sem_file_id",
-        back_populates="sem_file"
+        "sem_analysis", 
+        primaryjoin = "sem_file.id==sem_analysis.sem_file_id",
+        back_populates="sem_file",
+        lazy='subquery'
         )
 
     def json_encodable(self):

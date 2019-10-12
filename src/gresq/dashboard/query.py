@@ -251,7 +251,6 @@ class GSAQuery(QtGui.QWidget):
         """
         Populates secondary selection combo box with fields corresponding to the primary selection model.
         """
-
         self.secondary_selection.clear()
         self.secondary_selection.addItems([getattr(selection_list[selection]['model'],v).info['verbose_name'] for v in selection_list[selection]['fields']])
 
@@ -433,7 +432,7 @@ class PreviewWidget(QtGui.QTabWidget):
         super(PreviewWidget,self).__init__(parent=parent)
         self.privileges = privileges
         self.detail_tab = DetailWidget()
-        self.sem_tab = SEMDisplayTab()
+        self.sem_tab = SEMDisplayTab(privileges=privileges)
         self.raman_tab = RamanDisplayTab()
         self.recipe_tab = RecipeDisplayTab()
         self.provenance_tab = ProvenanceDisplayTab()
@@ -603,10 +602,82 @@ class FieldsDisplayWidget(QtGui.QScrollArea):
                     value = ''
             self.fields[field]['value'].setText(str(value))
 
+class RawImageTab(pg.GraphicsLayoutWidget):
+    def __init__(self,parent=None):
+        super(RawImageTab,self).__init__(parent=parent)
+        self._id = None
+        self.wImgBox_VB = self.addViewBox(row=1,col=1)
+        self.wImgItem = pg.ImageItem()
+        self.wImgBox_VB.addItem(self.wImgItem)
+        self.wImgBox_VB.setAspectLocked(True)
+
+    def loadImage(self,data,thread_id,info):
+        self._id = thread_id
+        img = np.array(Image.open(io.BytesIO(data)))
+        self.wImgItem.setImage(img,levels=(0,255))
+
+class SEMAdminTab(QtGui.QScrollArea):
+    def __init__(self,sem_id,sample_id,parent=None):
+        super(SEMAdminTab,self).__init__(parent=parent)
+        self.sem_id = sem_id
+        self.sample_id = sample_id
+
+        self.set_default_button = QtGui.QPushButton('Set Default Analysis')
+        self.set_primary_button = QtGui.QPushButton('Set Primary Analysis')
+        self.default_label = QtGui.QLabel('')
+        self.primary_label = QtGui.QLabel('')
+        self.sem_list = QtGui.QListWidget()
+        self.mask_stack = QtGui.QStackedWidget()
+
+        with dal.session_scope() as session:
+            sem = session.query(sem_file).filter(sem_file.id==self.sem_id).first()
+            
+            for a,analysis in enumerate(sem.analyses):
+                mask_widget = RawImageTab()
+
+                self.sem_list.addItem(analysis.id)
+                self.mask_stack.addWidget(mask_widget)
+
+                thread = DownloadThread(url=analysis.mask_url,thread_id=self.sem_id,info={'analysis_id':analysis.id})
+                thread.downloadFinished.connect(mask_widget.loadImage)
+                thread.start()
+
+        self.layout = QtGui.QGridLayout(self)
+        self.layout.addWidget(self.set_primary_button,0,0,1,1)
+        self.layout.addWidget(self.primary_label,0,1,1,2)
+        self.layout.addWidget(self.sem_list,1,0,2,1)
+        self.layout.addWidget(self.mask_stack,1,1,1,2)
+        self.layout.addWidget(self.set_default_button,2,1,1,1)
+        self.layout.addWidget(self.default_label,2,2,1,1)
+
+        self.set_primary_button.clicked.connect(self.setPrimary)
+        self.sem_list.currentRowChanged.connect(self.mask_stack.setCurrentIndex)
+        self.sem_list.currentItemChanged.connect(lambda curr, prev: self.setDefaultStatus(int(curr.text())))
+        self.set_default_button.clicked.connect(lambda: self.setDefault)
+
+    def setDefaultStatus(self,analysis_id):
+        with dal.session_scope() as session:
+            sem_file_model = session.query(sem_file).filter(sem_file.id==self.sem_id).first()
+            self.default_label.setText(str(sem_file_model.default_analysis==analysis_id))
+
+    def setDefault(self):
+        analysis_id = int(self.sem_list.currentItem().text())
+        with dal.session_scope() as session:
+            sem_file_model = session.query(sem_file).filter(sem_file.id==self.sem_id).first()
+            sem_file_model.default_analysis = analysis_id
+
+            self.setDefaultStatus(analysis_id)
+
+    def setPrimary(self):
+        with dal.session_scope() as session:
+            sample_model = session.query(sample).filter(sample.id==self.sample_id).first()
+            sample_model.primary_sem_file_id = self.sem_id
+
 class SEMDisplayTab(QtGui.QScrollArea):
-    def __init__(self,privileges,parent=None):
+    def __init__(self,privileges,mode='local',parent=None):
         super(SEMDisplayTab,self).__init__(parent=parent)
         self.privileges = privileges
+        self.mode = mode
 
         self.contentWidget = QtGui.QWidget()
         self.layout = QtGui.QGridLayout(self.contentWidget)
@@ -654,79 +725,8 @@ class SEMDisplayTab(QtGui.QScrollArea):
             os.remove(fname)
 
             self.update(sample_model,force_refresh=True)
-    
-    class SEMAdminTab(QtGui.QScrollArea):
-        def __init__(self,sem_id,sample_id,parent=None):
-            super(SEMAdminTab,self).__init__(parent=parent)
-            self.sem_id = sem_id
-            self.sample_id = sample_id
 
-            self.set_default_button = QtGui.QPushButton('Set Default Analysis')
-            self.set_primary_button = QtGui.QPushButton('Set Primary Analysis')
-            self.default_label = QtGui.QLabel('')
-            self.primary_label = QtGui.QLabel('')
-            self.sem_list = QtGui.QListWidget()
-            self.mask_stack = QtGui.QStackedWidget()
-
-            with dal.session_scope() as session:
-                sem = session.query(sem_file).filter(sem_file.id==self.sem_id).first()
-                
-                for a,analysis in enumerate(sem.analyses):
-                    mask_widget = RawImageTab()
-
-                    self.sem_list.addItem(analysis.id)
-                    self.mask_stack.addWidget(mask_widget)
-
-                    thread = DownloadThread(url=analysis.mask_url,thread_id=self.sem_id,info={'analysis_id':analysis.id})
-                    thread.downloadFinished.connect(mask_widget.loadImage)
-                    thread.start()
-
-            self.layout = QtGui.QGridLayout(self)
-            self.layout.addWidget(self.set_primary_button,0,0,1,1)
-            self.layout.addWidget(self.primary_label,0,1,1,2)
-            self.layout.addWidget(self.sem_list,1,0,2,1)
-            self.layout.addWidget(self.mask_stack,1,1,1,2)
-            self.layout.addWidget(self.set_default_button,2,1,1,1)
-            self.layout.addWidget(self.default_label,2,2,1,1)
-
-            self.set_primary_button.clicked.connect(self.setPrimary)
-            self.sem_list.currentRowChanged.connect(self.mask_stack.setCurrentIndex)
-            self.sem_list.currentItemChanged.connect(lambda curr, prev: self.setDefaultStatus(int(curr.text())))
-            self.set_default_button.clicked.connect(lambda: self.setDefault)
-
-        def setDefaultStatus(self,analysis_id):
-            with dal.session_scope() as session:
-                sem_file_model = session.query(sem_file).filter(sem_file.id==self.sem_id).first()
-                self.default_label.setText(str(sem_file_model.default_analysis==analysis_id))
-
-        def setDefault(self):
-            analysis_id = int(self.sem_list.currentItem().text())
-            with dal.session_scope() as session:
-                sem_file_model = session.query(sem_file).filter(sem_file.id==self.sem_id).first()
-                sem_file_model.default_analysis = analysis_id
-
-                self.setDefaultStatus(analysis_id)
-
-        def setPrimary(self):
-            with dal.session_scope() as session:
-                sample_model = session.query(sample).filter(sample.id==self.sample_id).first()
-                sample_model.primary_sem_file_id = self.sem_id
-        
-
-    class RawImageTab(pg.GraphicsLayoutWidget):
-        def __init__(self,parent=None):
-            super(RawImageTab,self).__init__(parent=parent)
-            self.model_id = model_id
-            self.wImgBox_VB = self.addViewBox(row=1,col=1)
-            self.wImgItem = pg.ImageItem()
-            self.wImgBox_VB.addItem(wImgItem)
-            self.wImgBox_VB.setAspectLocked(True)
-
-        def loadImage(self,data,thread_id,info):
-            img = np.array(Image.open(io.BytesIO(data)))
-            self.wImgItem.setImage(img,levels=(0,255))
-
-    def update_progress_bar(self):
+    def update_progress_bar(self,*args,**kwargs):
         self.progress_bar.setValue(100*sum([t.isFinished() for t in self.threads])/len(self.threads))
 
     def createSEMTabs(self,sem):
@@ -738,8 +738,10 @@ class SEMDisplayTab(QtGui.QScrollArea):
         sem_tabs.addTab(image_tab,"Raw Data")      
         sem_tabs.addTab(mask_tab,"Mask")        
 
+        edit_tab = None
+        admin_tab = None
         if self.privileges['validate']:
-            edit_tab = ImageEditor(img=img,sem_id=sem_id,privileges=self.privileges)
+            edit_tab = ImageEditor(sem_id=sem.id,privileges=self.privileges,mode=self.mode)
             edit_tab.submitClicked.connect(self.submitMask)
             admin_tab = SEMAdminTab(sem_id=sem.id,sample_id=self.sample_id)
 
@@ -749,6 +751,8 @@ class SEMDisplayTab(QtGui.QScrollArea):
         thread = DownloadThread(url=sem.url,thread_id=sem.sample_id,info={'sem_id':sem.id})
         thread.downloadFinished.connect(image_tab.loadImage)
         thread.downloadFinished.connect(self.update_progress_bar)
+        if edit_tab:
+            thread.downloadFinished.connect(edit_tab.loadImage)
         thread.start()
         self.threads.append(thread)
 
