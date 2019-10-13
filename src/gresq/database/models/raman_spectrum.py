@@ -6,10 +6,9 @@ from gresq.database import Base
 
 class RamanSpectrum(Base):
     __tablename__ = 'raman_spectrum'
-    id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
+    id = Column(Integer, primary_key=True, info={'verbose_name':'ID'})
     #set_id = Column(Integer,ForeignKey(raman_set.id), index=True, info={'verbose_name':'Raman Set ID'})
-    raman_file_id = Column(Integer,ForeignKey("raman_file.id"), ondelete="CASCADE")
-    raman_file = relationship("raman_file",uselist=False)
+    raman_file_id = Column(Integer, ForeignKey("raman_file.id", ondelete="CASCADE"), index=True)
     xcoord = Column(Integer,info={'verbose_name':'X Coordinate'})
     ycoord = Column(Integer,info={'verbose_name':'Y Coordinate'})
     percent = Column(Float,info={
@@ -61,6 +60,9 @@ class RamanSpectrum(Base):
         'required': False
         })
 
+    raman_file = relationship("RamanFile", uselist=False, back_populates="raman_spectrum", 
+    primaryjoin="RamanSpectrum.raman_file_id==RamanFile.id")
+    
     def json_encodable(self):
         params = [
             "percent",
@@ -77,6 +79,6 @@ class RamanSpectrum(Base):
         json_dict = {}
         json_dict['raman_file'] = self.raman_file.json_encodable()
         for p in params:
-            json_dict[p] = {'value':getattr(self,p),'unit':getattr(raman_spectrum,p).info['std_unit']}
+            json_dict[p] = {'value':getattr(self,p),'unit':getattr(RamanSpectrum,p).info['std_unit']}
 
         return json_dict

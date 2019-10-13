@@ -20,10 +20,10 @@ def dal_conn(scope="module"):
     # Add some data here
     yield
     # Drop and ditch
-    #Base.metadata.drop_all(bind=dal.engine)
+    Base.metadata.drop_all(bind=dal.engine)
     dal.engine.dispose()
 
-def session(scope="funcion"):
+def session(scope="function"):
     return dal.session_scope()
 
     

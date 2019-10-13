@@ -6,3 +6,4 @@ from .properties import Properties
 
 # from .raman_set import RamanSet
 from .raman_file import RamanFile
+from .raman_spectrum import RamanSpectrum

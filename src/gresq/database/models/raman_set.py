@@ -129,7 +129,7 @@ class RamanSet(Base):
         for p in params:
             json_dict[p] = {
                 "value": getattr(self, p),
-                "unit": getattr(raman_spectrum, p).info["std_unit"],
+                "unit": getattr(RamanSpectrum, p).info["std_unit"],
             }
 
         return json_dict
