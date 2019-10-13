@@ -1,6 +1,6 @@
 
 import pytest
-from gresq.dashboard.query import GSAQuery
+#from gresq.dashboard.query import GSAQuery
 
 class TestGSAQuery:
     def test_generate_field_returns_something(self):

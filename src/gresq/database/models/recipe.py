@@ -110,7 +110,7 @@ class Recipe(Base):
     )
 
     # ONE-TO-MANY: recipe -> preparation_step
-    preparation_step = relationship(
+    preparation_steps = relationship(
         "PreparationStep",
         cascade="all, delete-orphan",
         passive_deletes=True,
@@ -203,21 +203,21 @@ class Recipe(Base):
     #             correlate(cls)
     #     return exists(s)
 
-    # def json_encodable(self):
-    #     params = [
-    #         "catalyst",
-    #         "tube_diameter",
-    #         "cross_sectional_area",
-    #         "tube_length",
-    #         "base_pressure",
-    #         "thickness",
-    #         "diameter",
-    #         "length",
-    #         "dewpoint"
-    #         ]
-    #     json_dict = {}
-    #     for p in params:
-    #         json_dict[p] = {'value':getattr(self,p),'unit':getattr(recipe,p).info['std_unit']}
-    #     json_dict['preparation_steps'] = sorted([s.json_encodable() for s in self.preparation_steps if s.step!=None] , key= lambda s: s["step"])
+    def json_encodable(self):
+        params = [
+            "catalyst",
+            "tube_diameter",
+            "cross_sectional_area",
+            "tube_length",
+            "base_pressure",
+            "thickness",
+            "diameter",
+            "length",
+            "dewpoint"
+            ]
+        json_dict = {}
+        for p in params:
+            json_dict[p] = {'value':getattr(self,p),'unit':getattr(Recipe,p).info['std_unit']}
+        json_dict['preparation_steps'] = sorted([s.json_encodable() for s in self.preparation_steps if s.step!=None] , key= lambda s: s["step"])
 
-    #     return json_dict
+        return json_dict

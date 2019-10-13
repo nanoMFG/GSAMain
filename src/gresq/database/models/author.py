@@ -34,7 +34,7 @@ class Author(Base):
         info={"verbose_name": "Institution", "std_unit": None, "required": False},
     )
 
-    sample = relationship("Sample")
+    sample = relationship("Sample", back_populates="authors")
 
     # raman_set = relationship("RamanSet", foreign_keys=[raman_id])
 

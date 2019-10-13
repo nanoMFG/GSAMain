@@ -21,7 +21,7 @@ class RamanFile(Base):
         },
     )
 
-    sample = relationship("Sample", back_populates="raman_file")
+    sample = relationship("Sample", back_populates="raman_files")
 
     def json_encodable(self):
         params = ["wavelength"]
@@ -30,6 +30,6 @@ class RamanFile(Base):
         for p in params:
             json_dict[p] = {
                 "value": getattr(self, p),
-                "unit": getattr(raman_file, p).info["std_unit"],
+                "unit": getattr(RamanFile, p).info["std_unit"],
             }
         return json_dict

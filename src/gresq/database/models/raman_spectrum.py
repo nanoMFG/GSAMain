@@ -4,59 +4,62 @@ from sqlalchemy.ext.hybrid import hybrid_property
 
 from gresq.database import Base
 
-
 class RamanSpectrum(Base):
-    __tablename__ = "raman_spectrum"
-    id = Column(Integer, primary_key=True, info={"verbose_name": "ID"})
-    # set_id = Column(Integer,ForeignKey(raman_set.id), index=True, info={'verbose_name':'Raman Set ID'})
-    raman_file_id = Column(Integer, ForeignKey(raman_file.id))
-    raman_file = relationship(
-        "raman_file", uselist=False, cascade="save-update, merge, delete"
-    )
-    xcoord = Column(Integer, info={"verbose_name": "X Coordinate"})
-    ycoord = Column(Integer, info={"verbose_name": "Y Coordinate"})
-    percent = Column(
-        Float,
-        info={
-            "verbose_name": "Characteristic Percent",
-            "std_unit": "%",
-            "conversions": {"%": 1},
-            "required": True,
-        },
-    )
-    d_peak_shift = Column(
-        Float,
-        info={"verbose_name": "D Peak Shift", "std_unit": "cm^-1", "required": False},
-    )
-    d_peak_amplitude = Column(
-        Float,
-        info={"verbose_name": "D Peak Amplitude", "std_unit": None, "required": False},
-    )
-    d_fwhm = Column(
-        Float, info={"verbose_name": "D FWHM", "std_unit": "cm^-1", "required": False}
-    )
-    g_peak_shift = Column(
-        Float,
-        info={"verbose_name": "G Peak Shift", "std_unit": "cm^-1", "required": False},
-    )
-    g_peak_amplitude = Column(
-        Float,
-        info={"verbose_name": "G Peak Amplitude", "std_unit": None, "required": False},
-    )
-    g_fwhm = Column(
-        Float, info={"verbose_name": "G FWHM", "std_unit": "cm^-1", "required": False}
-    )
-    g_prime_peak_shift = Column(
-        Float,
-        info={"verbose_name": "G' Peak Shift", "std_unit": "cm^-1", "required": False},
-    )
-    g_prime_peak_amplitude = Column(
-        Float,
-        info={"verbose_name": "G' Peak Amplitude", "std_unit": None, "required": False},
-    )
-    g_prime_fwhm = Column(
-        Float, info={"verbose_name": "G' FWHM", "std_unit": "cm^-1", "required": False}
-    )
+    __tablename__ = 'raman_spectrum'
+    id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
+    #set_id = Column(Integer,ForeignKey(raman_set.id), index=True, info={'verbose_name':'Raman Set ID'})
+    raman_file_id = Column(Integer,ForeignKey("raman_file.id"), ondelete="CASCADE")
+    raman_file = relationship("raman_file",uselist=False)
+    xcoord = Column(Integer,info={'verbose_name':'X Coordinate'})
+    ycoord = Column(Integer,info={'verbose_name':'Y Coordinate'})
+    percent = Column(Float,info={
+        'verbose_name':'Characteristic Percent',
+        'std_unit': '%',
+        'conversions': {'%':1},
+        'required': True
+        })
+    d_peak_shift = Column(Float,info={
+        'verbose_name':'D Peak Shift',
+        'std_unit': 'cm^-1',
+        'required': False
+        })
+    d_peak_amplitude = Column(Float,info={
+        'verbose_name':'D Peak Amplitude',
+        'std_unit':None,
+        'required': False})
+    d_fwhm = Column(Float,info={
+        'verbose_name':"D FWHM",
+        'std_unit': 'cm^-1',
+        'required': False
+        })
+    g_peak_shift = Column(Float,info={
+        'verbose_name':'G Peak Shift',
+        'std_unit': 'cm^-1',
+        'required': False
+        })
+    g_peak_amplitude = Column(Float,info={
+        'verbose_name':'G Peak Amplitude',
+        'std_unit':None,
+        'required': False})
+    g_fwhm = Column(Float,info={
+        'verbose_name':'G FWHM',
+        'std_unit': 'cm^-1',
+        'required': False
+        })
+    g_prime_peak_shift = Column(Float,info={
+        'verbose_name':'G\' Peak Shift',
+        'std_unit': 'cm^-1',
+        'required': False
+        })
+    g_prime_peak_amplitude = Column(Float, info={
+        'verbose_name':'G\' Peak Amplitude',
+        'std_unit':None,
+        'required': False})
+    g_prime_fwhm = Column(Float,info={
+        'verbose_name':'G\' FWHM',
+        'std_unit': 'cm^-1',
+        'required': False
+        })
 
     def json_encodable(self):
         params = [
@@ -69,14 +72,11 @@ class RamanSpectrum(Base):
             "g_fwhm",
             "g_prime_peak_shift",
             "g_prime_peak_amplitude",
-            "g_prime_fwhm",
+            "g_prime_fwhm"
         ]
         json_dict = {}
-        json_dict["raman_file"] = self.raman_file.json_encodable()
+        json_dict['raman_file'] = self.raman_file.json_encodable()
         for p in params:
-            json_dict[p] = {
-                "value": getattr(self, p),
-                "unit": getattr(raman_spectrum, p).info["std_unit"],
-            }
+            json_dict[p] = {'value':getattr(self,p),'unit':getattr(raman_spectrum,p).info['std_unit']}
 
         return json_dict
