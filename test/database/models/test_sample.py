@@ -10,49 +10,9 @@ Conventions:
     
 
 """
-import pytest
 
-#from gresq.config import Config
-from gresq.database import dal, Base
-from gresq.database.models import Sample, Recipe
-from ..factories import SampleFactory, RecipeFactory
-from .. import config_prefix, config_suffix
-
-# @pytest.fixture(scope="class")
-# def sample():
-#     """Set up a set of samples for testing using the factory boy factories.
-#     The sample factory cascades to all related tables. 
-#     """
-#     # create_all is already in test/database__init__.py. 
-#     #  I don't know why I have to call it here again, but I do.
-#     Base.metadata.create_all(bind=dal.engine)
-#     # Add some data here
-#     print("Hey, here come some samples...")
-#     yield SampleFactory.create_batch(5)
-#     # Drop and ditch
-#     print("Tearing down test samples and DB")
-#     with dal.session_scope(autocommit=True) as sess:
-#         for s in sess.query(Sample).all():
-#             sess.delete(s)
-#     Base.metadata.drop_all(bind=dal.engine)
-
-# @pytest.fixture
-# def sesh():
-#     print("new sesh")
-#     s = dal.Session()
-#     yield s
-#     #print("remove sesh")
-#     #s.close()
-
-@pytest.fixture(scope="class")
-def query():
-    """Provide a query with all current samples
-    
-    Returns:
-        Query: All samples
-    """
-    sesh =  dal.Session()
-    return sesh.query(Sample).all()
+from gresq.database import dal
+from gresq.database.models import Sample
 
 class TestQueries:
     def test_simple(self, sample, all_sample_query):
@@ -60,15 +20,27 @@ class TestQueries:
             print(f"row: {row.id}, {row.nanohub_userid}, {row.material_name}, {row.experiment_date}")
 
     def test_rel__recipe(self, sample, all_sample_query):
-        for r, s in zip(all_sample_query, sample):
-            print(f"{s.recipe.id}, {r.recipe.id}, {s.id}, {r.recipe.sample_id}")
-            assert s.recipe.id == r.recipe.id
-            assert s.id == r.recipe.sample_id
+        for r in all_sample_query:
+            print(
+                (f"{r.recipe.id}, {r.recipe.sample_id}, "
+                f"{r.recipe.thickness}, {r.recipe.diameter}, {r.recipe.length}, "
+                f"{r.recipe.catalyst}, {r.recipe.tube_diameter}, {r.recipe.cross_sectional_area}, "
+                f"{r.recipe.tube_length}, {r.recipe.base_pressure}, {r.recipe.dewpoint}, "
+                f"{r.recipe.sample_surface_area}"
+                )
+                )
+        assert all([s.id == r.recipe.sample_id for r, s in zip(all_sample_query, sample)])
+
+    def test_rel__authors(self, sample, all_sample_query):
+        pass
 
     def test_rel__raman_files(self, sample, all_sample_query):
         for r in all_sample_query:
             for f in r.raman_files:
                 print(f"{f.filename}, {f.url}, {f.wavelength}")
+    
+    def test_rel__sem_files(self, sample, all_sample_query):
+        pass
 
     def test_rel__properties(self, sample, all_sample_query):
         for r in all_sample_query:
