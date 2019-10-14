@@ -31,9 +31,12 @@ class Sample(Base):
         Boolean, info={"verbose_name": "Validated", "std_unit": None}, default=False
     )
     # ONE-TO_MANY: sample -> author
-    authors = relationship("Author", cascade="all, delete-orphan",
-                     passive_deletes=True,
-                     back_populates="sample")
+    authors = relationship(
+        "Author",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="sample",
+    )
 
     recipe = relationship(
         "Recipe",
@@ -51,13 +54,21 @@ class Sample(Base):
         back_populates="sample",
     )
 
-    raman_files = relationship("RamanFile", cascade="all, delete-orphan",
-                    passive_deletes=True, back_populates="sample")
+    raman_files = relationship(
+        "RamanFile",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="sample",
+    )
 
     # raman_analysis = relationship("raman_set", uselist=False)
 
-    sem_files = relationship("SemFile", cascade="all, delete-orphan",
-                    passive_deletes=True, back_populates="sample")
+    sem_files = relationship(
+        "SemFile",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="sample",
+    )
     # primary_sem_file_id = Column(Integer,ForeignKey("sem_analysis.id",use_alter=True),index=True)
     # primary_sem_file = relationship(
     #     "sem_file", primaryjoin="sample.primary_sem_file_id==sem_file.id",

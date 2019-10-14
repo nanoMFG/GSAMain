@@ -23,8 +23,13 @@ class RamanFile(Base):
 
     sample = relationship("Sample", back_populates="raman_files")
 
-    raman_spectrum = relationship("RamanSpectrum", uselist=False, cascade="all, delete-orphan",
-        passive_deletes=True, back_populates="raman_file")
+    raman_spectrum = relationship(
+        "RamanSpectrum",
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="raman_file",
+    )
 
     def json_encodable(self):
         params = ["wavelength"]

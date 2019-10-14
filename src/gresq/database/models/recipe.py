@@ -135,20 +135,31 @@ class Recipe(Base):
     def maximum_temperature(cls):
         PreparationStep = class_registry["PreparationStep"]
         return (
-            select(
-            [func.max(PreparationStep.furnace_temperature)]
-            ).where(PreparationStep.recipe_id==cls.id).correlate(cls).label('maximum_temperature')
+            select([func.max(PreparationStep.furnace_temperature)])
+            .where(PreparationStep.recipe_id == cls.id)
+            .correlate(cls)
+            .label("maximum_temperature")
         )
 
-    # @hybrid_property
-    # def maximum_pressure(self):
-    #     return max([p.furnace_pressure for p in self.preparation_steps if p.furnace_pressure!=None])
+    @hybrid_property
+    def maximum_pressure(self):
+        return max(
+            [
+                p.furnace_pressure
+                for p in self.preparation_steps
+                if p.furnace_pressure != None
+            ]
+        )
 
-    # @maximum_pressure.expression
-    # def maximum_pressure(cls):
-    #     return select([func.max(preparation_step.furnace_pressure)]).\
-    #             where(preparation_step.recipe_id==cls.id).correlate(cls).\
-    #             label('maximum_pressure')
+    @maximum_pressure.expression
+    def maximum_pressure(cls):
+        PreparationStep = class_registry["PreparationStep"]
+        return (
+            select([func.max(PreparationStep.furnace_pressure)])
+            .where(PreparationStep.recipe_id == cls.id)
+            .correlate(cls)
+            .label("maximum_pressure")
+        )
 
     # @hybrid_property
     # def average_carbon_flow_rate(self):
@@ -217,11 +228,17 @@ class Recipe(Base):
             "thickness",
             "diameter",
             "length",
-            "dewpoint"
-            ]
+            "dewpoint",
+        ]
         json_dict = {}
         for p in params:
-            json_dict[p] = {'value':getattr(self,p),'unit':getattr(Recipe,p).info['std_unit']}
-        json_dict['preparation_steps'] = sorted([s.json_encodable() for s in self.preparation_steps if s.step!=None] , key= lambda s: s["step"])
+            json_dict[p] = {
+                "value": getattr(self, p),
+                "unit": getattr(Recipe, p).info["std_unit"],
+            }
+        json_dict["preparation_steps"] = sorted(
+            [s.json_encodable() for s in self.preparation_steps if s.step != None],
+            key=lambda s: s["step"],
+        )
 
         return json_dict
