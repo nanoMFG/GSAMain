@@ -1,8 +1,9 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, Date, Boolean, Float
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm import relationship
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy import select, func, text
 
-from gresq.database import Base
+from gresq.database import Base, class_registry
 
 
 class Recipe(Base):
@@ -130,11 +131,14 @@ class Recipe(Base):
             ]
         )
 
-    # @maximum_temperature.expression
-    # def maximum_temperature(cls):
-    #     return select([func.max(preparation_step.furnace_temperature)]).\
-    #             where(preparation_step.recipe_id==cls.id).correlate(cls).\
-    #             label('maximum_temperature')
+    @maximum_temperature.expression
+    def maximum_temperature(cls):
+        PreparationStep = class_registry["PreparationStep"]
+        return (
+            select(
+            [func.max(PreparationStep.furnace_temperature)]
+            ).where(PreparationStep.recipe_id==cls.id).correlate(cls).label('maximum_temperature')
+        )
 
     # @hybrid_property
     # def maximum_pressure(self):

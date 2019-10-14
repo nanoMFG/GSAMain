@@ -11,8 +11,8 @@ Conventions:
 
 """
 
-#from gresq.database import dal
-#from gresq.database.models import Sample, Recipe
+from gresq.database import dal
+from gresq.database.models import Sample, Recipe
 
 class TestQueries:
     def test_simple(self, sample, all_sample_query):
@@ -32,3 +32,8 @@ class TestQueries:
             [r.recipe.maximum_temperature == s.recipe.maximum_temperature 
              for r, s in zip(all_sample_query, sample)]
         )
+    def test_prop__maximum_temperature_query(self, sample):
+        sesh = dal.Session()
+        query = sesh.query(Recipe.maximum_temperature).all()
+        for r in query:
+            print(r)

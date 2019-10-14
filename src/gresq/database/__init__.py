@@ -11,7 +11,8 @@ Todo:
     * Possibly make model a Package.
 """
 from sqlalchemy.ext.declarative import declarative_base
-Base = declarative_base()
+class_registry = {}
+Base = declarative_base(class_registry=class_registry)
 """
 sqlalchemy.ext.declarative.declarative_base:  The declarative_base class instance
 to be used by all models and DataAccessLayer connections.
