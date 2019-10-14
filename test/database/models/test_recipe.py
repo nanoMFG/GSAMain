@@ -14,7 +14,7 @@ Conventions:
 from gresq.database import dal
 from gresq.database.models import Sample, Recipe
 
-class TestQueries:
+class TestRecipeQueries:
     def test_simple(self, sample, all_sample_query):
         pass
 

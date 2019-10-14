@@ -14,7 +14,7 @@ Conventions:
 from gresq.database import dal
 from gresq.database.models import Sample
 
-class TestQueries:
+class TestSampleQueries:
     def test_simple(self, sample, all_sample_query):
         for row in all_sample_query:
             print(f"row: {row.id}, {row.nanohub_userid}, {row.material_name}, {row.experiment_date}")
@@ -72,7 +72,7 @@ class TestQueries:
 
 
 
-class TestDelete:
+class TestSampleDelete:
     def test_delete_a_sample(self, sample):
         return 1
         
