@@ -40,6 +40,8 @@ def submit_or_update_some_stuff():
 
 ## Testing
 
+Basic testing of the DB models is implemented using a set of `factory boy` factories to generate fake DB data.  When a SampleFactory is generated, all child models also generate.  
+
 ### Prerequistes
 ```
 pytest
