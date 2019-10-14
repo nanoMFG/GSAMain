@@ -23,8 +23,10 @@ class TestQueries:
 
     def test_prop__maximum_temperature(self, sample, all_sample_query):
         for r in all_sample_query:
+            for p in r.recipe.preparation_steps:
+                print(f"{p.furnace_temperature}")
             print(
-                f"{r.recipe.maximum_temperature}"
+                f"max: {r.recipe.maximum_temperature}"
             )
         assert all(
             [r.recipe.maximum_temperature == s.recipe.maximum_temperature 
