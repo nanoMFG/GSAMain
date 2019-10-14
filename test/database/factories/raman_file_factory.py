@@ -17,6 +17,7 @@ class RamanFileFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session_persistence = "commit"
 
     sample = factory.SubFactory("test.database.factories.SampleFactory", raman_files=None)
+    raman_spectrum = factory.RelatedFactory("test.database.factories.RamanSpectrumFactory", "raman_file")
 
     filename = factory.Faker("file_name", extension="tif")
     url = factory.Faker("url")
