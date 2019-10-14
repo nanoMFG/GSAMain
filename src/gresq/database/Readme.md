@@ -46,14 +46,12 @@ Basic testing of the DB models is implemented using a set of `factory boy` facto
 ```
 pytest
 factory_boy
+# set env. vars for DB
+source env.sh
 ```
 
 ### Run the tests
 
-##### Source the DB credentials env vars:
-```
-source env.sh
-```
 ##### Basic test run
 ```
 pytest -v
