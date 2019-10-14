@@ -3,17 +3,13 @@ import factory
 from gresq.database.models import RamanFile
 from gresq.database.dal import dal
 
-from .. import test_session
-
-
 LIST_SIZES = [1, 2, 3]
 
 class RamanFileFactory(factory.alchemy.SQLAlchemyModelFactory):
 
     class Meta:
         model = RamanFile
-        sqlalchemy_session = test_session
-       # sqlalchemy_session = dal.Session()
+        sqlalchemy_session = dal.Session()
         sqlalchemy_session_persistence = "commit"
 
     sample = factory.SubFactory("test.database.factories.SampleFactory", raman_files=None)

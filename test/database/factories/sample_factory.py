@@ -4,17 +4,13 @@ import random
 from gresq.database.models import Sample
 from gresq.database.dal import dal
 
-from .. import test_session
-
-
 LIST_SIZES = [1, 2, 3, 4, 5, 6]
 
 class SampleFactory(factory.alchemy.SQLAlchemyModelFactory):
 
     class Meta:
         model = Sample
-        sqlalchemy_session = test_session
-        #sqlalchemy_session = dal.Session()
+        sqlalchemy_session = dal.Session()
         sqlalchemy_session_persistence = "commit"
 
     #id = factory.Sequence(lambda n: n)

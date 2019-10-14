@@ -4,17 +4,13 @@ import random
 from gresq.database.models import Recipe
 from gresq.database.dal import dal
 
-from .. import test_session
-
-
 LIST_SIZES = [1, 2, 3, 4, 5, 6]
 
 class RecipeFactory(factory.alchemy.SQLAlchemyModelFactory):
 
     class Meta:
         model = Recipe
-        #sqlalchemy_session = dal.Session()
-        sqlalchemy_session = test_session
+        sqlalchemy_session = dal.Session()
         sqlalchemy_session_persistence = "commit"
 
     sample = factory.SubFactory("test.database.factories.SampleFactory", recipe=None)
