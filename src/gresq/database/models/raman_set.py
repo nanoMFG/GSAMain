@@ -18,7 +18,7 @@ class RamanSet(Base):
         index=True,
         info={"verbose_name": "Sample ID"},
     )
-    # raman_spectra = relationship("raman_spectrum")
+    #raman_spectra = relationship("RamanSpectrum", back_populates="raman_set")
 
     authors = relationship(
         "Author",

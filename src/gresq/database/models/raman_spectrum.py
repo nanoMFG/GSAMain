@@ -8,7 +8,7 @@ from gresq.database import Base
 class RamanSpectrum(Base):
     __tablename__ = "raman_spectrum"
     id = Column(Integer, primary_key=True, info={"verbose_name": "ID"})
-    # set_id = Column(Integer,ForeignKey(raman_set.id), index=True, info={'verbose_name':'Raman Set ID'})
+    #set_id = Column(Integer,ForeignKey("raman_set.id"), index=True, info={'verbose_name':'Raman Set ID'})
     raman_file_id = Column(
         Integer, ForeignKey("raman_file.id", ondelete="CASCADE"), index=True
     )
@@ -63,6 +63,8 @@ class RamanSpectrum(Base):
         back_populates="raman_spectrum",
         primaryjoin="RamanSpectrum.raman_file_id==RamanFile.id",
     )
+
+    #raman_set = relationship("RamanSet", back_populates="raman_spectra", foreign_keys=[set_id])
 
     def json_encodable(self):
         params = [

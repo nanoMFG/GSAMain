@@ -35,9 +35,10 @@ class TestQueries:
 
     def test_prop__maximum_temperature_query(self, sample):
         sesh = dal.Session()
-        query = sesh.query(Recipe.maximum_temperature).join(Recipe.preparation_steps).all()
+        query = sesh.query(Recipe.maximum_temperature).all()
         for r in query:
             print(r)
+        assert False
 
     def test_prop__maximum_pressure(self, sample, all_sample_query):
         for r in all_sample_query:
@@ -56,3 +57,5 @@ class TestQueries:
         query = sesh.query(Recipe.maximum_pressure).all()
         for r in query:
             print(r)
+
+        assert False

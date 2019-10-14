@@ -20,6 +20,8 @@ class SampleFactory(factory.alchemy.SQLAlchemyModelFactory):
                                      size=lambda: LIST_SIZES[random.randint(0,5)])
     raman_files = factory.RelatedFactoryList("test.database.factories.RamanFileFactory", "sample",
                                      size=lambda: LIST_SIZES[random.randint(0,5)])
+    sem_files = factory.RelatedFactoryList("test.database.factories.SemFileFactory", "sample",
+                                     size=lambda: LIST_SIZES[random.randint(0,5)])
     #author = factory.RelatedFactory("test.database.factories.AuthorFactory")
 
     nanohub_userid = factory.Faker("pyint", min_value=0, max_value=9999, step=1)

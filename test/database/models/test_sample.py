@@ -40,7 +40,9 @@ class TestQueries:
                 print(f"{f.filename}, {f.url}, {f.wavelength}")
     
     def test_rel__sem_files(self, sample, all_sample_query):
-        pass
+        for r in all_sample_query:
+            for f in r.sem_files:
+                print(f"{f.id}, {f.sample_id}, {f.filename}, {f.url}")
 
     def test_rel__properties(self, sample, all_sample_query):
         for r in all_sample_query:
@@ -61,6 +63,8 @@ class TestQueries:
         assert all (
             [s.author_last_names == r.author_last_names for r, s in zip(all_sample_query, sample)]
         )
+
+    
 
     def test__json_encodable(self, sample, all_sample_query):
         for r in all_sample_query:

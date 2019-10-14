@@ -26,12 +26,12 @@ class SemFile(Base):
     #     lazy='subquery'
     #     )
 
-    # analyses = relationship(
-    #     "sem_analysis",
-    #     primaryjoin = "sem_file.id==sem_analysis.sem_file_id",
-    #     back_populates="sem_file",
-    #     lazy='subquery'
-    #     )
+    analyses = relationship(
+        "SemAnalysis", cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="sem_file",
+        lazy='subquery'
+        )
 
     def json_encodable(self):
         return {"filename": self.filename}
