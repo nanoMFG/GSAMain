@@ -14,7 +14,27 @@ from gresq.database.models import Sample, Recipe
 ```
 
 ## Data Access Layer (DAL)
+```
+from gresq.database import dal
+```
 
 ## Basic Queries
 
-## Session Guidlines
+* Grab a session. Don;t really need the contex manger
+* run the query.
+```
+session = dal.Session()
+query = session.query(Model)
+```
+
+## Insert, Update or Delete
+* Create a session context at the beginning of a logical operation (e.g. "submit").
+* Pass the session in to various fuctions
+* Allow the context manager to do the right thing (rollback or commit)
+```
+def submit_or_update_some_stuff():
+    with dal.session_scope(autocommit=True) as session:
+        do_stuff(session)
+        do_more_stuff(session)
+```
+
