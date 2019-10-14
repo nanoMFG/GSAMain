@@ -38,3 +38,29 @@ def submit_or_update_some_stuff():
         do_more_stuff(session)
 ```
 
+## Testing
+
+### Prerequistes
+```
+pytest
+factory_boy
+```
+
+### Run the tests
+
+##### Source the DB credentials env vars:
+```
+source env.sh
+```
+##### Basic test run
+```
+pytest -v
+```
+##### See the outputs
+```
+pytest -v -s
+```
+##### Pick a test
+```
+pytest -v -s -k simple
+```
