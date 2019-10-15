@@ -6,6 +6,15 @@ from gresq.database import Base
 
 
 class Author(Base):
+    """[summary]
+    
+    Args:
+        Base ([type]): [description]
+    
+    Returns:
+        [type]: [description]
+    """
+
     __tablename__ = "author"
 
     id = Column(Integer, primary_key=True, info={"verbose_name": "ID"})

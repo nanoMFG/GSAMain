@@ -8,6 +8,15 @@ from gresq.database import Base
 
 
 class RamanSet(Base):
+    """[summary]
+    
+    Args:
+        Base ([type]): [description]
+    
+    Returns:
+        [type]: [description]
+    """
+
     __tablename__ = "raman_set"
     id = Column(Integer, primary_key=True, info={"verbose_name": "ID"})
     nanohub_userid = Column(Integer, info={"verbose_name": "Nanohub Submitter User ID"})
@@ -18,7 +27,7 @@ class RamanSet(Base):
         index=True,
         info={"verbose_name": "Sample ID"},
     )
-    #raman_spectra = relationship("RamanSpectrum", back_populates="raman_set")
+    # raman_spectra = relationship("RamanSpectrum", back_populates="raman_set")
 
     authors = relationship(
         "Author",

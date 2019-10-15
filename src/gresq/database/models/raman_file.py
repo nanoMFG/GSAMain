@@ -6,6 +6,15 @@ from gresq.database import Base
 
 
 class RamanFile(Base):
+    """[summary]
+    
+    Args:
+        Base ([type]): [description]
+    
+    Returns:
+        [type]: [description]
+    """
+
     __tablename__ = "raman_file"
     id = Column(Integer, primary_key=True, info={"verbose_name": "ID"})
     sample_id = Column(Integer, ForeignKey("sample.id", ondelete="CASCADE"), index=True)

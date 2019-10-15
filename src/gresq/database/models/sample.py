@@ -6,6 +6,15 @@ from gresq.database import Base
 
 
 class Sample(Base):
+    """[summary]
+    
+    Args:
+        Base ([type]): [description]
+    
+    Returns:
+        [type]: [description]
+    """
+
     __tablename__ = "sample"
 
     id = Column(

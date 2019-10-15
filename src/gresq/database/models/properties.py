@@ -6,6 +6,14 @@ from gresq.database import Base
 
 
 class Properties(Base):
+    """[summary]
+    
+    Args:
+        Base ([type]): [description]
+    
+    Returns:
+        [type]: [description]
+    """
 
     __tablename__ = "properties"
 
