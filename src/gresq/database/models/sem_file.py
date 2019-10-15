@@ -1,4 +1,11 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, ForeignKeyConstraint
+from sqlalchemy import (
+    Column,
+    String,
+    Integer,
+    ForeignKey,
+    ForeignKeyConstraint,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 
 from gresq.database import Base
@@ -19,10 +26,11 @@ class SemFile(Base):
         info={"verbose_name": "ID"},
     )
     sample_id = Column(Integer, ForeignKey("sample.id", ondelete="CASCADE"), index=True)
+    __table_args__ = (UniqueConstraint("id", "sample_id"),)
     filename = Column(String(64))
     url = Column(String(256))
 
-    sample = relationship("Sample", back_populates="sem_files")
+    sample = relationship("Sample", foreign_keys=sample_id, back_populates="sem_files")
 
     default_analysis_id = Column(Integer, index=True)
     # ForeignKey("sem_analysis.id", name="fk_default_analysis_id"),

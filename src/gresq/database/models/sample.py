@@ -1,4 +1,12 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, Date, Boolean
+from sqlalchemy import (
+    Column,
+    String,
+    Integer,
+    ForeignKey,
+    Date,
+    Boolean,
+    ForeignKeyConstraint,
+)
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.hybrid import hybrid_property
 
@@ -18,8 +26,12 @@ class Sample(Base):
     __tablename__ = "sample"
 
     id = Column(
-        Integer, primary_key=True, info={"verbose_name": "ID", "std_unit": None}
+        Integer,
+        primary_key=True,
+        autoincrement="ignore_fk",
+        info={"verbose_name": "ID", "std_unit": None},
     )
+    primary_sem_file_id = Column(Integer, index=True)
     nanohub_userid = Column(
         Integer, info={"verbose_name": "Nanohub Submitter User ID", "std_unit": None}
     )
@@ -76,13 +88,28 @@ class Sample(Base):
         "SemFile",
         cascade="all, delete-orphan",
         passive_deletes=True,
+        single_parent=True,
+        foreign_keys="SemFile.sample_id",
         back_populates="sample",
     )
     # primary_sem_file_id = Column(Integer,ForeignKey("sem_analysis.id",use_alter=True),index=True)
-    # primary_sem_file = relationship(
-    #     "sem_file", primaryjoin="sample.primary_sem_file_id==sem_file.id",
-    #     foreign_keys = [primary_sem_file_id],
-    #     uselist=False, post_update=True)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["id", "primary_sem_file_id"],
+            ["sem_file.sample_id", "sem_file.id"],
+            use_alter=True,
+            ondelete="CASCADE",
+            name="fk_primary_sem_file",
+        ),
+    )
+    primary_sem_file = relationship(
+        "SemFile",
+        primaryjoin="Sample.primary_sem_file_id==SemFile.id",
+        foreign_keys=primary_sem_file_id,
+        uselist=False,
+        post_update=True,
+    )
 
     # @hybrid_property
     # def primary_sem_analysis(self):

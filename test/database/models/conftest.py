@@ -17,6 +17,8 @@ def sample():
     print("Hey, here come some samples...")
     samples = SampleFactory.create_batch(5)
     for s in samples:
+            fids = [f.id for f in s.sem_files]
+            s.primary_sem_file_id = fids[random.randint(0,len(fids)-1)]
             for f in s.sem_files:
                 ids = [a.id for a in f.analyses]
                 lids = len(ids)

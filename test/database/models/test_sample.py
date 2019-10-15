@@ -17,7 +17,10 @@ from gresq.database.models import Sample
 class TestSampleQueries:
     def test_simple(self, sample, all_sample_query):
         for row in all_sample_query:
-            print(f"row: {row.id}, {row.nanohub_userid}, {row.material_name}, {row.experiment_date}")
+            print(
+                f"row: {row.id}, {row.primary_sem_file_id}, {row.nanohub_userid}, "
+                f"{row.material_name}, {row.experiment_date}"
+                )
 
     def test_rel__recipe(self, sample, all_sample_query):
         for r in all_sample_query:
