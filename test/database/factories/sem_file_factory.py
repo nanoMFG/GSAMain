@@ -13,7 +13,8 @@ class SemFileFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session_persistence = "commit"
 
     sample = factory.SubFactory("test.database.factories.SampleFactory", sem_files=None)
-    analyses = factory.RelatedFactory("test.database.factories.SemAnalysisFactory", "sem_file")
+    analyses = factory.RelatedFactoryList("test.database.factories.SemAnalysisFactory", 
+        "sem_file", size=3)
 
     filename = factory.Faker("file_name", extension="tif")
     url = factory.Faker("url")

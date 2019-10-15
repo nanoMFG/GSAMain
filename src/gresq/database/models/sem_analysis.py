@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, Boolean, Float
+from sqlalchemy import Column, String, Integer, ForeignKey, Boolean, Float, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from gresq.database import Base
@@ -7,6 +7,9 @@ class SemAnalysis(Base):
     __tablename__ = 'sem_analysis'
     id = Column(Integer,primary_key=True,info={'verbose_name':'ID'})
     sem_file_id = Column(Integer, ForeignKey("sem_file.id", ondelete="CASCADE"), index=True)
+    __table_args__ = (
+        UniqueConstraint("id", "sem_file_id"),
+    )
     sem_file = relationship(
         "SemFile", back_populates="analyses", 
         foreign_keys=[sem_file_id],
