@@ -12,7 +12,9 @@ class SemAnalysisFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session = dal.Session()
         sqlalchemy_session_persistence = "commit"
 
-    sem_file = factory.SubFactory("test.database.factories.SemFileFactory", analyses=None)
+    sem_file = factory.SubFactory(
+        "test.database.factories.SemFileFactory",
+        analyses=None)
 
     mask_url = factory.Faker("url")
     px_per_um = factory.Faker("pyint", min_value=0, max_value=30, step=1)

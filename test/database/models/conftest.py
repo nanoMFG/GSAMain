@@ -1,5 +1,6 @@
 
 import pytest
+import random
 from gresq.database import dal, Base
 from gresq.database.models import Sample
 from ..factories import SampleFactory
@@ -14,7 +15,15 @@ def sample():
     Base.metadata.create_all(bind=dal.engine)
     # Add some data here
     print("Hey, here come some samples...")
-    yield SampleFactory.create_batch(5)
+    samples = SampleFactory.create_batch(5)
+    for s in samples:
+            for f in s.sem_files:
+                ids = [a.id for a in f.analyses]
+                lids = len(ids)
+                f.default_analysis_id=ids[random.randint(0,lids-1)]
+    dal.Session().commit
+
+    yield samples
     # Drop and ditch
     print("Tearing down test samples and DB")
     with dal.session_scope(autocommit=True) as sess:

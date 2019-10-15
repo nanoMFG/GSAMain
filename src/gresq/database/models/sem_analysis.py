@@ -10,6 +10,9 @@ class SemAnalysis(Base):
     __table_args__ = (
         UniqueConstraint("id", "sem_file_id"),
     )
+    __mapper_args__ = {
+        "confirm_deleted_rows": False
+    }
     sem_file = relationship(
         "SemFile", back_populates="analyses", 
         foreign_keys=[sem_file_id],

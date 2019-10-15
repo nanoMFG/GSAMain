@@ -1,4 +1,4 @@
-
+import random
 
 class TestSemFileQueries:
     def test_simple(self, sample, all_sample_query):
@@ -10,6 +10,9 @@ class TestSemFileQueries:
             for f in files:
                 for a in f.analyses:
                     print(
-                        f"{f.id}, {a.sem_file_id}, {a.mask_url}, {a.px_per_um}, {a.growth_coverage}, "
-                        f"{a.automated}"
+                        f"{f.id}, {f.default_analysis_id}, {a.id}, {a.mask_url}, {a.px_per_um}, "
+                        f"{a.growth_coverage}, {a.automated}"
                     )
+        #c = [(fs.id, anr.sem_file_id) for anr, ans in zip (fr.analyses, fs.analyses) for fr, fs in zip(r.sem_files, s.sem_files) for r, s in zip(all_sample_query, sample)]
+        #print(c)
+   # def test_rel__default_sem_ananlysis

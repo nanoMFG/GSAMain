@@ -27,9 +27,13 @@ class SemFile(Base):
         ForeignKeyConstraint(
             ["id", "default_analysis_id"],
             ["sem_analysis.sem_file_id", "sem_analysis.id"],
+            use_alter=True, ondelete="CASCADE",
             name="fk_default_analysis"
         ),
     )
+    __mapper_args__ = {
+        "confirm_deleted_rows": False
+    }
 
     analyses = relationship(
         "SemAnalysis", cascade="all, delete-orphan",
