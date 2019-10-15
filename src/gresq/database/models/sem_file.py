@@ -39,8 +39,8 @@ class SemFile(Base):
     #     name='fk_sem_default_analysis_id', use_alter=True
     # )
 
-    # This constraint prevents an analysis id from a different file from
-    # being assignd to the default_ananlysis_id column
+    # Defining the foreign key constraint explictly (as below) prevents an analysis id from 
+    # a different file from being assigned to the default_analysis_id column
     __table_args__ = (
         ForeignKeyConstraint(
             ["id", "default_analysis_id"],
@@ -60,7 +60,7 @@ class SemFile(Base):
         single_parent=True,
         foreign_keys="SemAnalysis.sem_file_id",
         back_populates="sem_file",
-        lazy="subquery",
+        #lazy="subquery",
     )
 
     default_analysis = relationship(
@@ -68,7 +68,7 @@ class SemFile(Base):
         primaryjoin="SemFile.default_analysis_id==SemAnalysis.id",
         foreign_keys=default_analysis_id,
         post_update=True,
-        lazy="subquery",
+        #lazy="subquery",
     )
 
     def json_encodable(self):

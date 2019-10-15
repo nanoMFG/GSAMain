@@ -32,6 +32,7 @@ class Sample(Base):
         info={"verbose_name": "ID", "std_unit": None},
     )
     primary_sem_file_id = Column(Integer, index=True)
+
     nanohub_userid = Column(
         Integer, info={"verbose_name": "Nanohub Submitter User ID", "std_unit": None}
     )
@@ -51,14 +52,14 @@ class Sample(Base):
     validated = Column(
         Boolean, info={"verbose_name": "Validated", "std_unit": None}, default=False
     )
-    # ONE-TO_MANY: sample -> author
+    # ONE-TO_MANY: sample -> authors
     authors = relationship(
         "Author",
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="sample",
     )
-
+    # ONE-TO-ONE: sample -> recipe
     recipe = relationship(
         "Recipe",
         uselist=False,
@@ -66,7 +67,7 @@ class Sample(Base):
         passive_deletes=True,
         back_populates="sample",
     )
-
+    # ONE-TO-MANY: sample -> properties
     properties = relationship(
         "Properties",
         uselist=False,
@@ -74,7 +75,7 @@ class Sample(Base):
         passive_deletes=True,
         back_populates="sample",
     )
-
+    # ONE-TO-MANY: sample -> raman_files
     raman_files = relationship(
         "RamanFile",
         cascade="all, delete-orphan",
@@ -83,7 +84,7 @@ class Sample(Base):
     )
 
     # raman_analysis = relationship("raman_set", uselist=False)
-
+    # ONE-TO-MANY: sample -> sem_files
     sem_files = relationship(
         "SemFile",
         cascade="all, delete-orphan",
@@ -92,8 +93,8 @@ class Sample(Base):
         foreign_keys="SemFile.sample_id",
         back_populates="sample",
     )
-    # primary_sem_file_id = Column(Integer,ForeignKey("sem_analysis.id",use_alter=True),index=True)
-
+    # Defining the foreign key constraint explictly (as below) prevents a sem_file id from 
+    # a different sample from being assigned to the primary_sem_file_id column.
     __table_args__ = (
         ForeignKeyConstraint(
             ["id", "primary_sem_file_id"],
@@ -103,6 +104,7 @@ class Sample(Base):
             name="fk_primary_sem_file",
         ),
     )
+
     primary_sem_file = relationship(
         "SemFile",
         primaryjoin="Sample.primary_sem_file_id==SemFile.id",
@@ -111,9 +113,9 @@ class Sample(Base):
         post_update=True,
     )
 
-    # @hybrid_property
-    # def primary_sem_analysis(self):
-    #     return self.primary_sem_file.default_analysis
+    @hybrid_property
+    def primary_sem_analysis(self):
+        return self.primary_sem_file.default_analysis
 
     # @hybrid_property
     # def sem_analyses(self):

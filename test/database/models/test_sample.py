@@ -67,6 +67,14 @@ class TestSampleQueries:
             [s.author_last_names == r.author_last_names for r, s in zip(all_sample_query, sample)]
         )
 
+    def test_prop__primary_sem_analysis(self, sample, all_sample_query):
+        for r in all_sample_query:
+            pa = r.primary_sem_analysis
+            print(
+                f"{r.id}, {pa.id}, {pa.mask_url}, {pa.px_per_um}, {pa.growth_coverage}, "
+                f"{pa.automated}"
+                )
+
     
 
     def test__json_encodable(self, sample, all_sample_query):
