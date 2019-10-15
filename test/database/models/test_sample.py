@@ -75,7 +75,6 @@ class TestSampleQueries:
                 f"{pa.automated}"
                 )
 
-    
 
     def test__json_encodable(self, sample, all_sample_query):
         for r in all_sample_query:
