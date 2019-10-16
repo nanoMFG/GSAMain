@@ -4,7 +4,19 @@ import cv2, sys, time, json, copy, subprocess, os
 from PyQt5 import QtGui, QtCore
 import uuid
 from gresq.util.box_adaptor import BoxAdaptor
-from gresq.database import sample, preparation_step, dal, Base, mdf_forge, author, raman_spectrum, recipe, properties, sem_file, raman_file, raman_set
+from gresq.database import dal, Base
+from gresq.database.models import (
+    Sample,
+    Recipe,
+    Author,
+    Properties,
+    PreparationStep,
+    Properties,
+    RamanFile,
+    SemFile,
+    RamanSet,
+    RamanSpectrum
+)
 from sqlalchemy import String, Integer, Float, Numeric, Date
 from gresq.config import config
 from gresq.util.csv2db import build_db
@@ -323,7 +335,7 @@ class ProvenanceTab(QtGui.QWidget):
 
         self.stackedFormWidget = QtGui.QStackedWidget()
         self.stackedFormWidget.setFrameStyle(QtGui.QFrame.StyledPanel)
-        self.sample_input = FieldsFormWidget(fields=sample_fields,model=sample)
+        self.sample_input = FieldsFormWidget(fields=sample_fields,model=Sample)
         self.author_list = QtGui.QListWidget()
         self.author_list.currentRowChanged.connect(self.stackedFormWidget.setCurrentIndex)
         self.add_author_btn = QtGui.QPushButton("New Author")
@@ -375,7 +387,7 @@ class ProvenanceTab(QtGui.QWidget):
         """
         Add another author. Adds new entry to author list and creates new author input widget.
         """
-        w = FieldsFormWidget(fields=["first_name","last_name","institution"],model=author)
+        w = FieldsFormWidget(fields=["first_name","last_name","institution"],model=Author)
         idx = self.stackedFormWidget.addWidget(w)
         self.stackedFormWidget.setCurrentIndex(idx)
         self.author_list.addItem("%s, %s"%(w.input_widgets["last_name"].text(),w.input_widgets["first_name"].text()))
@@ -422,7 +434,7 @@ class PropertiesTab(QtGui.QWidget):
         self.mainLayout = QtGui.QGridLayout(self)
         self.mainLayout.setAlignment(QtCore.Qt.AlignTop)
 
-        self.properties_form = FieldsFormWidget(properties_fields,properties)
+        self.properties_form = FieldsFormWidget(properties_fields,Properties)
         self.nextButton = QtGui.QPushButton('Next >>>')
         self.clearButton = QtGui.QPushButton('Clear Fields')
         spacer = QtGui.QSpacerItem(
@@ -497,7 +509,7 @@ class PreparationTab(QtGui.QWidget):
         self.miniLayout.addWidget(self.addStepButton,0,0)
         self.miniLayout.addWidget(self.steps_list,1,0)
         self.miniLayout.addWidget(self.removeStepButton,2,0)
-        self.recipeParams = FieldsFormWidget(fields=recipe_fields,model=recipe)
+        self.recipeParams = FieldsFormWidget(fields=recipe_fields,model=Recipe)
         self.layout.addLayout(self.miniLayout,0,0,3,1)
         self.layout.addWidget(self.recipeParams,0,1,1,1)
         self.layout.addItem(spacer,0,1,1,2)
@@ -536,19 +548,19 @@ class PreparationTab(QtGui.QWidget):
         for s,step in enumerate(preparation_response['preparation_step']):
             if step['furnace_temperature']['value'] == None:
                 return "Missing input for field '%s' for Preparation Step %s (%s)."\
-                    %(preparation_step.furnace_temperature.info['verbose_name'],s,step['name']['value'])
+                    %(PreparationStep.furnace_temperature.info['verbose_name'],s,step['name']['value'])
         return True
 
     def validate_pressure(self,preparation_response):
         for s,step in enumerate(preparation_response['preparation_step']):
             if step['furnace_pressure']['value'] == None:
                 return "Missing input for field '%s' for Preparation Step %s (%s)."\
-                    %(preparation_step.furnace_pressure.info['verbose_name'],s,step['name']['value'])
+                    %(PreparationStep.furnace_pressure.info['verbose_name'],s,step['name']['value'])
         return True
 
     def validate_base_pressure(self,preparation_response):
         if preparation_response['recipe']['base_pressure']['value'] == None:
-            return "Missing input for field '%s' in Preparation."%(recipe.base_pressure.info['verbose_name'])
+            return "Missing input for field '%s' in Preparation."%(Recipe.base_pressure.info['verbose_name'])
         else:
             return True
 
@@ -556,7 +568,7 @@ class PreparationTab(QtGui.QWidget):
         for s,step in enumerate(preparation_response['preparation_step']):
             if step['duration']['value'] == None:
                 return "Missing input for field '%s' for preparation Step %s (%s)."\
-                    %(preparation_step.duration.info['verbose_name'],s,step['name']['value'])
+                    %(PreparationStep.duration.info['verbose_name'],s,step['name']['value'])
         return True
 
     def validate_carbon_source(self,preparation_response):
@@ -576,7 +588,7 @@ class PreparationTab(QtGui.QWidget):
         """
         Add another step. Adds new entry to step list and creates new step input widget.
         """
-        w = FieldsFormWidget(fields=preparation_fields,model=preparation_step)
+        w = FieldsFormWidget(fields=preparation_fields,model=PreparationStep)
         idx = self.stackedFormWidget.addWidget(w)
         self.stackedFormWidget.setCurrentIndex(idx)
         self.steps_list.addItem(w.input_widgets['name'].currentText())
@@ -620,16 +632,16 @@ class PreparationTab(QtGui.QWidget):
 
     def getRecipeDict(self,preparation_response):
         with dal.session_scope() as session:
-            c = recipe()
+            c = Recipe()
             for field,item in preparation_response["recipe"].items():
                 value = item['value']
                 unit = item['unit']
                 if value != None:
-                    if sql_validator['str'](getattr(recipe,field)) or sql_validator['int'](getattr(recipe,field)):
+                    if sql_validator['str'](getattr(Recipe,field)) or sql_validator['int'](getattr(Recipe,field)):
                         setattr(c,field,value)
-                    elif sql_validator['float'](getattr(recipe,field)):
+                    elif sql_validator['float'](getattr(Recipe,field)):
                         value = float(value)
-                        setattr(c,field,value*getattr(recipe,field).info['conversions'][unit])
+                        setattr(c,field,value*getattr(Recipe,field).info['conversions'][unit])
                     else:
                         value = int(value)
                         setattr(c,field,value)
@@ -637,18 +649,18 @@ class PreparationTab(QtGui.QWidget):
             session.flush()
 
             for step_idx, step in enumerate(preparation_response['preparation_step']):
-                p = preparation_step()
+                p = PreparationStep()
                 p.recipe_id = c.id
                 p.step = step_idx
                 for field,item in step.items():
                     value = item['value']
                     unit = item['unit']
                     if value != None:
-                        if sql_validator['str'](getattr(preparation_step,field)) or sql_validator['int'](getattr(preparation_step,field)):
+                        if sql_validator['str'](getattr(PreparationStep,field)) or sql_validator['int'](getattr(PreparationStep,field)):
                             setattr(p,field,value)
-                        elif sql_validator['float'](getattr(preparation_step,field)):
+                        elif sql_validator['float'](getattr(PreparationStep,field)):
                             value = float(value)
-                            setattr(p,field,value*getattr(preparation_step,field).info['conversions'][unit])
+                            setattr(p,field,value*getattr(PreparationStep,field).info['conversions'][unit])
                         else:
                             value = int(value)
                             setattr(p,field,value)
@@ -711,7 +723,7 @@ class FileUploadTab(QtGui.QWidget):
         self.remove_sem = QtGui.QPushButton('Remove SEM Image')
         self.remove_raman = QtGui.QPushButton('Remove Raman Spectroscopy')
         self.clearButton = QtGui.QPushButton('Clear Fields')
-        self.wavelength_input = FieldsFormWidget(fields=['wavelength'],model=raman_file)
+        self.wavelength_input = FieldsFormWidget(fields=['wavelength'],model=RamanFile)
 
         self.nextButton = QtGui.QPushButton('Next >>>')
         spacer = QtGui.QSpacerItem(
@@ -970,7 +982,7 @@ class ReviewTab(QtGui.QScrollArea):
         self.layout.addWidget(propertiesLabel,self.layout.rowCount(),0,QtCore.Qt.AlignLeft)
         label = QtGui.QLabel()
         for field in properties_response.keys():
-            info = getattr(properties,field).info
+            info = getattr(Properties,field).info
             row = self.layout.rowCount()
             value = properties_response[field]['value']
             unit = convertScripts(properties_response[field]['unit'])
@@ -992,7 +1004,7 @@ class ReviewTab(QtGui.QScrollArea):
         self.layout.addWidget(preparationLabel,self.layout.rowCount(),0,QtCore.Qt.AlignLeft)
         recipe_response = preparation_response['recipe']
         for field in recipe_response.keys():
-            info = getattr(recipe,field).info
+            info = getattr(Recipe,field).info
             row = self.layout.rowCount()
             value = recipe_response[field]['value']
             unit = convertScripts(recipe_response[field]['unit'])
@@ -1011,7 +1023,7 @@ class ReviewTab(QtGui.QScrollArea):
             stepLabel.setFont(sublabel_font)
             self.layout.addWidget(stepLabel,self.layout.rowCount(),0,QtCore.Qt.AlignLeft)
             for field in step_response.keys():
-                info = getattr(preparation_step,field).info
+                info = getattr(PreparationStep,field).info
                 row = self.layout.rowCount()
                 value = step_response[field]['value']
                 unit = convertScripts(step_response[field]['unit'])
@@ -1088,22 +1100,22 @@ class ReviewTab(QtGui.QScrollArea):
 
         with dal.session_scope() as session:
             ### SAMPLE DATASET ###
-            s = sample()
+            s = Sample()
             if self.mode == 'nanohub':
                 s.nanohub_userid = os.getuid()
             for field,item in provenance_response['sample'].items():
                 value = item['value']
                 if value != None:
-                    if sql_validator['str'](getattr(sample,field)) or sql_validator['int'](getattr(sample,field)):
+                    if sql_validator['str'](getattr(Sample,field)) or sql_validator['int'](getattr(Sample,field)):
                         setattr(s,field,value)
-                    elif sql_validator['date'](getattr(sample,field)):
+                    elif sql_validator['date'](getattr(Sample,field)):
                         setattr(s,field,value)
             session.add(s)
             session.flush()
 
             for f in files_response['SEM Image Files']:
                 print(f)
-                sf = sem_file()
+                sf = SemFile()
                 sf.sample_id = s.id
                 sf.filename = os.path.basename(f)
                 sf.url = self.upload_file(f)
@@ -1111,13 +1123,13 @@ class ReviewTab(QtGui.QScrollArea):
                 session.flush()
 
             ### RAMAN IS A SEPARATE DATASET FROM SAMPLE ###
-            rs = raman_set()
+            rs = RamanSet()
             rs.sample_id = s.id
             rs.experiment_date = provenance_response['sample']['experiment_date']['value']
             session.add(rs)
             session.flush()
             for ri,ram in enumerate(files_response['Raman Files']):
-                rf = raman_file()
+                rf = RamanFile()
                 rf.filename = os.path.basename(ram)
                 rf.sample_id = s.id
                 rf.url = self.upload_file(ram)
@@ -1127,7 +1139,7 @@ class ReviewTab(QtGui.QScrollArea):
                 session.flush()
 
                 params = GSARaman.auto_fitting(ram)
-                r = raman_spectrum()
+                r = RamanSpectrum()
                 r.raman_file_id = rf.id
                 r.set_id = rs.id
                 if files_response['Characteristic Percentage'] != None:
@@ -1159,17 +1171,17 @@ class ReviewTab(QtGui.QScrollArea):
             session.flush()
 
             # Recipe
-            c = recipe()
+            c = Recipe()
             c.sample_id = s.id
             for field,item in preparation_response["recipe"].items():
                 value = item['value']
                 unit = item['unit']
                 if value != None:
-                    if sql_validator['str'](getattr(recipe,field)) or sql_validator['int'](getattr(recipe,field)):
+                    if sql_validator['str'](getattr(Recipe,field)) or sql_validator['int'](getattr(Recipe,field)):
                         setattr(c,field,value)
-                    elif sql_validator['float'](getattr(recipe,field)):
+                    elif sql_validator['float'](getattr(Recipe,field)):
                         value = float(value)
-                        setattr(c,field,value*getattr(recipe,field).info['conversions'][unit])
+                        setattr(c,field,value*getattr(Recipe,field).info['conversions'][unit])
                     else:
                         value = int(value)
                         setattr(c,field,value)
@@ -1177,17 +1189,17 @@ class ReviewTab(QtGui.QScrollArea):
             session.flush()
 
             # Properties
-            pr = properties()
+            pr = Properties()
             pr.sample_id = s.id
             for field,item in properties_response.items():
                 value = item['value']
                 unit = item['unit']
                 if value != None:
-                    if sql_validator['str'](getattr(properties,field)) or sql_validator['int'](getattr(properties,field)):
+                    if sql_validator['str'](getattr(Properties,field)) or sql_validator['int'](getattr(Properties,field)):
                         setattr(pr,field,value)
-                    elif sql_validator['float'](getattr(properties,field)):
+                    elif sql_validator['float'](getattr(Properties,field)):
                         value = float(value)
-                        setattr(pr,field,value*getattr(properties,field).info['conversions'][unit])
+                        setattr(pr,field,value*getattr(Properties,field).info['conversions'][unit])
                     else:
                         value = int(value)
                         setattr(pr,field,value)
@@ -1196,18 +1208,18 @@ class ReviewTab(QtGui.QScrollArea):
 
             # Preparation Step
             for step_idx, step in enumerate(preparation_response['preparation_step']):
-                p = preparation_step()
+                p = PreparationStep()
                 p.recipe_id = c.id
                 p.step = step_idx
                 for field,item in step.items():
                     value = item['value']
                     unit = item['unit']
                     if value != None:
-                        if sql_validator['str'](getattr(preparation_step,field)) or sql_validator['int'](getattr(preparation_step,field)):
+                        if sql_validator['str'](getattr(PreparationStep,field)) or sql_validator['int'](getattr(PreparationStep,field)):
                             setattr(p,field,value)
-                        elif sql_validator['float'](getattr(preparation_step,field)):
+                        elif sql_validator['float'](getattr(PreparationStep,field)):
                             value = float(value)
-                            setattr(p,field,value*getattr(preparation_step,field).info['conversions'][unit])
+                            setattr(p,field,value*getattr(PreparationStep,field).info['conversions'][unit])
                         else:
                             value = int(value)
                             setattr(p,field,value)
@@ -1215,7 +1227,7 @@ class ReviewTab(QtGui.QScrollArea):
                 session.flush()
 
             for auth in provenance_response['author']:
-                a = author()
+                a = Author()
                 a.sample_id = s.id
                 for field,item in auth.items():
                     value = item['value']
@@ -1292,58 +1304,58 @@ def make_test_dict(test_sem_file=None,test_raman_file=None):
     Base.metadata.create_all(bind=dal.engine)
 
     with dal.session_scope() as session:
-        s = sample()
+        s = Sample()
         for field in sample_fields:
-            setattr(s,field,random_fill(field,sample))
+            setattr(s,field,random_fill(field,Sample))
         session.add(s)
         session.flush()
 
         if test_sem_file:
-            sf = sem_file()
+            sf = SemFile()
             sf.sample_id = s.id
             sf.filename = os.path.basename(test_sem_file)
             session.add(sf)
             session.flush()
 
-        c = recipe()
+        c = Recipe()
         c.sample_id = s.id
         for field in recipe_fields:
-            setattr(c,field,random_fill(field,recipe))
+            setattr(c,field,random_fill(field,Recipe))
         session.add(c)
         session.flush()
 
         for n, name in enumerate(["Annealing","Growing","Cooling"]):
-            p = preparation_step()
+            p = PreparationStep()
             p.recipe_id = c.id
             p.step = n
             p.name = name
             for field in preparation_fields:
                 if field != "name":
-                    setattr(p,field,random_fill(field,preparation_step))
+                    setattr(p,field,random_fill(field,PreparationStep))
             session.add(p)
             session.flush()
 
-        pr = properties()
+        pr = Properties()
         pr.sample_id = s.id
         for field in properties_fields:
-            setattr(pr,field,random_fill(field,properties))
+            setattr(pr,field,random_fill(field,Properties))
         session.add(pr)
         session.flush()
 
         for _ in range(3):
-            a = author()
+            a = Author()
             a.sample_id = s.id
             for field in author_fields:
-                setattr(a,field,random_fill(field,author))
+                setattr(a,field,random_fill(field,Author))
             session.add(a)
             session.flush()
 
         if test_raman_file:
-            rs = raman_set()
+            rs = RamanSet()
             session.add(rs)
             session.flush()
             for ri,ram in enumerate([test_raman_file]):
-                rf = raman_file()
+                rf = RamanFile()
                 rf.filename = os.path.basename(ram)
                 rf.sample_id = s.id
                 if files_response['Raman Wavelength'] != None:
@@ -1352,7 +1364,7 @@ def make_test_dict(test_sem_file=None,test_raman_file=None):
                 session.flush()
 
                 params = GSARaman.auto_fitting(ram)
-                r = raman_spectrum()
+                r = RamanSpectrum()
                 r.raman_file_id = rf.id
                 r.set_id = rs.id
                 r.percent = 100.
