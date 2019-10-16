@@ -93,7 +93,7 @@ class Sample(Base):
         foreign_keys="SemFile.sample_id",
         back_populates="sample",
     )
-    # Defining the foreign key constraint explictly (as below) prevents a sem_file id from 
+    # Defining the foreign key constraint explictly (as below) prevents a sem_file id from
     # a different sample from being assigned to the primary_sem_file_id column.
     __table_args__ = (
         ForeignKeyConstraint(
