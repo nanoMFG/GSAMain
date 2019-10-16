@@ -83,7 +83,12 @@ class Sample(Base):
         back_populates="sample",
     )
 
-    # raman_analysis = relationship("raman_set", uselist=False)
+    raman_analysis = relationship(
+        "RamanSet", 
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True
+        )
     # ONE-TO-MANY: sample -> sem_files
     sem_files = relationship(
         "SemFile",

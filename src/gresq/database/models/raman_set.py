@@ -27,6 +27,8 @@ class RamanSet(Base):
         index=True,
         info={"verbose_name": "Sample ID"},
     )
+    # ONE-TO-ONE: recipe -> sample
+    sample = relationship("Sample", uselist=False, back_populates="raman_analysis")
     raman_spectra = relationship(
         "RamanSpectrum",
         foreign_keys="RamanSpectrum.set_id",
