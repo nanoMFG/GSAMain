@@ -1,19 +1,17 @@
-from gresq.database import (
-    sample,
-    preparation_step,
-    dal,
-    Base,
-    recipe,
-    properties,
-    mdf_forge,
-    raman_set,
-    raman_file,
-    raman_spectrum,
-    sem_file,
-    author,
+from gresq.database import dal, Base
+from gresq.database.models import (
+    Sample,
+    PreparationStep,
+    Recipe,
+    Properties,
+    RamanSet,
+    RamanFile,
+    RamanSpectrum,
+    SemFile,
+    Author
 )
 from gresq.config import config
-from gresq.recipe import Recipe
+#from gresq.recipe import Recipe
 from sqlalchemy import String, Integer, Float, Numeric
 from gresq.util.box_adaptor import BoxAdaptor
 import uuid
@@ -35,8 +33,8 @@ properties_key = {
     "growth_coverage": "PROPERTY: Growth Coverage (%)",
 }
 recipe_key = {
-    "sample_surface_area": "PROPERTY: Sample Surface Area (mm$\^2$)",
-    "thickness": "PROPERTY: Thickness ($\mu$m)",
+    "sample_surface_area": r"PROPERTY: Sample Surface Area (mm$\^2$)",
+    "thickness": r"PROPERTY: Thickness ($\mu$m)",
     "tube_diameter": "ALL CONDITION: Tube Diameter (mm)",
     "tube_length": "ALL CONDITION: Tube Length (mm)",
     "catalyst": "ALL CONDITION: Catalyst",
@@ -75,11 +73,11 @@ def convert(value, field, header=None):
 
 
 def upload_file(
+    box_adaptor,
     file_path,
     folder_name=None,
     box_config_path="/Users/Joshua_Schiller/Dropbox/GSAMain/src/box_config.json",
 ):
-    box_adaptor = BoxAdaptor(box_config_path)
     upload_folder = box_adaptor.create_upload_folder(folder_name=folder_name)
     box_file = box_adaptor.upload_file(upload_folder, file_path, str(uuid.uuid4()))
 
@@ -109,7 +107,8 @@ def convert_date(d):
 def convert_db(data):
     columns = data.columns
     for i in range(data.shape[0]):
-        for c, col in enumerate(columns):
+        #for c, col in enumerate(columns):
+        for col in enumerate(columns):
             if "Torr l/s" in col:
                 value = data[col][i]
                 if pd.isnull(value) == False:
@@ -126,6 +125,7 @@ def convert_db(data):
 def build_db(session, filepath, sem_raman_path=None, nrun=None, box_config_path=None):
     data = pd.read_csv(os.path.join(filepath, "recipe_2019-08-27.csv"))
     data = convert_db(data)
+    box_adaptor = BoxAdaptor(box_config_path)
 
     name_idxs = []
     cooling_idx = None
@@ -147,7 +147,7 @@ def build_db(session, filepath, sem_raman_path=None, nrun=None, box_config_path=
 
     for i in range(nrun):
         if "Kaihao" in author_column[i]:
-            s = sample()
+            s = Sample()
             s.material_name = "Graphene"
             s.validated = True
             date_string = data[sample_key["experiment_date"]][i]
@@ -157,20 +157,20 @@ def build_db(session, filepath, sem_raman_path=None, nrun=None, box_config_path=
             session.add(s)
             session.flush()
 
-            pr = properties()
+            pr = Properties()
             pr.sample_id = s.id
             for key, header in properties_key.items():
                 value = data[header][i]
                 if pd.isnull(value) == False:
-                    value = convert(value, getattr(properties, key), header=header)
+                    value = convert(value, getattr(Properties, key), header=header)
                     setattr(pr, key, value)
 
-            r = recipe()
+            r = Recipe()
             r.sample_id = s.id
             for key, header in recipe_key.items():
                 value = data[header][i]
                 if pd.isnull(value) == False:
-                    value = convert(value, getattr(recipe, key), header=header)
+                    value = convert(value, getattr(Recipe, key), header=header)
                     setattr(r, key, value)
             session.add(pr)
             session.add(r)
@@ -181,7 +181,7 @@ def build_db(session, filepath, sem_raman_path=None, nrun=None, box_config_path=
             for j in range(0, annealing_df.shape[1], 9):
                 prep_df = annealing_df.iloc[:, j : j + 9].copy()
 
-                initial_cols = prep_df.columns
+                #initial_cols = prep_df.columns
                 for col in prep_df.columns:
                     for key, value in preparation_step_key.items():
                         if (
@@ -195,7 +195,7 @@ def build_db(session, filepath, sem_raman_path=None, nrun=None, box_config_path=
                             and value == preparation_step_key["carbon_source_flow_rate"]
                         ):
                             prep_df.rename(columns={col: value}, inplace=True)
-                prep = preparation_step()
+                prep = PreparationStep()
                 prep.name = "Annealing"
                 prep.recipe_id = r.id
                 for key, header in preparation_step_key.items():
@@ -203,7 +203,7 @@ def build_db(session, filepath, sem_raman_path=None, nrun=None, box_config_path=
                         value = prep_df[header][i]
                         if pd.isnull(value) == False:
                             value = convert(
-                                value, getattr(preparation_step, key), header=header
+                                value, getattr(PreparationStep, key), header=header
                             )
                             setattr(prep, key, value)
                     except Exception as e:
@@ -233,7 +233,7 @@ def build_db(session, filepath, sem_raman_path=None, nrun=None, box_config_path=
                             and value == preparation_step_key["carbon_source_flow_rate"]
                         ):
                             prep_df.rename(columns={col: value}, inplace=True)
-                prep = preparation_step()
+                prep = PreparationStep()
                 prep.name = "Growing"
                 prep.recipe_id = r.id
                 for key, header in preparation_step_key.items():
@@ -241,7 +241,7 @@ def build_db(session, filepath, sem_raman_path=None, nrun=None, box_config_path=
                         value = prep_df[header][i]
                         if pd.isnull(value) == False:
                             value = convert(
-                                value, getattr(preparation_step, key), header=header
+                                value, getattr(PreparationStep, key), header=header
                             )
                             setattr(prep, key, value)
                     except Exception as e:
@@ -272,7 +272,7 @@ def build_db(session, filepath, sem_raman_path=None, nrun=None, box_config_path=
                             and value == preparation_step_key["carbon_source_flow_rate"]
                         ):
                             prep_df.rename(columns={col: value}, inplace=True)
-                prep = preparation_step()
+                prep = PreparationStep()
                 prep.name = "Cooling"
                 prep.recipe_id = r.id
                 cooling_value = cooling_rate[i]
@@ -284,7 +284,7 @@ def build_db(session, filepath, sem_raman_path=None, nrun=None, box_config_path=
                         value = prep_df[header][i]
                         if pd.isnull(value) == False:
                             value = convert(
-                                value, getattr(preparation_step, key), header=header
+                                value, getattr(PreparationStep, key), header=header
                             )
                             setattr(prep, key, value)
                     except Exception as e:
@@ -299,7 +299,7 @@ def build_db(session, filepath, sem_raman_path=None, nrun=None, box_config_path=
                     session.commit()
 
             ### RAMAN IS A SEPARATE DATASET FROM SAMPLE ###
-            rs = raman_set()
+            rs = RamanSet()
             rs.sample_id = s.id
             rs.experiment_date = s.experiment_date
             session.add(rs)
@@ -328,17 +328,17 @@ def build_db(session, filepath, sem_raman_path=None, nrun=None, box_config_path=
                         100 / len(files_response["Raman Files"])
                     ] * len(files_response["Raman Files"])
                     for ri, ram in enumerate(files_response["Raman Files"]):
-                        rf = raman_file()
+                        rf = RamanFile()
                         rf.filename = os.path.basename(ram)
                         rf.sample_id = s.id
-                        rf.url = upload_file(ram, box_config_path=box_config_path)
+                        rf.url = upload_file(box_adaptor, ram, box_config_path=box_config_path)
                         if files_response["Raman Wavelength"] != None:
                             rf.wavelength = files_response["Raman Wavelength"]
                         session.add(rf)
                         session.flush()
 
                         params = auto_fitting(ram)
-                        r = raman_spectrum()
+                        r = RamanSpectrum()
                         r.raman_file_id = rf.id
                         r.set_id = rs.id
                         if files_response["Characteristic Percentage"] != None:
@@ -400,14 +400,14 @@ def build_db(session, filepath, sem_raman_path=None, nrun=None, box_config_path=
 
                 if len(files_response["SEM Image Files"]) > 0:
                     for f in files_response["SEM Image Files"]:
-                        sf = sem_file()
+                        sf = SemFile()
                         sf.sample_id = s.id
                         sf.filename = os.path.basename(f)
-                        sf.url = upload_file(f, box_config_path=box_config_path)
+                        sf.url = upload_file(box_adaptor, f, box_config_path=box_config_path)
                         session.add(sf)
                         session.flush()
 
-            auth = author()
+            auth = Author()
             auth.first_name = "Kaihao"
             auth.last_name = "Zhang"
             auth.institution = "University of Illinois at Urbana-Champaign"

@@ -83,7 +83,12 @@ class Sample(Base):
         back_populates="sample",
     )
 
-    # raman_analysis = relationship("raman_set", uselist=False)
+    raman_analysis = relationship(
+        "RamanSet", 
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True
+        )
     # ONE-TO-MANY: sample -> sem_files
     sem_files = relationship(
         "SemFile",
@@ -93,7 +98,7 @@ class Sample(Base):
         foreign_keys="SemFile.sample_id",
         back_populates="sample",
     )
-    # Defining the foreign key constraint explictly (as below) prevents a sem_file id from 
+    # Defining the foreign key constraint explictly (as below) prevents a sem_file id from
     # a different sample from being assigned to the primary_sem_file_id column.
     __table_args__ = (
         ForeignKeyConstraint(

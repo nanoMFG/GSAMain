@@ -12,8 +12,18 @@ from PIL import Image
 from gresq.util.util import ResultsTableModel, errorCheck, DownloadThread
 from gresq.util.box_adaptor import BoxAdaptor
 from gresq.dashboard.stats import TSNEWidget, PlotWidget
-# from gresq.util.csv2db2 import build_db
-from gresq.database import sample, preparation_step, dal, Base, mdf_forge, properties, recipe, raman_set, author, raman_spectrum,  sem_file , sem_analysis
+from gresq.database import dal, Base
+from gresq.database.models import (
+    Sample, 
+    Recipe,
+    Properties,
+    Author, 
+    PreparationStep,
+    RamanSet,
+    RamanSpectrum,
+    SemFile,
+    SemAnalysis
+)
 from sqlalchemy import String, Integer, Float, Numeric
 from gresq.config import config
 from gsaimage import ImageEditor
@@ -106,11 +116,11 @@ sample_fields = [
 results_fields = sample_fields+properties_fields+raman_fields
 
 selection_list = {
-    'Experimental Conditions':{'fields':recipe_fields,'model':recipe},
-    'Preparation': {'fields':preparation_fields,'model':preparation_step},
-    'Properties': {'fields':properties_fields,'model':properties},
-    'Raman Analysis': {'fields':raman_fields,'model':raman_set},
-    'Provenance Information': {'fields':author_fields,'model':author}
+    'Experimental Conditions':{'fields':recipe_fields,'model':Recipe},
+    'Preparation': {'fields':preparation_fields,'model':PreparationStep},
+    'Properties': {'fields':properties_fields,'model':Properties},
+    'Raman Analysis': {'fields':raman_fields,'model':RamanSet},
+    'Provenance Information': {'fields':author_fields,'model':Author}
     }
 
 sql_validator = {
@@ -186,7 +196,7 @@ class GSAQuery(QtGui.QWidget):
         self.preview = PreviewWidget(privileges=self.privileges)
         if self.privileges['validate'] or self.privileges['write']:
             self.preview.admin_tab.updateQuery.connect(lambda: self.query(self.filters))
-            self.preview.admin_tab.queryUnvalidated.connect(lambda: self.query([sample.validated.is_(False)]))
+            self.preview.admin_tab.queryUnvalidated.connect(lambda: self.query([Sample.validated.is_(False)]))
 
         self.addFilterBtn = QtGui.QPushButton('Add Filter')
         self.addFilterBtn.clicked.connect(lambda: self.addFilter(self.filter_fields.currentWidget()))
@@ -297,7 +307,7 @@ class GSAQuery(QtGui.QWidget):
         if self.privileges['validate']:
             self.results.query(filters)
         else:
-            self.results.query(filters+[sample.validated==True])
+            self.results.query(filters+[Sample.validated==True])
         self.results.results_table.selectionModel().currentChanged.connect(lambda x: self.preview.select(self.results.results_model,x))
 
 class ValueFilter(QtGui.QWidget):
@@ -401,8 +411,8 @@ class ClassFilter(QtGui.QWidget):
 class DetailWidget(QtGui.QWidget):
     def __init__(self,parent=None):
         super(DetailWidget,self).__init__(parent=parent)
-        self.properties = FieldsDisplayWidget(fields=properties_fields,model=properties)
-        self.conditions = FieldsDisplayWidget(fields=recipe_fields+hybrid_recipe_fields,model=recipe)
+        self.properties = FieldsDisplayWidget(fields=properties_fields,model=Properties)
+        self.conditions = FieldsDisplayWidget(fields=recipe_fields+hybrid_recipe_fields,model=Recipe)
 
         propertiesLabel = QtGui.QLabel('Properties')
         propertiesLabel.setFont(label_font)
@@ -421,7 +431,7 @@ class DetailWidget(QtGui.QWidget):
 
 class PreviewWidget(QtGui.QTabWidget):
     """
-    Widget for displaying data associated with selected sample. Contains tabs for:
+    Widget for displaying data associated with selected Sample. Contains tabs for:
         -Graphene details
         -SEM data (raw and postprocessed)
         -Raman data (raw and postprocessed)
@@ -452,11 +462,11 @@ class PreviewWidget(QtGui.QTabWidget):
 
     def select(self,model=None,index=None):
         """
-        Select sample model and update preview. Can use ResultsTableModel with corresponding index,
-        standalone sample model or a sample id.
+        Select Sample model and update preview. Can use ResultsTableModel with corresponding index,
+        standalone Sample model or a Sample id.
 
-        model:              ResultsTableModel object or sample model if index=None. If None, index refers to sample id.
-        index:              Index from ResultsWidget table or sample id if model=None. If None, model refers to a sample model.
+        model:              ResultsTableModel object or Sample model if index=None. If None, index refers to Sample id.
+        index:              Index from ResultsWidget table or Sample id if model=None. If None, model refers to a Sample model.
         """
 
         with dal.session_scope() as session:
@@ -465,7 +475,7 @@ class PreviewWidget(QtGui.QTabWidget):
                     i = int(model.df['id'].values[index.row()])
                 else:
                     i = index
-                s = session.query(sample).filter(sample.id==i)[0]
+                s = session.query(Sample).filter(Sample.id==i)[0]
             elif index==None and model != None:
                 s = model
             self.detail_tab.update(s.properties,s.recipe)
@@ -514,23 +524,23 @@ class ResultsWidget(QtGui.QTabWidget):
         self.results_model = ResultsTableModel()
         if len(filters)>0:
             with dal.session_scope() as session:
-                all_sample_fields = [c.key for c in sample.__table__.columns] #+['author_last_names']
-                sample_columns = tuple([getattr(sample,s) for s in all_sample_fields])
-                recipe_columns = tuple([getattr(recipe,r) for r in recipe_fields+hybrid_recipe_fields])
-                properties_columns = tuple([getattr(properties,p) for p in properties_fields])
-                raman_columns = tuple([getattr(raman_set,r) for r in raman_fields])
+                all_sample_fields = [c.key for c in Sample.__table__.columns] #+['author_last_names']
+                sample_columns = tuple([getattr(Sample,s) for s in all_sample_fields])
+                recipe_columns = tuple([getattr(Recipe,r) for r in recipe_fields+hybrid_recipe_fields])
+                properties_columns = tuple([getattr(Properties,p) for p in properties_fields])
+                raman_columns = tuple([getattr(RamanSet,r) for r in raman_fields])
 
                 query_columns = sample_columns+raman_columns+recipe_columns+properties_columns
 
                 q = session.query(*query_columns).\
-                    join(sample.recipe).\
-                    join(sample.properties).\
-                    outerjoin(recipe.preparation_steps).\
-                    outerjoin(raman_set).\
-                    outerjoin(author).\
+                    join(Sample.recipe).\
+                    join(Sample.properties).\
+                    outerjoin(Recipe.preparation_steps).\
+                    outerjoin(RamanSet).\
+                    outerjoin(Author).\
                     filter(*filters).distinct()
 
-                self.results_model.read_sqlalchemy(q.statement,session,models=[sample,recipe,properties,raman_set])
+                self.results_model.read_sqlalchemy(q.statement,session,models=[Sample,Recipe,Properties,RamanSet])
 
         self.results_table.setModel(self.results_model)
         for c in range(self.results_model.columnCount(parent=None)):
@@ -630,7 +640,7 @@ class SEMAdminTab(QtGui.QScrollArea):
         self.mask_stack = QtGui.QStackedWidget()
 
         with dal.session_scope() as session:
-            sem = session.query(sem_file).filter(sem_file.id==self.sem_id).first()
+            sem = session.query(SemFile).filter(SemFile.id==self.sem_id).first()
             
             for a,analysis in enumerate(sem.analyses):
                 mask_widget = RawImageTab()
@@ -657,20 +667,20 @@ class SEMAdminTab(QtGui.QScrollArea):
 
     def setDefaultStatus(self,analysis_id):
         with dal.session_scope() as session:
-            sem_file_model = session.query(sem_file).filter(sem_file.id==self.sem_id).first()
+            sem_file_model = session.query(SemFile).filter(SemFile.id==self.sem_id).first()
             self.default_label.setText(str(sem_file_model.default_analysis==analysis_id))
 
     def setDefault(self):
         analysis_id = int(self.sem_list.currentItem().text())
         with dal.session_scope() as session:
-            sem_file_model = session.query(sem_file).filter(sem_file.id==self.sem_id).first()
+            sem_file_model = session.query(SemFile).filter(SemFile.id==self.sem_id).first()
             sem_file_model.default_analysis = analysis_id
 
             self.setDefaultStatus(analysis_id)
 
     def setPrimary(self):
         with dal.session_scope() as session:
-            sample_model = session.query(sample).filter(sample.id==self.sample_id).first()
+            sample_model = session.query(Sample).filter(Sample.id==self.sample_id).first()
             sample_model.primary_sem_file_id = self.sem_id
 
 class SEMDisplayTab(QtGui.QScrollArea):
@@ -712,9 +722,9 @@ class SEMDisplayTab(QtGui.QScrollArea):
     def submitMask(self,sem_id,px_per_um,mask):
         mask_img = 255*(1-mask.astype(np.uint8))
         with dal.session_scope() as session:
-            analysis = sem_analysis()
+            analysis = SemAnalysis()
             analysis.sem_file_id = sem_id
-            sample_model = session.query(sample).filter(sample.id==self.sample_id).first()
+            sample_model = session.query(Sample).filter(Sample.id==self.sample_id).first()
             analysis.automated = False
             analysis.growth_coverage = np.mean(mask.astype(int))
             analysis.px_per_um = px_per_um
@@ -803,7 +813,7 @@ class ProvenanceDisplayTab(QtGui.QScrollArea):
         self.author_widgets = []
 
         for a,auth in enumerate(author_models):
-            self.author_widgets.append(FieldsDisplayWidget(fields=["full_name_and_institution"],model=author))
+            self.author_widgets.append(FieldsDisplayWidget(fields=["full_name_and_institution"],model=Author))
             self.author_widgets[-1].setData(auth)
             self.layout.addWidget(self.author_widgets[-1],a,0)
 
@@ -820,7 +830,7 @@ class RamanDisplayTab(QtGui.QScrollArea):
         self.progress_bar = QtGui.QProgressBar()
         self.file_list = QtGui.QListWidget()
         self.raman_info = QtGui.QStackedWidget()
-        self.weighted_values = FieldsDisplayWidget(fields=raman_fields,model=raman_set,elements_per_col=1)
+        self.weighted_values = FieldsDisplayWidget(fields=raman_fields,model=RamanSet,elements_per_col=1)
         self.sample_id = None
         self.threads = []
 
@@ -835,7 +845,7 @@ class RamanDisplayTab(QtGui.QScrollArea):
     def loadSpectrum(self,data,thread_id,spectrum_model):
         raman_tabs = QtGui.QTabWidget()
         spectrum_plot_tab = QtGui.QWidget()
-        spectrum_properties_tab = FieldsDisplayWidget(fields=spectrum_fields,model=raman_spectrum)
+        spectrum_properties_tab = FieldsDisplayWidget(fields=spectrum_fields,model=RamanSpectrum)
         spectrum_properties_tab.setData(spectrum_model)
         raman_tabs.addTab(spectrum_plot_tab,"Spectrum")
         raman_tabs.addTab(spectrum_properties_tab,"Properties")
@@ -976,7 +986,7 @@ class RecipeDisplayTab(QtGui.QScrollArea):
                 ax.setTicks([[(v, str(v)) for v in xticks]])
 
                 self.recipe_plot.setLabel(text='Time (min)',axis='bottom')
-                info = getattr(preparation_step,plot_field).info
+                info = getattr(PreparationStep,plot_field).info
                 ylabel = info['verbose_name']
                 if info['std_unit']:
                     ylabel += ' (%s)'%info['std_unit']
@@ -1048,7 +1058,7 @@ class AdminDisplayTab(QtGui.QScrollArea):
                 if btn.text() == "OK":
                     try:
                         with dal.session_scope() as session:
-                            model = session.query(sample).get(self.sample_id)
+                            model = session.query(Sample).get(self.sample_id)
                             session.delete(model)
                             session.commit()
 
@@ -1071,7 +1081,7 @@ class AdminDisplayTab(QtGui.QScrollArea):
     def toggle_validate_model(self):
         if self.sample_id:
             with dal.session_scope() as session:
-                model = session.query(sample).get(self.sample_id)
+                model = session.query(Sample).get(self.sample_id)
                 model.validated = not model.validated
                 session.commit()
                 self.validate_status_label.setText(str(model.validated))

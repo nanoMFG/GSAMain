@@ -1,10 +1,12 @@
+import os
 from PyQt5 import QtGui, QtCore
 import pandas as pd
 import copy
 import io
 import requests
 from mlxtend.frequent_patterns import apriori
-from gresq.database import sample, preparation_step, dal, Base, mdf_forge, properties, recipe, raman_set, author, raman_spectrum,  sem_file , sem_analysis
+
+from gresq.database.models import Sample
 
 class DownloadThread(QtCore.QThread):
     """
@@ -178,7 +180,7 @@ def downloadAllImageMasks(session,directory):
     def saveTo(data,path):
         with open(path,'wb') as f:
             f.write(data)
-    for sample_model in session.query(sample).all():
+    for sample_model in session.query(Sample).all():
         for analysis in sample_model.analyses:
             sem = analysis.sem_file_model
             mask_url = analysis.mask_url

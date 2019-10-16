@@ -5,7 +5,7 @@ from pandas.api.types import is_numeric_dtype
 import copy
 from sklearn.manifold import TSNE
 from PyQt5 import QtGui, QtCore
-from gresq.database import sample, preparation_step, dal, Base
+from gresq.database import dal, Base
 from gresq.util.util import ItemsetsTableModel, ResultsTableModel
 
 label_font = QtGui.QFont("Helvetica", 16, QtGui.QFont.Bold)

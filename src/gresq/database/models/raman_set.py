@@ -4,7 +4,7 @@ from sqlalchemy import Column, String, Integer, ForeignKey, Date, Boolean, Float
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.hybrid import hybrid_property
 
-from gresq.database import Base
+from gresq.database import Base, class_registry
 
 
 class RamanSet(Base):
@@ -27,13 +27,20 @@ class RamanSet(Base):
         index=True,
         info={"verbose_name": "Sample ID"},
     )
-    # raman_spectra = relationship("RamanSpectrum", back_populates="raman_set")
+    # ONE-TO-ONE: recipe -> sample
+    sample = relationship("Sample", uselist=False, back_populates="raman_analysis")
+    raman_spectra = relationship(
+        "RamanSpectrum",
+        foreign_keys="RamanSpectrum.set_id",
+        back_populates="raman_set",
+        primaryjoin="RamanSet.id==RamanSpectrum.set_id",
+    )
 
     authors = relationship(
         "Author",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        primaryjoin="raman_set.id==author.raman_id",
+        primaryjoin="RamanSet.id==Author.raman_id",
         back_populates="raman_set",
     )
 
@@ -118,6 +125,7 @@ class RamanSet(Base):
     )
 
     def json_encodable(self):
+        RamanSpectrum = class_registry["RamanSpectrum"]
         params = [
             "d_peak_shift",
             "d_peak_amplitude",

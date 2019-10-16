@@ -10,7 +10,8 @@ class AuthorFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session = dal.Session()
         sqlalchemy_session_persistence = "commit"
 
-    sample = factory.SubFactory("test.database.factories.SampleFactory", author=None)
+    sample = factory.SubFactory("test.database.factories.SampleFactory", authors=None)
+    #raman_set = factory.SubFactory("test.database.factories.RamanSetFactory", setauthors=None)
     first_name = factory.Faker("first_name")
     last_name = factory.Faker("last_name")
-    institution = "Uniiversity of Illinois"
+    institution = "University of Illinois"
