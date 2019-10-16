@@ -197,7 +197,7 @@ def downloadAllImageMasks(session,directory):
             thread.downloadFinished.connect(lambda x,y,z: saveTo)
 
 def errorCheck(func):
-    def wrapper(self,*args,**kwargs,success_text='Success!'):
+    def wrapper(self,success_text='Success!',*args,**kwargs):
         try:
             func(self,*args,**kwargs)
             success_dialog = QtGui.QMessageBox(self)
