@@ -7,6 +7,8 @@ import requests
 from mlxtend.frequent_patterns import apriori
 
 from gresq.database.models import Sample
+import logging
+logger = logging.getLogger(__name__)
 
 class DownloadThread(QtCore.QThread):
     """
@@ -118,8 +120,12 @@ class ResultsTableModel(QtCore.QAbstractTableModel):
             for model in models:
                 if hasattr(model,column):
                     info = getattr(model,column).info
-                    value = info['verbose_name']
-                    if info['std_unit']:
+                    if "verbose_name" in info:
+                        value = info['verbose_name']
+                    else:
+                        logger.warning(f"column: {column} in {model.__name__} has no verbose_name in info.")
+                        value = column
+                    if "std_unit" in info:
                         value += ' (%s)'%info['std_unit']
                     self.header_mapper[column] = value
                     break
