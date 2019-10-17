@@ -39,7 +39,7 @@ Install anaconda3 or miniconda3, then:<br/>
 ```
 conda create --name gresq-3.6 python=3.6
 conda env create -f <srcdir>/.conda/env_gresq_[osx|linux]_3.6.yml
-conda activate env_gresq_[osx|linux]_3.6.yml
+conda activate env_gresq_[osx|linux]_3.6
 ```
 
 ### Installing
