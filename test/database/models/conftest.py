@@ -23,7 +23,7 @@ def sample():
                 ids = [a.id for a in f.analyses]
                 lids = len(ids)
                 f.default_analysis_id=ids[random.randint(0,lids-1)]
-    dal.Session().commit
+    dal.Session().commit()
 
     yield samples
     # Drop and ditch

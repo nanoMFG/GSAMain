@@ -60,7 +60,7 @@ class SemFile(Base):
         single_parent=True,
         foreign_keys="SemAnalysis.sem_file_id",
         back_populates="sem_file",
-        # lazy="subquery",
+        lazy="subquery",
     )
 
     default_analysis = relationship(
@@ -68,7 +68,7 @@ class SemFile(Base):
         primaryjoin="SemFile.default_analysis_id==SemAnalysis.id",
         foreign_keys=default_analysis_id,
         post_update=True,
-        # lazy="subquery",
+        lazy="subquery",
     )
 
     def json_encodable(self):
