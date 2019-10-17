@@ -18,15 +18,4 @@ sqlalchemy.ext.declarative.declarative_base:  The declarative_base class instanc
 to be used by all models and DataAccessLayer connections.
 """
 
-#from .model import sample
 from .dal import dal
-# from .model import recipe
-# from .model import preparation_step
-# from .model import properties
-# from .model import author
-# from .model import raman_set
-# from .model import raman_file
-# from .model import raman_spectrum
-# from .model import sem_file
-# from .model import mdf_forge
-# from .model import sem_analysis
