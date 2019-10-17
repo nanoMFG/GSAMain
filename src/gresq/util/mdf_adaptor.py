@@ -56,34 +56,31 @@ class MDFAdaptor:
         self.mdfcc.reset_submission()
         return mdf_result['source_id']
 
-    def upload_raman_analysis(self, recipe, recipe_dataset_id, raman_set, raman_box_file):
+    def upload_raman_analysis(self, recipe, recipe_source_id, raman_set, raman_box_file):
 
         self.mdfcc.create_dc_block(title="Graphene Synthesis Raman Analysis",
                                    authors=["%s, %s"%(auth['last_name'],auth['first_name']) for auth in recipe.authors],
                                    affiliations=[auth['institution'] for auth in recipe.authors],
-                                   publication_year=recipe.experiment_year,
-                                   related_dois=recipe_dataset_id
+                                   publication_year=recipe.experiment_year
                                    )
+        related_identifier = "https://petreldata.net/mdf/detail/{{source_id}}".format(recipe_source_id)
+        self.mdfcc.dc['relatedIdentifiers'] =  [{
+                "relatedIdentifier": related_identifier,
+                "relatedIdentifierType": "URL",
+                "relationType": "IsDerivedFrom"
+        }]
+
         self.mdfcc.add_data_source(raman_box_file.get_shared_link_download_url(access='open'))
 
         self.mdfcc.set_source_name(str(uuid.uuid4()))
 
-        submission = self.mdfcc.get_submission()
-
-        submission["projects"] = {}
-        submission["projects"]["nanomfg"] = {
-            "d_to_g": raman_set['d_to_g'],
-            "gp_to_g": raman_set['gp_to_g'],
-            "d_peak_shift": raman_set['d_peak_shift'],
-            "d_peak_amplitude": raman_set['d_peak_amplitude'],
-            "d_fwhm": raman_set['d_fwhm'],
-            "g_peak_shift": raman_set['g_peak_shift'],
-            "g_peak_amplitude": raman_set['g_peak_amplitude'],
-            "g_fwhm": raman_set['g_fwhm'],
-            "g_prime_peak_shift": raman_set['g_prime_peak_shift'],
-            "g_prime_peak_amplitude": raman_set['g_prime_peak_amplitude'],
-            "g_prime_fwhm": raman_set['g_prime_fwhm']
+        raman_mapping = {
+            "raman.peaks": "raman_analysis.peaks",
+            "raman.ratios": "raman_analysis.ratios"
         }
+        self.mdfcc.add_index('json', raman_mapping)
+
+        submission = self.mdfcc.get_submission()
 
         print("\n\n\n\n------>",submission)
 
@@ -101,3 +98,6 @@ class MDFAdaptor:
         print("Submitted raman analysis to MDF -----> "+str(mdf_result))
         self.mdfcc.reset_submission()
         return mdf_result['source_id']
+
+    def get_status(self, source_id):
+        return self.mdfcc.check_status(source_id)
