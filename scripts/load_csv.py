@@ -3,8 +3,11 @@ import os
 from gresq.config import Config
 from gresq.database import dal
 from gresq.util.csv2db3 import build_db
+import logging
 
-config_prefix = "TEST_DATABASE"
+logging.basicConfig(level=logging.DEBUG)
+
+config_prefix = "DEV_DATABASE"
 config_suffix = "_ADMIN"
 
 conf = Config(prefix=config_prefix, suffix=config_suffix, debug=True, try_secrets=False)
