@@ -15,7 +15,7 @@ def csv2db():
     dal.init_db(conf, privileges={"read": True, "write": True, "validate": True})
     # Add some data here
     with dal.session_scope() as session:
-        build_db(session, os.path.join(os.getcwd(),'data'), csv2db_file, nrun=34, box_config_path=BOX_CONFIG_PATH)
+        build_db(session, os.path.join(os.getcwd(),'data'), csv2db_file, nrun=31, box_config_path=BOX_CONFIG_PATH)
     yield
     # Drop and ditch
     Base.metadata.drop_all(bind=dal.engine)
