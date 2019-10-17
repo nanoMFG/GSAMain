@@ -1,5 +1,5 @@
 from mdf_forge.forge import Forge
-from gresq.database import mdf_forge
+from gresq.database.models import MdfForge
 
 def build_db(session):
     mdf = Forge("mdf-test")
@@ -13,7 +13,7 @@ def build_db(session):
             return None
 
     for recipe in rslt:
-        r = mdf_forge()
+        r = MdfForge()
         r.mdf_id = recipe["mdf"]["mdf_id"]
         r.title = recipe["dc"]["titles"][0]["title"]
         recipe_data = recipe["projects"]["nanomfg"]

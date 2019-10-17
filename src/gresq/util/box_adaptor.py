@@ -3,6 +3,8 @@ from boxsdk.object.folder import Folder
 from pprint import pprint
 import os.path
 import uuid
+import logging
+logger = logging.getLogger(__name__)
 
 class BoxAdaptor():
     def __init__(self, path_to_config):
@@ -10,7 +12,7 @@ class BoxAdaptor():
         if (os.path.isfile(path_to_config) == False):
             raise ValueError("configPath must be a path to the JSON config file for your Box JWT app")
         auth = JWTAuth.from_settings_file(path_to_config)
-        print("Authenticating...")
+        logger.info("Authenticating BoxAdaptor...")
         auth.authenticate_instance()
         self.client = Client(auth)
 
@@ -21,6 +23,9 @@ class BoxAdaptor():
         return folder
 
     def upload_file(self,box_folder, local_path, dest_file_name):
+        logger.info(f"uploading: {dest_file_name}")
+        logger.info(f"to: {box_folder}")
+        logger.info(f"from: {local_path}")
         box_file = box_folder.upload(local_path, dest_file_name)
         return box_file
 

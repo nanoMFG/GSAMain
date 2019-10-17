@@ -9,9 +9,9 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from gresq.database import Base
 
 # Uncomment to hav all SQL dumped to the console.
-#import logging
-#logging.basicConfig()
-#logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+# import logging
+# logging.basicConfig()
+# logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 class DataAccessLayer:
     def __init__(self):
