@@ -1,4 +1,5 @@
-from gresq.database import sample, preparation_step, dal, Base
+from gresq.database import dal, Base
+from gresq.database.models import Sample, PreparationStep
 from gresq.config import config
 import pandas as pd
 import os
@@ -9,7 +10,7 @@ def build_db(session,filepath):
 
     col_names = data.columns
     for i in range(data.shape[0]):
-        s = sample()
+        s = Sample()
         s.reference = data.iloc[i,-1]
         for j in range(30):
             value = data.iloc[i,j]
@@ -20,7 +21,7 @@ def build_db(session,filepath):
         session.commit()
         # Annealing
         for step,j in enumerate(range(31,109,13)):
-            prep = preparation_step()
+            prep = PreparationStep()
             prep.name = "Annealing"
             prep.sample_id = s.id
             prep.step = step
@@ -33,7 +34,7 @@ def build_db(session,filepath):
             session.add(prep)
         # Growing
         for step,j in enumerate(range(109,188,13)):
-            prep = preparation_step()
+            prep = PreparationStep()
             prep.name = "Growing"
             prep.sample_id = s.id
             prep.step = step
@@ -46,7 +47,7 @@ def build_db(session,filepath):
             session.add(prep)
         # Cooling
         for step,j in enumerate(range(190,268,13)):
-            prep = preparation_step()
+            prep = PreparationStep()
             prep.name = "Cooling"
             prep.cooling_rate = data.iloc[i,190]
             prep.sample_id = s.id

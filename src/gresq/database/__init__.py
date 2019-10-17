@@ -11,20 +11,11 @@ Todo:
     * Possibly make model a Package.
 """
 from sqlalchemy.ext.declarative import declarative_base
-Base = declarative_base()
+class_registry = {}
+Base = declarative_base(class_registry=class_registry)
 """
 sqlalchemy.ext.declarative.declarative_base:  The declarative_base class instance
 to be used by all models and DataAccessLayer connections.
 """
 
-from .model import sample
 from .dal import dal
-from .model import recipe
-from .model import preparation_step
-from .model import properties
-from .model import author
-from .model import raman_set
-from .model import raman_file
-from .model import raman_spectrum
-from .model import sem_file
-from .model import mdf_forge

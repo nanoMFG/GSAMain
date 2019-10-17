@@ -10,6 +10,7 @@ from mdf_connect_client import MDFConnectClient
 
 from src.gresq.database import preparation_step, sample, GresqEncoder
 
+
 """
 NAME:
     load_mdf
@@ -31,6 +32,14 @@ DESCRIPTION:
     
 """
 
+class GresqEncoder(json.JSONEncoder):
+    def default(self, o):
+        if hasattr(o, 'json_encodable'):
+            return o.json_encodable()
+        else:
+            raise TypeError(
+                'Object of type %s with value of %s is not JSON serializable' % (
+                    type(o), repr(o)))
 
 def download_file(box_client, scratch_dir, item, path):
     """
