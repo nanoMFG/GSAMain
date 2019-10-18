@@ -76,6 +76,7 @@ class RamanSpectrum(Base):
         uselist=False,
         back_populates="raman_spectrum",
         primaryjoin="RamanSpectrum.raman_file_id==RamanFile.id",
+        lazy="subquery"
     )
 
     raman_set = relationship(

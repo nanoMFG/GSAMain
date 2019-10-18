@@ -58,6 +58,7 @@ class Sample(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="sample",
+        lazy="subquery"
     )
     # ONE-TO-ONE: sample -> recipe
     recipe = relationship(
@@ -66,6 +67,7 @@ class Sample(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="sample",
+        lazy="subquery"
     )
     # ONE-TO-MANY: sample -> properties
     properties = relationship(
@@ -74,6 +76,7 @@ class Sample(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="sample",
+        lazy="subquery"
     )
     # ONE-TO-MANY: sample -> raman_files
     raman_files = relationship(
@@ -81,6 +84,7 @@ class Sample(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="sample",
+        lazy="subquery"
     )
 
     raman_analysis = relationship(
@@ -88,7 +92,8 @@ class Sample(Base):
         uselist=False,
         cascade="all, delete-orphan",
         passive_deletes=True,
-        back_populates="sample"
+        back_populates="sample",
+        lazy="subquery"
         )
     # ONE-TO-MANY: sample -> sem_files
     sem_files = relationship(
@@ -98,6 +103,7 @@ class Sample(Base):
         single_parent=True,
         foreign_keys="SemFile.sample_id",
         back_populates="sample",
+        lazy="subquery"
     )
     # Defining the foreign key constraint explictly (as below) prevents a sem_file id from
     # a different sample from being assigned to the primary_sem_file_id column.
@@ -117,6 +123,7 @@ class Sample(Base):
         foreign_keys=primary_sem_file_id,
         uselist=False,
         post_update=True,
+        lazy="subquery"
     )
 
     @hybrid_property

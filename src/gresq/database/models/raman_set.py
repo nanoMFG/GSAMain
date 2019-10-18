@@ -34,6 +34,7 @@ class RamanSet(Base):
         foreign_keys="RamanSpectrum.set_id",
         back_populates="raman_set",
         primaryjoin="RamanSet.id==RamanSpectrum.set_id",
+        lazy="subquery"
     )
 
     authors = relationship(
