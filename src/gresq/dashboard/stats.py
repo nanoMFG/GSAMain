@@ -5,6 +5,7 @@ from pandas.api.types import is_numeric_dtype
 import copy
 from sklearn.manifold import TSNE
 from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5.QtGui import QColor
 from gresq.database import sample, preparation_step, dal, Base
 from gresq.util.models import ItemsetsTableModel, ResultsTableModel
 
@@ -167,6 +168,9 @@ class TSNEPlot(QtGui.QWidget):
 		self.save_button = QtGui.QPushButton('Export Image')
 		self.save_button.setIcon(self.style().standardIcon(QtGui.QStyle.SP_FileDialogStart))
 
+		self.legend = Legend()
+		self.legend.setMaximumWidth(50)
+
 		self.layout.addWidget(QtGui.QLabel('Perplexity'),0,0,1,1)
 		self.layout.addWidget(self.perplexity_edit,0,1,1,1)
 		self.layout.addWidget(QtGui.QLabel('Random Seed'),1,0,1,1)
@@ -178,7 +182,8 @@ class TSNEPlot(QtGui.QWidget):
 		self.layout.addWidget(self.plot_widget,4,0,4,3)
 		self.layout.addWidget(self.select_feature,8,0,1,3)
 		self.layout.addWidget(self.back_button,9,0,1,3)
-		self.layout.addWidget(Legend(), 1, 2, 1, 2)
+		self.layout.addWidget(self.legend, 4, 4, 4, 1)
+		#self.layout.setColumnStretch(4, 1)
 
 		self.select_feature.activated[str].connect(self.setBrushes)
 		
@@ -221,21 +226,35 @@ class TSNEPlot(QtGui.QWidget):
 					for val in values:
 						if not np.isnan(val):
 							if maxVal == minVal:
-								index = 50
+								percent = 0.5
 							else:
-								index  = int((val-minVal)/(maxVal-minVal)*100)
-							brushes.append(pg.mkBrush(pg.intColor(index=index,values=100),hues=1))
+								percent  = (val-minVal)/(maxVal-minVal)
+							brushes.append(self.makeColoredBrush(percent))
 						else:
 							brushes.append(pg.mkBrush(0.2))
 			else:
 				values = list(self.model.df[feature][self.nonnull_indexes].unique())
 				for v,val in enumerate(self.model.df[feature][self.nonnull_indexes]):
 					if not np.isnan(val):
-						index = int(values.index(val)/len(values)*100)
-						brushes.append(pg.mkBrush(pg.intColor(index=index,values=100,hues=1)))
+						index = int(values.index(val)/len(values))
+						brushes.append(pg.mkBrush(pg.intColor(index)))
 					else:
 						brushes.append(pg.mkBrush(0.2))
 			self.tsne_plot.setBrush(brushes)
+
+	# Returns a QBrush based on color gradient of legend
+	def makeColoredBrush(self, percent):
+		color1 = self.legend.getColor1()
+		color2 = self.legend.getColor2()
+		hue = int(percent*(color2.hslHue() - color1.hslHue()) + color1.hslHue())
+		color = TSNEPlot.createColor(hue, color1.hslSaturation(), color1.lightness())
+		return pg.mkBrush(color) 
+		
+	@staticmethod
+	def createColor(h, s, l):
+		color = QColor()
+		color.setHsl(h, s, l)
+		return color
 
 	def resetBounds(self):
 		xbounds = self.tsne_plot.dataBounds(ax=0)
@@ -254,6 +273,7 @@ class TSNEPlot(QtGui.QWidget):
 	def run(self,features):
 		self.features = features
 		self.tsne = TSNE(random_state=self.random_seed)
+		# TODO: self.nonnull_indexes is often undefined
 		self.nonnull_indexes = ~self.model.df[self.features].isnull().any(1)
 		tsne_input = self.model.df[self.features][self.nonnull_indexes]
 		if (tsne_input.empty):
@@ -342,22 +362,27 @@ class FeatureSelectionItem(QtGui.QWidget):
 
 
 class Legend(QtGui.QWidget):
-	def __init__(self):
+	def __init__(self, color1=TSNEPlot.createColor(225, 128, 128), color2=TSNEPlot.createColor(45, 128, 128)):
 		super().__init__()
 		self.initUI()
+		self.color1 = color1
+		self.color2 = color2
+		# self.color_scale = pg.GradientEditorItem(orientation='top')
 
 	def initUI(self):
-		self.setGeometry(0, 0, 300, 50)
+		self.setGeometry(0, 0, 10, 100)
+
+	def getColor1(self):
+		return self.color1
+
+	def getColor2(self):
+		return self.color2
 
 	def paintEvent(self, event):
 		qp = QtGui.QPainter(self)
-		g = QtGui.QLinearGradient(0.0, 0.0, self.width(), 0)
-		color1 = QtGui.QColor(QtCore.Qt.blue)
-		color1.setHsl(225, 128, 128)
-		color2 = QtGui.QColor(QtCore.Qt.yellow)
-		color2.setHsl(45, 128, 128)
-		g.setColorAt(0, color1)
-		g.setColorAt(1, color2)
+		g = QtGui.QLinearGradient(0.0, 0.0, 0, self.height())
+		g.setColorAt(0, self.color1)
+		g.setColorAt(1, self.color2)
 		qp.fillRect(0, 0, self.width(), self.height(), g)
 
 
