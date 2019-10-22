@@ -34,15 +34,15 @@ class Author(Base):
     )
     first_name = Column(
         String(64),
-        info={"verbose_name": "First Name", "std_unit": None, "required": False},
+        info={"verbose_name": "First Name", "required": False},
     )
     last_name = Column(
         String(64),
-        info={"verbose_name": "Last Name", "std_unit": None, "required": False},
+        info={"verbose_name": "Last Name", "required": False},
     )
     institution = Column(
         String(64),
-        info={"verbose_name": "Institution", "std_unit": None, "required": False},
+        info={"verbose_name": "Institution", "required": False},
     )
 
     sample = relationship("Sample", back_populates="authors")

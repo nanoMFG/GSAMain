@@ -656,9 +656,12 @@ class FieldsDisplayWidget(QtGui.QScrollArea):
         for f, field in enumerate(fields):
             self.fields[field] = {}
             info = getattr(model, field).info
-            if info["std_unit"]:
-                unit = convertScripts(info["std_unit"])
-                label = "%s (%s):" % (info["verbose_name"], unit)
+            if "std_unit" in info:
+                if info["std_unit"]:
+                    unit = convertScripts(info["std_unit"])
+                    label = "%s (%s):" % (info["verbose_name"], unit)
+                else:
+                    label = "%s:" % (info["verbose_name"])
             else:
                 label = "%s:" % (info["verbose_name"])
             self.fields[field]["label"] = QtGui.QLabel(label)
@@ -1144,8 +1147,9 @@ class RecipeDisplayTab(QtGui.QScrollArea):
                 self.recipe_plot.setLabel(text="Time (min)", axis="bottom")
                 info = getattr(PreparationStep, plot_field).info
                 ylabel = info["verbose_name"]
-                if info["std_unit"]:
-                    ylabel += " (%s)" % info["std_unit"]
+                if "std_unit" in info:
+                    if info["std_unit"]:
+                        ylabel += " (%s)" % info["std_unit"]
                 self.recipe_plot.setLabel(text=ylabel, axis="left")
 
                 self.recipe_plot.enableAutoRange()

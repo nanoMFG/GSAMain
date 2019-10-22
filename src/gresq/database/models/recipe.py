@@ -52,7 +52,6 @@ class Recipe(Base):
         info={
             "verbose_name": "Catalyst",
             "choices": [],
-            "std_unit": None,
             "required": True,
         },
     )
@@ -279,9 +278,10 @@ class Recipe(Base):
         ]
         json_dict = {}
         for p in params:
+            info = getattr(Recipe, p).info
             json_dict[p] = {
                 "value": getattr(self, p),
-                "unit": getattr(Recipe, p).info["std_unit"],
+                "unit": info["std_unit"] if "std_unit" in info else None
             }
         json_dict["preparation_steps"] = sorted(
             [s.json_encodable() for s in self.preparation_steps if s.step != None],

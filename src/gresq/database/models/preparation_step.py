@@ -34,7 +34,6 @@ class PreparationStep(Base):
         info={
             "verbose_name": "Name",
             "choices": ["Annealing", "Growing", "Cooling"],
-            "std_unit": None,
             "required": True,
         },
     )
@@ -96,7 +95,6 @@ class PreparationStep(Base):
         String(16),
         info={
             "verbose_name": "Carbon Source",
-            "std_unit": None,
             "choices": ["CH4", "C2H4", "C2H2", "C6H6"],
             "required": True,
         },
@@ -149,9 +147,10 @@ class PreparationStep(Base):
         json_dict = {}
         json_dict["step"] = self.step
         for p in params:
+            info = getattr(PreparationStep, p).info
             json_dict[p] = {
                 "value": getattr(self, p),
-                "unit": getattr(PreparationStep, p).info["std_unit"],
+                "unit": info["std_unit"] if "std_unit" in info else None,
             }
 
         return json_dict

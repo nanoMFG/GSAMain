@@ -16,3 +16,8 @@ class TestSemFileQueries:
         #c = [(fs.id, anr.sem_file_id) for anr, ans in zip (fr.analyses, fs.analyses) for fr, fs in zip(r.sem_files, s.sem_files) for r, s in zip(all_sample_query, sample)]
         #print(c)
    # def test_rel__default_sem_ananlysis
+
+    def test__json_encodable(self, sample, all_sample_query):
+        for r in all_sample_query:
+            for f in r.sem_files:
+                print(f.json_encodable())

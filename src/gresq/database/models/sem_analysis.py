@@ -49,7 +49,7 @@ class SemAnalysis(Base):
     )
     automated = Column(
         Boolean,
-        info={"verbose_name": "Automated Detection", "std_unit": None},
+        info={"verbose_name": "Automated Detection"},
         default=False,
     )
 

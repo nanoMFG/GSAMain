@@ -44,7 +44,7 @@ class Properties(Base):
     )
     number_of_layers = Column(
         Integer,
-        info={"verbose_name": "Number of Layers", "std_unit": None, "required": False},
+        info={"verbose_name": "Number of Layers", "required": False},
     )
     growth_coverage = Column(
         Float,
@@ -69,7 +69,6 @@ class Properties(Base):
         info={
             "verbose_name": "Shape",
             "choices": ["Nondescript", "Hexagonal", "Square", "Circle"],
-            "std_unit": None,
             "required": False,
         },
     )
@@ -87,8 +86,9 @@ class Properties(Base):
         ]
         json_dict = {}
         for p in params:
+            info = getattr(Properties, p).info
             json_dict[p] = {
                 "value": getattr(self, p),
-                "unit": getattr(Properties, p).info["std_unit"],
+                "unit": info["std_unit"] if "std_unit" in info else None,
             }
         return json_dict

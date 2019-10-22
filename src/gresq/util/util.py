@@ -126,7 +126,8 @@ class ResultsTableModel(QtCore.QAbstractTableModel):
                         logger.warning(f"column: {column} in {model.__name__} has no verbose_name in info.")
                         value = column
                     if "std_unit" in info:
-                        value += ' (%s)'%info['std_unit']
+                        if info['std_unit']:
+                            value += ' (%s)'%info['std_unit']
                     self.header_mapper[column] = value
                     break
 

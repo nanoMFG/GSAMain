@@ -43,7 +43,7 @@ class RamanSpectrum(Base):
     )
     d_peak_amplitude = Column(
         Float,
-        info={"verbose_name": "D Peak Amplitude", "std_unit": None, "required": False},
+        info={"verbose_name": "D Peak Amplitude", "required": False},
     )
     d_fwhm = Column(
         Float, info={"verbose_name": "D FWHM", "std_unit": "cm^-1", "required": False}
@@ -54,7 +54,7 @@ class RamanSpectrum(Base):
     )
     g_peak_amplitude = Column(
         Float,
-        info={"verbose_name": "G Peak Amplitude", "std_unit": None, "required": False},
+        info={"verbose_name": "G Peak Amplitude", "required": False},
     )
     g_fwhm = Column(
         Float, info={"verbose_name": "G FWHM", "std_unit": "cm^-1", "required": False}
@@ -65,7 +65,7 @@ class RamanSpectrum(Base):
     )
     g_prime_peak_amplitude = Column(
         Float,
-        info={"verbose_name": "G' Peak Amplitude", "std_unit": None, "required": False},
+        info={"verbose_name": "G' Peak Amplitude", "required": False},
     )
     g_prime_fwhm = Column(
         Float, info={"verbose_name": "G' FWHM", "std_unit": "cm^-1", "required": False}
@@ -102,9 +102,10 @@ class RamanSpectrum(Base):
         json_dict = {}
         json_dict["raman_file"] = self.raman_file.json_encodable()
         for p in params:
+            info = getattr(RamanSpectrum, p).info
             json_dict[p] = {
                 "value": getattr(self, p),
-                "unit": getattr(RamanSpectrum, p).info["std_unit"],
+                "unit": info["std_unit"] if "std_unit" in info else None,
             }
 
         return json_dict

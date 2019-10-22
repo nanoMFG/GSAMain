@@ -29,16 +29,16 @@ class Sample(Base):
         Integer,
         primary_key=True,
         autoincrement="ignore_fk",
-        info={"verbose_name": "ID", "std_unit": None},
+        info={"verbose_name": "ID"},
     )
     primary_sem_file_id = Column(Integer, index=True)
 
     nanohub_userid = Column(
-        Integer, info={"verbose_name": "Nanohub Submitter User ID", "std_unit": None}
+        Integer, info={"verbose_name": "Nanohub Submitter User ID"}
     )
     experiment_date = Column(
         Date,
-        info={"verbose_name": "Experiment Date", "required": True, "std_unit": None},
+        info={"verbose_name": "Experiment Date", "required": True},
     )
     material_name = Column(
         String(32),
@@ -46,11 +46,10 @@ class Sample(Base):
             "verbose_name": "Material Name",
             "choices": ["Graphene"],
             "required": True,
-            "std_unit": None,
         },
     )
     validated = Column(
-        Boolean, info={"verbose_name": "Validated", "std_unit": None}, default=False
+        Boolean, info={"verbose_name": "Validated"}, default=False
     )
     # ONE-TO_MANY: sample -> authors
     authors = relationship(
