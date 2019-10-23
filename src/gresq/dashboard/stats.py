@@ -168,8 +168,10 @@ class TSNEPlot(QtGui.QWidget):
 		self.save_button = QtGui.QPushButton('Export Image')
 		self.save_button.setIcon(self.style().standardIcon(QtGui.QStyle.SP_FileDialogStart))
 
-		self.legend = Legend()
+		self.legend = pg.GradientWidget(orientation='right')
 		self.legend.setMaximumWidth(50)
+		self.legend.sigGradientChangeFinished.connect(self.colorChange)
+		print(self.legend.colorMap())
 
 		self.layout.addWidget(QtGui.QLabel('Perplexity'),0,0,1,1)
 		self.layout.addWidget(self.perplexity_edit,0,1,1,1)
@@ -195,6 +197,12 @@ class TSNEPlot(QtGui.QWidget):
 	# 	qp = QtGui.QPainter(self)
 	# 	color = QtGui.QColor(255, 0, 0)
 	# 	qp.fillRect(2, 2, 1, 2, color)
+
+	def colorChange(self):
+		feature = self.select_feature.currentText()
+		print(self.legend.listTicks())
+		if feature:
+			self.setBrushes(feature)
 
 	def pointClicked(self, plot, points):
 		# Mark clicked point - give it an extra thick border
@@ -229,7 +237,8 @@ class TSNEPlot(QtGui.QWidget):
 								percent = 0.5
 							else:
 								percent  = (val-minVal)/(maxVal-minVal)
-							brushes.append(self.makeColoredBrush(percent))
+							#print("Percent: ", int(percent*100), " Min: ", minVal, " Max: ", maxVal, " Value: ", val)
+							brushes.append(self.makeColoredBrush(percent, val))
 						else:
 							brushes.append(pg.mkBrush(0.2))
 			else:
@@ -243,12 +252,15 @@ class TSNEPlot(QtGui.QWidget):
 			self.tsne_plot.setBrush(brushes)
 
 	# Returns a QBrush based on color gradient of legend
-	def makeColoredBrush(self, percent):
-		color1 = self.legend.getColor1()
-		color2 = self.legend.getColor2()
-		hue = int(percent*(color2.hslHue() - color1.hslHue()) + color1.hslHue())
-		color = TSNEPlot.createColor(hue, color1.hslSaturation(), color1.lightness())
-		return pg.mkBrush(color) 
+	def makeColoredBrush(self, percent, value):
+		color = self.legend.getColor(percent)
+		print("Value: ", value, " Percent: ", percent, " Color: ", color.getRgb())
+		return pg.mkBrush(color)
+		# color1 = self.legend.getColor1()
+		# color2 = self.legend.getColor2()
+		# hue = int(percent*(color2.hslHue() - color1.hslHue()) + color1.hslHue())
+		# color = TSNEPlot.createColor(hue, color1.hslSaturation(), color1.lightness())
+		# return pg.mkBrush(color) 
 		
 	@staticmethod
 	def createColor(h, s, l):
@@ -273,9 +285,11 @@ class TSNEPlot(QtGui.QWidget):
 	def run(self,features):
 		self.features = features
 		self.tsne = TSNE(random_state=self.random_seed)
+		print(self.model.df.columns)
 		# TODO: self.nonnull_indexes is often undefined
 		self.nonnull_indexes = ~self.model.df[self.features].isnull().any(1)
 		tsne_input = self.model.df[self.features][self.nonnull_indexes]
+		# ids = self.model.df["id"][self.nonnull_indexes]
 		if (tsne_input.empty):
 			self.showError("Input dataframe should not be empty.")
 			return
@@ -284,10 +298,17 @@ class TSNEPlot(QtGui.QWidget):
 			return
 		self.tsne.fit(tsne_input)
 		self.tsne_plot.clear()
+
+		# if model:
+        #     i = int(model.df['id'].values[index.row()])
+        # else:
+        #     i = index
+        # s = session.query(sample).filter(sample.id==i)[0]
+
 		self.tsne_plot.setData(
 			x=self.tsne.embedding_[:,0],
 			y=self.tsne.embedding_[:,1],
-			data=list(range(len(self.tsne.embedding_[:,1])))
+			# data=ids.tolist()
 			)
 		self.resetBounds()
 
@@ -367,7 +388,10 @@ class Legend(QtGui.QWidget):
 		self.initUI()
 		self.color1 = color1
 		self.color2 = color2
-		# self.color_scale = pg.GradientEditorItem(orientation='top')
+		self.color_scale = pg.GradientEditorItem()
+		self.color_scale.loadPreset('thermal')
+		self.color_scale.setOrientation('right')
+		self.color_scale.setColorMode('hsv')
 
 	def initUI(self):
 		self.setGeometry(0, 0, 10, 100)
@@ -380,9 +404,10 @@ class Legend(QtGui.QWidget):
 
 	def paintEvent(self, event):
 		qp = QtGui.QPainter(self)
-		g = QtGui.QLinearGradient(0.0, 0.0, 0, self.height())
-		g.setColorAt(0, self.color1)
-		g.setColorAt(1, self.color2)
+		g = self.color_scale.getGradient()
+		# g = QtGui.QLinearGradient(0.0, 0.0, 0, self.height())
+		# g.setColorAt(0, self.color1)
+		# g.setColorAt(1, self.color2)
 		qp.fillRect(0, 0, self.width(), self.height(), g)
 
 
