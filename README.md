@@ -1,4 +1,5 @@
-[![Build Status](https://travis-ci.com/nanoMFG/GSAMain.svg?token=N4nkhb241rGHotEqsu3q&branch=master)](https://travis-ci.com/nanoMFG/GSAMain)
+<!--[![Build Status](https://travis-ci.com/nanoMFG/GSAMain.svg?token=N4nkhb241rGHotEqsu3q&branch=master)](https://travis-ci.com/nanoMFG/GSAMain) -->
+[![Dev Status](https://img.shields.io/endpoint?url=https://salty-headland-67572.herokuapp.com/badges/phase?repo=GSMain)](https://img.shields.io/endpoint?url=https://salty-headland-67572.herokuapp.com/badges/phase?repo=GSAMain)
 
 # Graphene-Synthesis-Analysis
 
