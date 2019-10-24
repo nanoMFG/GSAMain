@@ -11,124 +11,133 @@ from gresq.util.models import ItemsetsTableModel, ResultsTableModel
 
 label_font = QtGui.QFont("Helvetica", 16, QtGui.QFont.Bold)
 
+
 class PlotWidget(QtGui.QWidget):
-	sigClicked = QtCore.pyqtSignal(object, object)
-	
-	#selectedBrush = QtGui.QBrush(QtGui.QColor(0, 255, 0))
+    sigClicked = QtCore.pyqtSignal(object, object)
 
-	def __init__(self,parent=None):
-		super(PlotWidget,self).__init__(parent=parent)
-		self.layout = QtGui.QGridLayout(self)
-		self.layout.setAlignment(QtCore.Qt.AlignTop)
-		self.model = ResultsTableModel()
+    # selectedBrush = QtGui.QBrush(QtGui.QColor(0, 255, 0))
 
-		self.xaxisbox = QtGui.QComboBox()
-		self.yaxisbox = QtGui.QComboBox()
-		self.zaxisbox = QtGui.QComboBox()
-		self.plot_widget = pg.PlotWidget()
+    def __init__(self, parent=None):
+        super(PlotWidget, self).__init__(parent=parent)
+        self.layout = QtGui.QGridLayout(self)
+        self.layout.setAlignment(QtCore.Qt.AlignTop)
+        self.model = ResultsTableModel()
 
-		# self.scatter_plot emits signal when point is clicked
-		# How to catch signal?
-		self.scatter_plot = pg.ScatterPlotItem()
-		self.plot_widget.addItem(self.scatter_plot)
-		self.selectedPt = None
+        self.xaxisbox = QtGui.QComboBox()
+        self.yaxisbox = QtGui.QComboBox()
+        self.zaxisbox = QtGui.QComboBox()
+        self.plot_widget = pg.PlotWidget()
 
-		# Connect signal to slot - slot should be a function in the class defining the display below the plot
-		# self.scatter_plot.sigClicked.connect(lambda plot, points: self.sigClicked.emit(plot,points))
-		self.scatter_plot.sigClicked.connect(self.onClickedPoint)
+        # self.scatter_plot emits signal when point is clicked
+        # How to catch signal?
+        self.scatter_plot = pg.ScatterPlotItem()
+        self.plot_widget.addItem(self.scatter_plot)
+        self.selectedPt = None
 
-		self.xaxisbox.activated.connect(self.updatePlot)
-		self.yaxisbox.activated.connect(self.updatePlot)
+        # Connect signal to slot - slot should be a function in the class defining the display below the plot
+        # self.scatter_plot.sigClicked.connect(lambda plot, points: self.sigClicked.emit(plot,points))
+        self.scatter_plot.sigClicked.connect(self.onClickedPoint)
 
-		self.layout.addWidget(QtGui.QLabel('X Axis'),0,0,1,1)
-		self.layout.addWidget(QtGui.QLabel('Y Axis'),0,1,1,1)
-		self.layout.addWidget(self.xaxisbox,1,0,1,1)
-		self.layout.addWidget(self.yaxisbox,1,1,1,1)
-		self.layout.addWidget(self.plot_widget,2,0,1,2)
+        self.xaxisbox.activated.connect(self.updatePlot)
+        self.yaxisbox.activated.connect(self.updatePlot)
 
-	def onClickedPoint(self, plot, points):
-		newPt = points[0]
-		newPt.setBrush(0, 0, 255)
-		if (self.selectedPt != None):
-			if (self.selectedPt.pos() != newPt.pos()):
-				self.selectedPt.setBrush(211, 211, 211)
-		self.selectedPt = newPt
-		self.sigClicked.emit(plot, points)
+        self.layout.addWidget(QtGui.QLabel("X Axis"), 0, 0, 1, 1)
+        self.layout.addWidget(QtGui.QLabel("Y Axis"), 0, 1, 1, 1)
+        self.layout.addWidget(self.xaxisbox, 1, 0, 1, 1)
+        self.layout.addWidget(self.yaxisbox, 1, 1, 1, 1)
+        self.layout.addWidget(self.plot_widget, 2, 0, 1, 2)
 
-	def setModel(self,model,xfields=None,yfields=None):
-		self.model = model
-		self.yaxisbox.clear()
-		self.xaxisbox.clear()
-		for c in self.model.df.columns:
-			if is_numeric_dtype(self.model.df[c]):
-				if xfields:
-					if c in xfields:
-						self.xaxisbox.addItem(c)
-				else:
-					self.xaxisbox.addItem(c)
-				if yfields:
-					if c in yfields:
-						self.yaxisbox.addItem(c)
-				else:
-					self.yaxisbox.addItem(c)
-		self.scatter_plot.clear()
+    def onClickedPoint(self, plot, points):
+        newPt = points[0]
+        newPt.setBrush(0, 0, 255)
+        if self.selectedPt != None:
+            if self.selectedPt.pos() != newPt.pos():
+                self.selectedPt.setBrush(211, 211, 211)
+        self.selectedPt = newPt
+        self.sigClicked.emit(plot, points)
 
-	def updatePlot(self):
-		x = self.xaxisbox.currentText()
-		y = self.yaxisbox.currentText()
-		scatter_data = self.model.df.loc[:,[x,y, "id"]].dropna()
+    def setModel(self, model, xfields=None, yfields=None):
+        self.model = model
+        self.yaxisbox.clear()
+        self.xaxisbox.clear()
+        for c in self.model.df.columns:
+            if is_numeric_dtype(self.model.df[c]):
+                if xfields:
+                    if c in xfields:
+                        self.xaxisbox.addItem(c)
+                else:
+                    self.xaxisbox.addItem(c)
+                if yfields:
+                    if c in yfields:
+                        self.yaxisbox.addItem(c)
+                else:
+                    self.yaxisbox.addItem(c)
+        self.scatter_plot.clear()
 
-		# Find the id of each row corresponding to an (x, y) point in the plot
-		defaultBrush = QtGui.QBrush(QtGui.QColor(211, 211, 211))
-		if x != y:
-			self.scatter_plot.setData(
-				x=scatter_data[x],
-				y=scatter_data[y],
-				brush= defaultBrush,
-				data=scatter_data["id"].tolist()
-				)
-		else:
-			self.scatter_plot.setData(
-				x=scatter_data.iloc[:,0],
-				y=scatter_data.iloc[:,0],
-				brush= defaultBrush,
-				data=scatter_data["id"].tolist()
-				)
+    def updatePlot(self):
+        x = self.xaxisbox.currentText()
+        y = self.yaxisbox.currentText()
+        scatter_data = self.model.df.loc[:, [x, y, "id"]].dropna()
 
-		xbounds = self.scatter_plot.dataBounds(ax=0)
-		if None not in xbounds:
-			self.plot_widget.setXRange(*xbounds)
-		ybounds = self.scatter_plot.dataBounds(ax=1)
-		if None not in ybounds:
-			self.plot_widget.setYRange(*ybounds)
-		self.plot_widget.setLabel(text=x,axis='bottom')
-		self.plot_widget.setLabel(text=y,axis='left')
+        # Find the id of each row corresponding to an (x, y) point in the plot
+        defaultBrush = QtGui.QBrush(QtGui.QColor(211, 211, 211))
+        if x != y:
+            self.scatter_plot.setData(
+                x=scatter_data[x],
+                y=scatter_data[y],
+                brush=defaultBrush,
+                data=scatter_data["id"].tolist(),
+            )
+        else:
+            self.scatter_plot.setData(
+                x=scatter_data.iloc[:, 0],
+                y=scatter_data.iloc[:, 0],
+                brush=defaultBrush,
+                data=scatter_data["id"].tolist(),
+            )
+
+        xbounds = self.scatter_plot.dataBounds(ax=0)
+        if None not in xbounds:
+            self.plot_widget.setXRange(*xbounds)
+        ybounds = self.scatter_plot.dataBounds(ax=1)
+        if None not in ybounds:
+            self.plot_widget.setYRange(*ybounds)
+        self.plot_widget.setLabel(text=x, axis="bottom")
+        self.plot_widget.setLabel(text=y, axis="left")
+
 
 class TSNEWidget(QtGui.QStackedWidget):
-	tsneClicked = QtCore.pyqtSignal(object, object)
-	def __init__(self,parent=None):
-		super(TSNEWidget,self).__init__(parent=parent)
-		self.itemsets_model = ItemsetsTableModel()
+    tsneClicked = QtCore.pyqtSignal(object, object)
 
-		self.tsne = TSNEPlot()
-		self.tsne.tsneClicked.connect(lambda plot, points: self.tsneClicked.emit(plot, points))
-		self.feature = FeatureSelectionItem()
-		self.addWidget(self.feature)
-		self.addWidget(self.tsne)
+    def __init__(self, parent=None):
+        super(TSNEWidget, self).__init__(parent=parent)
+        self.itemsets_model = ItemsetsTableModel()
 
-		self.tsne.run_button.clicked.connect(
-			lambda: self.tsne.run(self.feature.get_selected_features()))
-		self.feature.go_button.clicked.connect(lambda: self.setCurrentWidget(self.tsne))
-		self.tsne.back_button.clicked.connect(lambda: self.setCurrentWidget(self.feature))
+        self.tsne = TSNEPlot()
+        self.tsne.tsneClicked.connect(
+            lambda plot, points: self.tsneClicked.emit(plot, points)
+        )
+        self.feature = FeatureSelectionItem()
+        self.addWidget(self.feature)
+        self.addWidget(self.tsne)
 
-	def setModel(self,model,fields=None):
-		self.results_model = model.copy(fields=fields)
-		self.itemsets_model.update_frequent_itemsets(
-			df=self.results_model.df.select_dtypes(include=[np.number,np.bool]),
-			min_support=float(self.feature.min_support_edit.text())
-			)
-		self.feature.setModel(self.itemsets_model)
-		self.tsne.setModel(self.results_model)
+        self.tsne.run_button.clicked.connect(
+            lambda: self.tsne.run(self.feature.get_selected_features())
+        )
+        self.feature.go_button.clicked.connect(lambda: self.setCurrentWidget(self.tsne))
+        self.tsne.back_button.clicked.connect(
+            lambda: self.setCurrentWidget(self.feature)
+        )
+
+    def setModel(self, model, fields=None):
+        self.results_model = model.copy(fields=fields)
+        self.itemsets_model.update_frequent_itemsets(
+            df=self.results_model.df.select_dtypes(include=[np.number, np.bool]),
+            min_support=float(self.feature.min_support_edit.text()),
+        )
+        self.feature.setModel(self.itemsets_model)
+        self.tsne.setModel(self.results_model)
+
 
 class TSNEPlot(QtGui.QWidget):
 	tsneClicked = QtCore.pyqtSignal(object, object)
