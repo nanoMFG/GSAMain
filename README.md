@@ -135,6 +135,9 @@ See also the list of [contributors](https://github.com/your/project/contributors
 <!--
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
 -->
+Copyright University of Illinois, 2018-2019.
+
+Distributed under the terms of the [APACHE2](https://github.com/nanoMFG/GSAMain/blob/master/LICENSE) license, GrResQ Dashboard is free and open source software.
 ## Acknowledgments
 <!--
 * Hat tip to anyone who's code was used
