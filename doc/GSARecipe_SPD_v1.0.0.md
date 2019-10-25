@@ -96,8 +96,9 @@ OSCM User  | Submits recipes to OSCM | Read or write | Uses submit tool along wi
 
 <img width="1259" alt="Screen Shot 2019-09-13 at 1 05 48 PM" src="https://user-images.githubusercontent.com/12614221/66623058-b29dc900-ebaf-11e9-9d20-30fb013e27d2.png">
 
-<!-- ### 3.4 Documentation Plan -->
+### 3.4 Documentation Plan
 <!-- List planned documentation activities -->
+Tutorial will be provided either on nanoHub or hosted on a GitLab platform. 
 
 <!-- ### 3.5 User Outreach Plan -->
 <!-- List upcoming activities designed to elicit user feedback and/or engage new users.  Use issues for activities that will be completed this iteration-->
