@@ -16,13 +16,14 @@ Joshua Schiller | developer | jaschil2 | -- | jaschil2@illinois.edu | active
 Darren Adams | developer | dadamsncsa | -- | dadams@illinois.edu | active
 Ricardo Toro | developer | torosant | -- | torosant@illinois.edu | active
 Kevin Cruse | developer | kevcruse96 | kcruse2  | kevcruse96@gmail.com  | inactive
+Aagam Shah | developer | AagamShah97 | -- | aagam2@illinois.edu | active
 
 **nanoMFG Github Team(s):** @GSAMain
 **nanoHUB Group(s):** Gr-ResQ
 
 ## 1. Introduction
 <!-- A  concise description of the current iteration of work. -->
-The Gr-ResQ tool provides a platform for users to submit their recipes and associated output data, query/analyze existing recipe data and directly connect to the OSCM platform.
+This iteration comprises the first release of the Gr-ResQ tool. It contains tools for submission, query, analysis and an interface to OSCM.
 
 ### 1.1 Purpose and Vision Statement
 <!--Why are we building this tool? What is the key benefit? How does it relate to existing tools and existing software? How does it fit into the overall objectives for the nanoMFG node? Who will use it?-->
@@ -38,7 +39,7 @@ Chemical vapor deposition (CVD) synthesis of graphene depends on numerous input 
 
 <img width="743" alt="Screen Shot 2019-10-10 at 6 46 21 PM" src="https://user-images.githubusercontent.com/12614221/66614426-a5bcad80-eb8e-11e9-81b8-48cf18cfffb4.png">
 
-The work in this repository involves the construction of a submission tool to collect graphene recipe data, a query tool to search for and visualize the data and associated analysis tools. The analyses allow for SEM segmentation to determine graphene coverage of a substrate, automatic processing of Raman spectroscopy data to extract graphene characteristics as well as statistical tools to view the recipes. In addition, Gr-ResQ is connected to OSCM to facilitate the creation of new experiments directly from the platform. The data on the platform is then stored in the Materials Data Facility (MDF) for greater open source access to other researchers.
+The work in this release consists of the construction of a submission tool to collect graphene recipe data, a query tool to search for and visualize the data and associated analysis tools. The analyses allow for SEM segmentation to determine graphene coverage of a substrate, automatic processing of Raman spectroscopy data to extract graphene characteristics as well as statistical tools to view the recipes. In addition, Gr-ResQ is connected to OSCM to facilitate the creation of new experiments directly from the platform. The data on the platform can then be stored in the Materials Data Facility (MDF) for greater open source access to other researchers.
 
 <!--### 2.1 Product Background and Strategic Fit -->
 <!--Provide context for the proposed product.  Is this a completely new projects, or next version of an existing project? This can include a description of any contextual research, or the status of any existing prototype application.  If this SPD describes a component, describe its relationship to larger system. Can include diagrams.-->
