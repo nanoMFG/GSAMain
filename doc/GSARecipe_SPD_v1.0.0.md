@@ -1,6 +1,6 @@
 # nanoMFG Software Planning Document
 <!-- Replace text below with long title of project:short-name -->
-## Graphene Recipe Profile Visualization: nanocool
+## Graphene Recipes for synthesis of high Quality materials: Gr-ResQ
 ### Target Release: 1.0.0 : November, 2019
 
 ## Development Team
