@@ -2,7 +2,7 @@ from __future__ import division
 import pandas as pd
 import numpy as np
 import sys, operator, os
-from PyQt5 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore, QtWidgets
 import pyqtgraph as pg
 import cv2
 import io

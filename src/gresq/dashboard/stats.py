@@ -6,8 +6,8 @@ import copy
 from sklearn.manifold import TSNE
 from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtGui import QColor
-from gresq.database import sample, preparation_step, dal, Base
-from gresq.util.models import ItemsetsTableModel, ResultsTableModel
+from gresq.database import dal, Base
+from gresq.util.util import ItemsetsTableModel, ResultsTableModel
 
 label_font = QtGui.QFont("Helvetica", 16, QtGui.QFont.Bold)
 
@@ -241,6 +241,7 @@ class TSNEPlot(QtGui.QWidget):
 					brushes = [pg.mkBrush(0.2)]*len(values)
 				else:
 					for val in values:
+						print(type(val))
 						if not np.isnan(val):
 							if maxVal == minVal:
 								percent = 0.5
@@ -252,8 +253,9 @@ class TSNEPlot(QtGui.QWidget):
 							brushes.append(pg.mkBrush(0.2))
 			else:
 				values = list(self.model.df[feature][self.nonnull_indexes].unique())
-				for v,val in enumerate(self.model.df[feature][self.nonnull_indexes]):
-					if not np.isnan(val):
+				for val in self.model.df[feature][self.nonnull_indexes]:
+					
+					if ((not isinstance(val, str)) and (not np.isnan(val))):
 						index = int(values.index(val)/len(values))
 						brushes.append(pg.mkBrush(pg.intColor(index)))
 					else:
@@ -296,7 +298,16 @@ class TSNEPlot(QtGui.QWidget):
 		self.tsne = TSNE(random_state=self.random_seed)
 		print(self.model.df.columns)
 		# TODO: self.nonnull_indexes is often undefined
+
+		if (not (pd.Series(self.features).isin(self.model.df.columns).all())):
+			self.showError("Features: " + self.features + " not in model: " + self.model.__name__)
+			return
+
 		self.nonnull_indexes = ~self.model.df[self.features].isnull().any(1)
+		if (self.nonnull_indexes.empty):
+			self.showError("Features: " + self.features + " contain null value: " + self.model.__name__)
+			return
+
 		tsne_input = self.model.df[self.features][self.nonnull_indexes]
 		# ids = self.model.df["id"][self.nonnull_indexes]
 		if (tsne_input.empty):
