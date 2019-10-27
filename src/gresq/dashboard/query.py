@@ -1142,7 +1142,7 @@ class RecipeDisplayTab(QtGui.QScrollArea):
 
                 ax = self.recipe_plot.getAxis("bottom")
                 xticks = [0] + timestamp
-                ax.setTicks([[(v, str(v)) for v in xticks]])
+                # ax.setTicks([[(v, str(v)) for v in xticks]])
 
                 self.recipe_plot.setLabel(text="Time (min)", axis="bottom")
                 info = getattr(PreparationStep, plot_field).info
