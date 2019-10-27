@@ -198,7 +198,7 @@ def downloadAllImageMasks(session,directory):
             thread.downloadFinished.connect(lambda x,y,z: saveTo)
 
 def errorCheck(func):
-    def wrapper(self,success_text='Success!',*args,**kwargs):
+    def wrapper(self,success_text='Success!',error_text='Error!',*args,**kwargs):
         try:
             func(self,*args,**kwargs)
             success_dialog = QtGui.QMessageBox(self)
@@ -208,7 +208,7 @@ def errorCheck(func):
         except:
             error_dialog = QtGui.QMessageBox(self)
             error_dialog.setWindowModality(QtCore.Qt.WindowModal)
-            error_dialog.setText("Error!")
+            error_dialog.setText(error_text)
             error_dialog.setInformativeText(str(e))
             error_dialog.exec()
 
