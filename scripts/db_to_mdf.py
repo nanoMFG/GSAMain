@@ -29,7 +29,8 @@ import json
 import os
 import uuid
 
-from gresq.database import recipe, sample, preparation_step, dal, Base
+from gresq.database.models import sample, Sample
+from gresq.database import dal
 from gresq.config import config
 # import pandas as pd
 from gresq.recipe import Recipe
@@ -96,11 +97,12 @@ def upload_recipe(sample_dict, box_file):
 
 def upload_raman(sample_dict, sample_id, raman_json, raman_box_file):
     mdf = MDFAdaptor()
-    return mdf.upload_raman_analysis(Recipe(sample_dict), sample.id, raman_json, raman_box_file)
+    return mdf.upload_raman_analysis(Recipe(sample_dict), sample_id, raman_json, raman_box_file)
 
 def get_status(source_id):
     mdf = MDFAdaptor()
     return mdf.get_status(source_id)
+
 
 def upload_file(file_path, folder_name=None):
     box_adaptor = BoxAdaptor(box_config_path)
@@ -110,10 +112,11 @@ def upload_file(file_path, folder_name=None):
 
     return box_file.get_shared_link_download_url(access='open')
 
+
 dal.init_db(config['development'])
 
 with dal.session_scope() as session:
-    samples = session.query(sample)
+    samples = session.query(Sample)
     print(samples)
     for sample in samples:
         if sample.raman_files and len(sample.raman_files) > 0:
@@ -166,4 +169,5 @@ with dal.session_scope() as session:
             raman_box_file = stage_upload(raman_json, json_name='raman')
             raman_result = upload_raman(sample_dict, recipe_result, raman_json, raman_box_file)
 
-            print("====> ",raman_result)
+            print("====> ", raman_result)
+            print(get_status(raman_result))
