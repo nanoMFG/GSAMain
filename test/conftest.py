@@ -2,7 +2,7 @@
 import pytest
 import random
 from gresq.database import dal, Base
-from gresq.database.models import Sample
+from gresq.database.models import Sample, RamanSet
 from .database.factories import SampleFactory
 
 @pytest.fixture(scope="class")
@@ -15,6 +15,7 @@ def sample():
     Base.metadata.create_all(bind=dal.engine)
     # Add some data here
     print("Hey, here come some samples...")
+    session = dal.Session()
     samples = SampleFactory.create_batch(5)
     for s in samples:
             fids = [f.id for f in s.sem_files]
@@ -23,7 +24,16 @@ def sample():
                 ids = [a.id for a in f.analyses]
                 lids = len(ids)
                 f.default_analysis_id=ids[random.randint(0,lids-1)]
-    dal.Session().commit()
+            rs = RamanSet(
+                sample_id = s.id,
+                experiment_date = s.experiment_date
+            )
+            session.add(rs)
+            session.flush()
+            for rf in s.raman_files:  
+                rf.raman_spectrum.set_id = rs.id
+
+    session.commit()
 
     yield samples
     # Drop and ditch

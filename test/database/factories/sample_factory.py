@@ -33,7 +33,7 @@ class SampleFactory(factory.alchemy.SQLAlchemyModelFactory):
         "sample",
         size=lambda: LIST_SIZES[random.randint(0, 5)],
     )
-    raman_set = factory.RelatedFactory("test.database.factories.RamanSetFactory", "sample")
+    #raman_set = factory.RelatedFactory("test.database.factories.RamanSetFactory", "sample")
 
     nanohub_userid = factory.Faker("pyint", min_value=0, max_value=9999, step=1)
     experiment_date = factory.Faker("date")
