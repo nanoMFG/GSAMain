@@ -47,8 +47,7 @@ class RamanSpectrum(Base):
         ForeignKeyConstraint(
             [software_name, software_version],
             ["software.name", "software.version"],
-            ondelete="CASCADE",
-            name="fk_analysis_software",
+            name="fk_raman_analysis_software",
             ),
         )
 
