@@ -28,8 +28,8 @@ sys.path.append(os.path.join(par, "src", "gresq", "dashboard", "gsaraman", "src"
 from gsaraman.gsaraman import auto_fitting
 from gresq.dashboard.submit.util import get_or_add_software_row
 from gresq import __version__ as GRESQ_VERSION
-#from gsaimage import __version__ as GSAIMAGE_VERSION
-#from gsaraman import __version__ as GSARAMAN_VERSION
+from gsaimage import __version__ as GSAIMAGE_VERSION
+from gsaraman import __version__ as GSARAMAN_VERSION
 
 sample_key = {"experiment_date": "DATE"}
 properties_key = {
@@ -149,9 +149,9 @@ def build_db(session, filepath, sem_raman_path=None, nrun=None, box_config_path=
     author_column = data["CONTRIBUTOR"].copy()
 
     # Check software versions
-    gresq_soft = get_or_add_software_row(session, 'gresq', GSAIMAGE_VERSION)
-    #gsaimage_soft = get_or_add_software_row(session, 'gsaimage', GSAIMAGE_VERSION)
-    #gsaraman_soft = get_or_add_software_row(session, 'gsaraman', GSARAMAN_VERSION)
+    gresq_soft = get_or_add_software_row(session, 'gresq', GRESQ_VERSION)
+    gsaimage_soft = get_or_add_software_row(session, 'gsaimage', GSAIMAGE_VERSION)
+    gsaraman_soft = get_or_add_software_row(session, 'gsaraman', GSARAMAN_VERSION)
 
 
     if nrun == None:
@@ -351,7 +351,10 @@ def build_db(session, filepath, sem_raman_path=None, nrun=None, box_config_path=
                         session.flush()
 
                         params = auto_fitting(ram)
-                        r = RamanSpectrum()
+                        r = RamanSpectrum(
+                            software_name=gsaraman_soft.name,
+                            software_version=gsaraman_soft.version
+                            )
                         r.raman_file_id = rf.id
                         r.set_id = rs.id
                         if files_response["Characteristic Percentage"] != None:
