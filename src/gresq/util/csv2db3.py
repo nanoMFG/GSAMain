@@ -8,8 +8,10 @@ from gresq.database.models import (
     RamanFile,
     RamanSpectrum,
     SemFile,
-    Author
+    Author,
+    Software
 )
+
 from gresq.config import config
 #from gresq.recipe import Recipe
 from sqlalchemy import String, Integer, Float, Numeric
@@ -24,6 +26,10 @@ from datetime import date
 par = os.path.abspath(os.path.pardir)
 sys.path.append(os.path.join(par, "src", "gresq", "dashboard", "gsaraman", "src"))
 from gsaraman.gsaraman import auto_fitting
+from gresq.dashboard.submit.util import get_or_add_software_row
+from gresq import __version__ as GRESQ_VERSION
+#from gsaimage import __version__ as GSAIMAGE_VERSION
+#from gsaraman import __version__ as GSARAMAN_VERSION
 
 sample_key = {"experiment_date": "DATE"}
 properties_key = {
@@ -142,12 +148,19 @@ def build_db(session, filepath, sem_raman_path=None, nrun=None, box_config_path=
     box_folder = data["BOX FOLDER"].copy()
     author_column = data["CONTRIBUTOR"].copy()
 
+    # Check software versions
+    gresq_soft = get_or_add_software_row(session, 'gresq', GSAIMAGE_VERSION)
+    #gsaimage_soft = get_or_add_software_row(session, 'gsaimage', GSAIMAGE_VERSION)
+    #gsaraman_soft = get_or_add_software_row(session, 'gsaraman', GSARAMAN_VERSION)
+
+
     if nrun == None:
         nrun = data.shape[0]
 
     for i in range(nrun):
         if "Kaihao" in author_column[i]:
-            s = Sample()
+
+            s = Sample(software_name=gresq_soft.name, software_version=gresq_soft.version)
             s.material_name = "Graphene"
             s.validated = True
             date_string = data[sample_key["experiment_date"]][i]

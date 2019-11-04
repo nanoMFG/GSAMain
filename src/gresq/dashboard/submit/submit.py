@@ -5,6 +5,8 @@ from PyQt5 import QtGui, QtCore
 import uuid
 from gresq.util.box_adaptor import BoxAdaptor
 from gresq.database import dal, Base
+from gresq import __version__
+from .util import check_software_version
 from gresq.database.models import (
     Sample,
     Recipe,
@@ -16,6 +18,7 @@ from gresq.database.models import (
     SemFile,
     RamanSet,
     RamanSpectrum,
+    Software
 )
 from sqlalchemy import String, Integer, Float, Numeric, Date
 from gresq.config import config
@@ -25,6 +28,7 @@ from gresq.recipe import Recipe as RecipeMDF
 from gresq.util.mdf_adaptor import MDFAdaptor, MDFException
 from gresq.dashboard.query import convertScripts
 
+SOFTWARE_NAME = "gresq"
 
 sample_fields = ["material_name", "experiment_date"]
 
@@ -1401,7 +1405,11 @@ class ReviewTab(QtGui.QScrollArea):
 
         with dal.session_scope() as session:
             ### SAMPLE DATASET ###
-            s = Sample()
+            if not check_software_version(session, SOFTWARE_NAME, __version__):
+                soft = Software(name=SOFTWARE_NAME, version=__version__)
+                session.add(soft)
+            s = Sample(software_name=SOFTWARE_NAME, software_version=__version__)
+
             if self.mode == "nanohub":
                 s.nanohub_userid = os.getuid()
             for field, item in provenance_response["sample"].items():
