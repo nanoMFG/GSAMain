@@ -1,0 +1,26 @@
+dependencies:
+  - python=3.6
+  - pyqtgraph
+  - pyqt
+  - sqlalchemy
+  - opencv
+  - pandas
+  - matplotlib
+  - scipy
+  - pillow
+  - scikit-image
+  - scikit-learn
+  - asn1crypto
+  - pymysql
+  - attrs
+  - chardet
+  - idna
+  - pycparser
+  - requests-toolbelt
+  - requests
+  - pylint
+  - pytest
+  - faker
+  - factory_boy
+  - black
+
