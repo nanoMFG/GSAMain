@@ -9,6 +9,7 @@ from .raman_set import RamanSet
 from .sem_file import SemFile
 from .sem_analysis import SemAnalysis
 from .mdf_forge import MdfForge
+from .software import Software
 
 Recipe.maximum_temperature.info["verbose_name"] = "Maximum Temperature"
 Recipe.maximum_temperature.info["verbose_name"] = "Maximum Temperature"

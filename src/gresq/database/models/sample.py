@@ -31,6 +31,15 @@ class Sample(Base):
         autoincrement="ignore_fk",
         info={"verbose_name": "ID"},
     )
+    software_name = Column(
+        String(20),
+        info={"verbose_name": "Analysis Software"},
+    )
+    software_version = Column(
+        String(20),
+        info={"verbose_name": "Software Version"}
+    )
+
     primary_sem_file_id = Column(Integer, index=True)
 
     nanohub_userid = Column(
@@ -114,6 +123,11 @@ class Sample(Base):
             ondelete="CASCADE",
             name="fk_primary_sem_file",
         ),
+        ForeignKeyConstraint(
+            [software_name, software_version],
+            ["software.name", "software.version"],
+            name="fk_gresq_software",
+            ),
     )
 
     primary_sem_file = relationship(

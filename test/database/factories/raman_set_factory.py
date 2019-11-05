@@ -13,7 +13,8 @@ class RamanSetFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session = dal.Session()
         sqlalchemy_session_persistence = "commit"
 
-    sample = factory.SubFactory("test.database.factories.SampleFactory", raman_set=None)
+    #sample = factory.SubFactory("test.database.factories.SampleFactory", raman_set=None)
+    #raman_spectra = factory.SubFactory("test.database.factories.RamanSpectrumFactory", raman_set=None)
     # setauthors = factory.RelatedFactoryList(
     #     "test.database.factories.AuthorFactory",
     #     "raman_set",

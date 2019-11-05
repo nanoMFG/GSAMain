@@ -1,5 +1,14 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, Date, Boolean, Float
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy import (
+    Column,
+    String,
+    Integer, 
+    ForeignKey, 
+    ForeignKeyConstraint,
+    Date,
+    Boolean,
+    Float
+)
+from sqlalchemy.orm import relationship
 from sqlalchemy.ext.hybrid import hybrid_property
 
 from gresq.database import Base
@@ -26,6 +35,22 @@ class RamanSpectrum(Base):
     raman_file_id = Column(
         Integer, ForeignKey("raman_file.id", ondelete="CASCADE"), index=True
     )
+    software_name = Column(
+        String(20),
+        info={"verbose_name": "Analysis Software"},
+    )
+    software_version = Column(
+        String(20),
+        info={"verbose_name": "Software Version"}
+    )
+    __table_args__ = (
+        ForeignKeyConstraint(
+            [software_name, software_version],
+            ["software.name", "software.version"],
+            name="fk_raman_analysis_software",
+            ),
+        )
+
     xcoord = Column(Integer, info={"verbose_name": "X Coordinate"})
     ycoord = Column(Integer, info={"verbose_name": "Y Coordinate"})
     percent = Column(
@@ -85,6 +110,15 @@ class RamanSpectrum(Base):
         foreign_keys=set_id,
         primaryjoin="RamanSpectrum.set_id==RamanSet.id",
     )
+
+    def __repr__(self):
+        return self._repr(
+            id=self.id,
+            set_id=self.set_id,
+            raman_file_id = self.raman_file_id,
+            software_name=self.software_name,
+            software_version=self.software_version
+        )
 
     def json_encodable(self):
         params = [

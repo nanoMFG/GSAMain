@@ -2,7 +2,7 @@ from __future__ import division
 import pandas as pd
 import numpy as np
 import sys, operator, os
-from PyQt5 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore, QtWidgets
 import pyqtgraph as pg
 import cv2
 import io
@@ -1142,7 +1142,7 @@ class RecipeDisplayTab(QtGui.QScrollArea):
 
                 ax = self.recipe_plot.getAxis("bottom")
                 xticks = [0] + timestamp
-                ax.setTicks([[(v, str(v)) for v in xticks]])
+                # ax.setTicks([[(v, str(v)) for v in xticks]])
 
                 self.recipe_plot.setLabel(text="Time (min)", axis="bottom")
                 info = getattr(PreparationStep, plot_field).info

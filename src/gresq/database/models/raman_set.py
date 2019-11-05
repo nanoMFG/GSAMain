@@ -122,6 +122,14 @@ class RamanSet(Base):
         },
     )
 
+    def __repr__(self):
+        return self._repr(
+            id=self.id,
+            sample_id=self.sample_id,
+            raman_spectra=self.raman_spectra,
+            authors=self.authors
+        )
+
     def json_encodable(self):
         RamanSpectrum = class_registry["RamanSpectrum"]
         params = [
