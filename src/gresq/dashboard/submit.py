@@ -253,7 +253,9 @@ class FieldsFormWidget(QtGui.QScrollArea):
                 if sql_validator["int"](getattr(model, field)):
                     self.input_widgets[field].setValidator(QtGui.QIntValidator())
                 elif sql_validator["float"](getattr(model, field)):
-                    self.input_widgets[field].setValidator(QtGui.QDoubleValidator())
+                    validator = QtGui.QDoubleValidator()
+                    validator.setNotation(QtGui.QDoubleValidator.StandardNotation)
+                    self.input_widgets[field].setValidator(validator)
 
                 if "conversions" in info.keys():
                     self.units_input[field] = QtGui.QComboBox()
