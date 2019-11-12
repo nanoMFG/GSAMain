@@ -1,4 +1,6 @@
-[![Build Status](https://travis-ci.com/nanoMFG/GSAMain.svg?token=N4nkhb241rGHotEqsu3q&branch=master)](https://travis-ci.com/nanoMFG/GSAMain)
+<!--[![Build Status](https://travis-ci.com/nanoMFG/GSAMain.svg?token=N4nkhb241rGHotEqsu3q&branch=master)](https://travis-ci.com/nanoMFG/GSAMain) -->
+
+[![Dev Status](https://img.shields.io/endpoint?url=https://salty-headland-67572.herokuapp.com/badges/phase?repo=GSAMain)](https://img.shields.io/endpoint?url=https://salty-headland-67572.herokuapp.com/badges/phase?repo=GSAMain)
 
 # Graphene-Synthesis-Analysis
 
@@ -133,6 +135,9 @@ See also the list of [contributors](https://github.com/your/project/contributors
 <!--
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
 -->
+Copyright University of Illinois, 2018-2019.
+
+Distributed under the terms of the [APACHE2](https://github.com/nanoMFG/GSAMain/blob/master/LICENSE) license, GrResQ Dashboard is free and open source software.
 ## Acknowledgments
 <!--
 * Hat tip to anyone who's code was used

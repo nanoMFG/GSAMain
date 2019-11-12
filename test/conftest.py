@@ -3,7 +3,7 @@ import pytest
 import random
 from gresq.database import dal, Base
 from gresq.database.models import Sample, RamanSet
-from .database.factories import SampleFactory
+from .database.factories import SampleFactory, SoftwareFactory
 
 @pytest.fixture(scope="class")
 def sample():
@@ -34,7 +34,7 @@ def sample():
                 rf.raman_spectrum.set_id = rs.id
 
     session.commit()
-
+    SoftwareFactory.create_batch(5)
     yield samples
     # Drop and ditch
     print("Tearing down test samples and DB")

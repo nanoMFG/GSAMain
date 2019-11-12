@@ -30,9 +30,11 @@ def main():
 
     if kwargs['verbose']:
         logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
 
-    admin_group = 31595
-    submit_group = -1
+    admin_group = 31804
+    submit_group = 31595
 
     # Set configuration prefix to search for when setting db config
     db_debug = True
@@ -46,26 +48,32 @@ def main():
         db_config_prefix = 'TEST_DATABASE'
 
     db_config_suffix = ''
+    dbconfig_file = kwargs['db_config_path']
     if kwargs['nanohub'] == True:
         mode = 'nanohub'
         groups = os.getgroups()
         if admin_group in groups:
             privileges = {'read':True,'write':True,'validate':True}
             db_config_suffix = '_ADMIN'
+            dbconfig_file = os.path.join(kwargs['db_config_path'],'admin','db_config.py')
         elif submit_group in groups:
             privileges = {'read':True,'write':True,'validate':False}
             db_config_suffix = '_WRITE'
+            dbconfig_file = os.path.join(kwargs['db_config_path'],'submit','db_config.py')
         else:
             privileges = {'read':True,'write':False,'validate':False}
             db_config_suffix = '_READ'
+            dbconfig_file = os.path.join(kwargs['db_config_path'],'readonly','db_config.py')
     else:
         mode = 'local'
         privileges = {'read':True,'write':True,'validate':True}
 
+    logging.info(dbconfig_file)
+
     #logging.debug(db_config_prefix)
     #logging.debug(kwargs['db_config_path'])
     db_conf = Config(prefix=db_config_prefix, suffix=db_config_suffix, debug=db_debug,
-                     dbconfig_file=kwargs['db_config_path'])
+                     dbconfig_file=dbconfig_file)
     #logging.debug(db_conf.DATABASEURI)
     #logging.debug(db_conf.DATABASEARGS)
 

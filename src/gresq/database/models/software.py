@@ -61,4 +61,15 @@ class Software(Base):
             "verbose_name": "URL",
         },
     )
+
+    def __repr__(self):
+        return self._repr(
+            name = self.name,
+            version = self.version,
+            release_date = self.release_date,
+            branch = self.branch,
+            commitsh = self.commitsh,
+            url = self.url
+
+        )
     

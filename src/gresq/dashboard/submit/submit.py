@@ -5,6 +5,10 @@ from PyQt5 import QtGui, QtCore
 import uuid
 from gresq.util.box_adaptor import BoxAdaptor
 from gresq.database import dal, Base
+from gresq import __version__ as GRESQ_VERSION
+from gsaraman import __version__ as GSARAMAN_VERSION
+from gsaimage import __version__ as GSAIMAGE_VERSION
+from .util import get_or_add_software_row
 from gresq.database.models import (
     Sample,
     Recipe,
@@ -16,6 +20,7 @@ from gresq.database.models import (
     SemFile,
     RamanSet,
     RamanSpectrum,
+    Software
 )
 from sqlalchemy import String, Integer, Float, Numeric, Date
 from gresq.config import config
@@ -25,6 +30,7 @@ from gresq.recipe import Recipe as RecipeMDF
 from gresq.util.mdf_adaptor import MDFAdaptor, MDFException
 from gresq.dashboard.query import convertScripts
 
+SOFTWARE_NAME = "gresq"
 
 sample_fields = ["material_name", "experiment_date"]
 
@@ -1403,7 +1409,12 @@ class ReviewTab(QtGui.QScrollArea):
 
         with dal.session_scope() as session:
             ### SAMPLE DATASET ###
-            s = Sample()
+            gresq_soft = get_or_add_software_row(session, 'gresq', GSAIMAGE_VERSION)
+            gsaimage_soft = get_or_add_software_row(session, 'gsaimage', GSAIMAGE_VERSION)
+            gsaraman_soft = get_or_add_software_row(session, 'gsaraman', GSARAMAN_VERSION)
+           
+            s = Sample(software_name=gresq_soft.name, software_version=gresq_soft.version)
+
             if self.mode == "nanohub":
                 s.nanohub_userid = os.getuid()
             for field, item in provenance_response["sample"].items():
@@ -1446,7 +1457,10 @@ class ReviewTab(QtGui.QScrollArea):
                 session.flush()
 
                 params = GSARaman.auto_fitting(ram)
-                r = RamanSpectrum()
+                r = RamanSpectrum(
+                    software_name = gsaraman_soft.name,
+                    software_version = gsaraman_soft.version
+                    )
                 r.raman_file_id = rf.id
                 r.set_id = rs.id
                 if files_response["Characteristic Percentage"] != None:

@@ -16,7 +16,7 @@ with dal.session_scope(autocommit=True) as sess:
     for s in sess.query(Sample).all():
         sess.delete(s)
 dal.Session().close()
-print(Base.metadata.tables)
+#print(Base.metadata.tables)
 ret = Base.metadata.drop_all(bind=dal.engine)
 print(f"ret: {ret}")
 
