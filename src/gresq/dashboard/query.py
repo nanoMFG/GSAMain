@@ -185,7 +185,9 @@ class GSAQuery(QtGui.QWidget):
         )
 
         self.primary_selection.activated[str].connect(
-            lambda x: self.secondary_selection.activated[str].emit(self.secondary_selection.currentText())
+            lambda x: self.secondary_selection.activated[str].emit(
+                self.secondary_selection.currentText()
+            )
         )
 
         self.filter_table = QtGui.QTableWidget()
@@ -607,14 +609,16 @@ class ResultsWidget(QtGui.QTabWidget):
                     sample_columns + raman_columns + recipe_columns + properties_columns
                 )
 
-                q = session.query(*query_columns)\
-                    .join(Recipe,Sample.id==Recipe.sample_id)\
-                    .join(Properties,Sample.id==Properties.sample_id)\
-                    .join(RamanSet,Sample.id==RamanSet.sample_id)\
-                    .outerjoin(PreparationStep,PreparationStep.recipe_id==Recipe.id)\
-                    .outerjoin(Author,Sample.id==Author.sample_id)\
-                    .filter(*filters)\
+                q = (
+                    session.query(*query_columns)
+                    .join(Recipe, Sample.id == Recipe.sample_id)
+                    .join(Properties, Sample.id == Properties.sample_id)
+                    .join(RamanSet, Sample.id == RamanSet.sample_id)
+                    .outerjoin(PreparationStep, PreparationStep.recipe_id == Recipe.id)
+                    .outerjoin(Author, Sample.id == Author.sample_id)
+                    .filter(*filters)
                     .distinct()
+                )
 
                 self.results_model.read_sqlalchemy(
                     q.statement, session, models=[Sample, Recipe, Properties, RamanSet]

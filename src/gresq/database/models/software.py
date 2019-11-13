@@ -28,48 +28,24 @@ class Software(Base):
     name = Column(
         String(20),
         primary_key=True,
-        info={"verbose_name": "Software Name",
-              "required": True},
+        info={"verbose_name": "Software Name", "required": True},
     )
     version = Column(
         String(20),
         primary_key=True,
-        info={
-            "verbose_name": "Software Version",
-            "required": True,
-        },
+        info={"verbose_name": "Software Version", "required": True},
     )
-    release_date = Column(
-        Date,
-        info={"verbose_name": "Release Date", "required": True},
-    )
-    branch = Column(
-        String(32),
-        info={
-            "verbose_name": "Branch",
-        },
-    )
-    commitsh = Column(
-        String(64),
-        info={
-            "verbose_name": "Commit SHA",
-        },
-    )
-    url = Column(
-        String(128),
-        info={
-            "verbose_name": "URL",
-        },
-    )
+    release_date = Column(Date, info={"verbose_name": "Release Date", "required": True})
+    branch = Column(String(32), info={"verbose_name": "Branch"})
+    commitsh = Column(String(64), info={"verbose_name": "Commit SHA"})
+    url = Column(String(128), info={"verbose_name": "URL"})
 
     def __repr__(self):
         return self._repr(
-            name = self.name,
-            version = self.version,
-            release_date = self.release_date,
-            branch = self.branch,
-            commitsh = self.commitsh,
-            url = self.url
-
+            name=self.name,
+            version=self.version,
+            release_date=self.release_date,
+            branch=self.branch,
+            commitsh=self.commitsh,
+            url=self.url,
         )
-    

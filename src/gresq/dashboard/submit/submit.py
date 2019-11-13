@@ -20,7 +20,7 @@ from gresq.database.models import (
     SemFile,
     RamanSet,
     RamanSpectrum,
-    Software
+    Software,
 )
 from sqlalchemy import String, Integer, Float, Numeric, Date
 from gresq.config import config
@@ -1409,11 +1409,17 @@ class ReviewTab(QtGui.QScrollArea):
 
         with dal.session_scope() as session:
             ### SAMPLE DATASET ###
-            gresq_soft = get_or_add_software_row(session, 'gresq', GSAIMAGE_VERSION)
-            gsaimage_soft = get_or_add_software_row(session, 'gsaimage', GSAIMAGE_VERSION)
-            gsaraman_soft = get_or_add_software_row(session, 'gsaraman', GSARAMAN_VERSION)
-           
-            s = Sample(software_name=gresq_soft.name, software_version=gresq_soft.version)
+            gresq_soft = get_or_add_software_row(session, "gresq", GSAIMAGE_VERSION)
+            gsaimage_soft = get_or_add_software_row(
+                session, "gsaimage", GSAIMAGE_VERSION
+            )
+            gsaraman_soft = get_or_add_software_row(
+                session, "gsaraman", GSARAMAN_VERSION
+            )
+
+            s = Sample(
+                software_name=gresq_soft.name, software_version=gresq_soft.version
+            )
 
             if self.mode == "nanohub":
                 s.nanohub_userid = os.getuid()
@@ -1458,9 +1464,9 @@ class ReviewTab(QtGui.QScrollArea):
 
                 params = GSARaman.auto_fitting(ram)
                 r = RamanSpectrum(
-                    software_name = gsaraman_soft.name,
-                    software_version = gsaraman_soft.version
-                    )
+                    software_name=gsaraman_soft.name,
+                    software_version=gsaraman_soft.version,
+                )
                 r.raman_file_id = rf.id
                 r.set_id = rs.id
                 if files_response["Characteristic Percentage"] != None:

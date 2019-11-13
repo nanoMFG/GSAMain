@@ -31,23 +31,14 @@ class Sample(Base):
         autoincrement="ignore_fk",
         info={"verbose_name": "ID"},
     )
-    software_name = Column(
-        String(20),
-        info={"verbose_name": "Analysis Software"},
-    )
-    software_version = Column(
-        String(20),
-        info={"verbose_name": "Software Version"}
-    )
+    software_name = Column(String(20), info={"verbose_name": "Analysis Software"})
+    software_version = Column(String(20), info={"verbose_name": "Software Version"})
 
     primary_sem_file_id = Column(Integer, index=True)
 
-    nanohub_userid = Column(
-        Integer, info={"verbose_name": "Nanohub Submitter User ID"}
-    )
+    nanohub_userid = Column(Integer, info={"verbose_name": "Nanohub Submitter User ID"})
     experiment_date = Column(
-        Date,
-        info={"verbose_name": "Experiment Date", "required": True},
+        Date, info={"verbose_name": "Experiment Date", "required": True}
     )
     material_name = Column(
         String(32),
@@ -57,16 +48,14 @@ class Sample(Base):
             "required": True,
         },
     )
-    validated = Column(
-        Boolean, info={"verbose_name": "Validated"}, default=False
-    )
+    validated = Column(Boolean, info={"verbose_name": "Validated"}, default=False)
     # ONE-TO_MANY: sample -> authors
     authors = relationship(
         "Author",
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="sample",
-        lazy="subquery"
+        lazy="subquery",
     )
     # ONE-TO-ONE: sample -> recipe
     recipe = relationship(
@@ -75,7 +64,7 @@ class Sample(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="sample",
-        lazy="subquery"
+        lazy="subquery",
     )
     # ONE-TO-MANY: sample -> properties
     properties = relationship(
@@ -84,7 +73,7 @@ class Sample(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="sample",
-        lazy="subquery"
+        lazy="subquery",
     )
     # ONE-TO-MANY: sample -> raman_files
     raman_files = relationship(
@@ -92,17 +81,17 @@ class Sample(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="sample",
-        lazy="subquery"
+        lazy="subquery",
     )
 
     raman_analysis = relationship(
-        "RamanSet", 
+        "RamanSet",
         uselist=False,
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="sample",
-        lazy="subquery"
-        )
+        lazy="subquery",
+    )
     # ONE-TO-MANY: sample -> sem_files
     sem_files = relationship(
         "SemFile",
@@ -111,7 +100,7 @@ class Sample(Base):
         single_parent=True,
         foreign_keys="SemFile.sample_id",
         back_populates="sample",
-        lazy="subquery"
+        lazy="subquery",
     )
     # Defining the foreign key constraint explictly (as below) prevents a sem_file id from
     # a different sample from being assigned to the primary_sem_file_id column.
@@ -127,7 +116,7 @@ class Sample(Base):
             [software_name, software_version],
             ["software.name", "software.version"],
             name="fk_gresq_software",
-            ),
+        ),
     )
 
     primary_sem_file = relationship(
@@ -136,7 +125,7 @@ class Sample(Base):
         foreign_keys=primary_sem_file_id,
         uselist=False,
         post_update=True,
-        lazy="subquery"
+        lazy="subquery",
     )
 
     @hybrid_property
