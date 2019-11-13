@@ -42,9 +42,7 @@ class RamanFile(Base):
 
     def __repr__(self):
         return self._repr(
-            id=self.id,
-            sample_id=self.sample_id,
-            raman_spectrum=self.raman_spectrum
+            id=self.id, sample_id=self.sample_id, raman_spectrum=self.raman_spectrum
         )
 
     def json_encodable(self):

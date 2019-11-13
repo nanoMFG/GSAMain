@@ -184,6 +184,12 @@ class GSAQuery(QtGui.QWidget):
             lambda x: self.filter_fields.setCurrentWidget(self.filters_dict[x])
         )
 
+        self.primary_selection.activated[str].connect(
+            lambda x: self.secondary_selection.activated[str].emit(
+                self.secondary_selection.currentText()
+            )
+        )
+
         self.filter_table = QtGui.QTableWidget()
         self.filter_table.setColumnCount(4)
         self.filter_table.setHorizontalHeaderLabels(["Field", "", "Value", ""])
@@ -605,11 +611,11 @@ class ResultsWidget(QtGui.QTabWidget):
 
                 q = (
                     session.query(*query_columns)
-                    .join(Sample.recipe)
-                    .join(Sample.properties)
-                    .outerjoin(Recipe.preparation_steps)
-                    .outerjoin(RamanSet)
-                    .outerjoin(Author)
+                    .join(Recipe, Sample.id == Recipe.sample_id)
+                    .join(Properties, Sample.id == Properties.sample_id)
+                    .join(RamanSet, Sample.id == RamanSet.sample_id)
+                    .outerjoin(PreparationStep, PreparationStep.recipe_id == Recipe.id)
+                    .outerjoin(Author, Sample.id == Author.sample_id)
                     .filter(*filters)
                     .distinct()
                 )

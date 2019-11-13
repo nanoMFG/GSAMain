@@ -43,8 +43,7 @@ class Properties(Base):
         },
     )
     number_of_layers = Column(
-        Integer,
-        info={"verbose_name": "Number of Layers", "required": False},
+        Integer, info={"verbose_name": "Number of Layers", "required": False}
     )
     growth_coverage = Column(
         Float,

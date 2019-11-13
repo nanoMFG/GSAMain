@@ -48,12 +48,7 @@ class Recipe(Base):
 
     # EXPERIMENTAL CONDITIONS:
     catalyst = Column(
-        String(64),
-        info={
-            "verbose_name": "Catalyst",
-            "choices": [],
-            "required": True,
-        },
+        String(64), info={"verbose_name": "Catalyst", "choices": [], "required": True}
     )
     tube_diameter = Column(
         Float(precision=32),
@@ -281,7 +276,7 @@ class Recipe(Base):
             info = getattr(Recipe, p).info
             json_dict[p] = {
                 "value": getattr(self, p),
-                "unit": info["std_unit"] if "std_unit" in info else None
+                "unit": info["std_unit"] if "std_unit" in info else None,
             }
         json_dict["preparation_steps"] = sorted(
             [s.json_encodable() for s in self.preparation_steps if s.step != None],

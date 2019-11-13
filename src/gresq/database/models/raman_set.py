@@ -34,7 +34,7 @@ class RamanSet(Base):
         foreign_keys="RamanSpectrum.set_id",
         back_populates="raman_set",
         primaryjoin="RamanSet.id==RamanSpectrum.set_id",
-        lazy="subquery"
+        lazy="subquery",
     )
 
     authors = relationship(
@@ -61,11 +61,7 @@ class RamanSet(Base):
         },
     )
     d_peak_amplitude = Column(
-        Float,
-        info={
-            "verbose_name": "Weighted D Peak Amplitude",
-            "required": False,
-        },
+        Float, info={"verbose_name": "Weighted D Peak Amplitude", "required": False}
     )
     d_fwhm = Column(
         Float,
@@ -84,11 +80,7 @@ class RamanSet(Base):
         },
     )
     g_peak_amplitude = Column(
-        Float,
-        info={
-            "verbose_name": "Weighted G Peak Amplitude",
-            "required": False,
-        },
+        Float, info={"verbose_name": "Weighted G Peak Amplitude", "required": False}
     )
     g_fwhm = Column(
         Float,
@@ -107,11 +99,7 @@ class RamanSet(Base):
         },
     )
     g_prime_peak_amplitude = Column(
-        Float,
-        info={
-            "verbose_name": "Weighted G' Peak Amplitude",
-            "required": False,
-        },
+        Float, info={"verbose_name": "Weighted G' Peak Amplitude", "required": False}
     )
     g_prime_fwhm = Column(
         Float,
@@ -127,7 +115,7 @@ class RamanSet(Base):
             id=self.id,
             sample_id=self.sample_id,
             raman_spectra=self.raman_spectra,
-            authors=self.authors
+            authors=self.authors,
         )
 
     def json_encodable(self):
