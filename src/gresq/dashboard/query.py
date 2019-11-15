@@ -344,7 +344,7 @@ class GSAQuery(QtGui.QWidget):
         Runs query on results widget. This is a separate function so as to make the selection signal work properly.
         This is because the model must be set before selection signalling can be connected.
         """
-        if self.privileges["validate"]:
+        if self.privileges["validate"] or self.privileges["write"]:
             self.results.query(filters)
         else:
             self.results.query(filters + [Sample.validated == True])
