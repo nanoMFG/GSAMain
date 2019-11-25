@@ -13,6 +13,7 @@ from gresq.database import Base
 # logging.basicConfig()
 # logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
+
 class DataAccessLayer:
     def __init__(self):
         """ Define data access layer attributes."""

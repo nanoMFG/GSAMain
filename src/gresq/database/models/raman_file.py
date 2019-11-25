@@ -40,13 +40,19 @@ class RamanFile(Base):
         back_populates="raman_file",
     )
 
+    def __repr__(self):
+        return self._repr(
+            id=self.id, sample_id=self.sample_id, raman_spectrum=self.raman_spectrum
+        )
+
     def json_encodable(self):
         params = ["wavelength"]
         json_dict = {}
         json_dict["filename"] = self.filename
         for p in params:
+            info = getattr(RamanFile, p).info
             json_dict[p] = {
                 "value": getattr(self, p),
-                "unit": getattr(RamanFile, p).info["std_unit"],
+                "unit": info["std_unit"] if "std_unit" in info else None,
             }
         return json_dict

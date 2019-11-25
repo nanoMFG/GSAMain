@@ -8,10 +8,13 @@ from gresq.database.models import (
     RamanFile,
     RamanSpectrum,
     SemFile,
-    Author
+    Author,
+    Software,
 )
+
 from gresq.config import config
-#from gresq.recipe import Recipe
+
+# from gresq.recipe import Recipe
 from sqlalchemy import String, Integer, Float, Numeric
 from gresq.util.box_adaptor import BoxAdaptor
 import uuid
@@ -24,6 +27,10 @@ from datetime import date
 par = os.path.abspath(os.path.pardir)
 sys.path.append(os.path.join(par, "src", "gresq", "dashboard", "gsaraman", "src"))
 from gsaraman.gsaraman import auto_fitting
+from gresq.dashboard.submit.util import get_or_add_software_row
+from gresq import __version__ as GRESQ_VERSION
+from gsaimage import __version__ as GSAIMAGE_VERSION
+from gsaraman import __version__ as GSARAMAN_VERSION
 
 sample_key = {"experiment_date": "DATE"}
 properties_key = {
@@ -107,7 +114,7 @@ def convert_date(d):
 def convert_db(data):
     columns = data.columns
     for i in range(data.shape[0]):
-        #for c, col in enumerate(columns):
+        # for c, col in enumerate(columns):
         for col in enumerate(columns):
             if "Torr l/s" in col:
                 value = data[col][i]
@@ -142,12 +149,20 @@ def build_db(session, filepath, sem_raman_path=None, nrun=None, box_config_path=
     box_folder = data["BOX FOLDER"].copy()
     author_column = data["CONTRIBUTOR"].copy()
 
+    # Check software versions
+    gresq_soft = get_or_add_software_row(session, "gresq", GRESQ_VERSION)
+    gsaimage_soft = get_or_add_software_row(session, "gsaimage", GSAIMAGE_VERSION)
+    gsaraman_soft = get_or_add_software_row(session, "gsaraman", GSARAMAN_VERSION)
+
     if nrun == None:
         nrun = data.shape[0]
 
     for i in range(nrun):
         if "Kaihao" in author_column[i]:
-            s = Sample()
+
+            s = Sample(
+                software_name=gresq_soft.name, software_version=gresq_soft.version
+            )
             s.material_name = "Graphene"
             s.validated = True
             date_string = data[sample_key["experiment_date"]][i]
@@ -181,7 +196,7 @@ def build_db(session, filepath, sem_raman_path=None, nrun=None, box_config_path=
             for j in range(0, annealing_df.shape[1], 9):
                 prep_df = annealing_df.iloc[:, j : j + 9].copy()
 
-                #initial_cols = prep_df.columns
+                # initial_cols = prep_df.columns
                 for col in prep_df.columns:
                     for key, value in preparation_step_key.items():
                         if (
@@ -331,14 +346,19 @@ def build_db(session, filepath, sem_raman_path=None, nrun=None, box_config_path=
                         rf = RamanFile()
                         rf.filename = os.path.basename(ram)
                         rf.sample_id = s.id
-                        rf.url = upload_file(box_adaptor, ram, box_config_path=box_config_path)
+                        rf.url = upload_file(
+                            box_adaptor, ram, box_config_path=box_config_path
+                        )
                         if files_response["Raman Wavelength"] != None:
                             rf.wavelength = files_response["Raman Wavelength"]
                         session.add(rf)
                         session.flush()
 
                         params = auto_fitting(ram)
-                        r = RamanSpectrum()
+                        r = RamanSpectrum(
+                            software_name=gsaraman_soft.name,
+                            software_version=gsaraman_soft.version,
+                        )
                         r.raman_file_id = rf.id
                         r.set_id = rs.id
                         if files_response["Characteristic Percentage"] != None:
@@ -403,7 +423,9 @@ def build_db(session, filepath, sem_raman_path=None, nrun=None, box_config_path=
                         sf = SemFile()
                         sf.sample_id = s.id
                         sf.filename = os.path.basename(f)
-                        sf.url = upload_file(box_adaptor, f, box_config_path=box_config_path)
+                        sf.url = upload_file(
+                            box_adaptor, f, box_config_path=box_config_path
+                        )
                         session.add(sf)
                         session.flush()
 

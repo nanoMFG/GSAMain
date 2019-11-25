@@ -4,8 +4,10 @@ import uuid
 from mdf_forge.forge import Forge
 
 
+
 class MDFException(Exception):
     """Exceptions related to the MDF Service"""
+
 
 class MDFAdaptor:
     def __init__(self):
@@ -23,7 +25,6 @@ class MDFAdaptor:
                                    )
         self.mdfcc.add_data_source(box_file.get_shared_link_download_url(access='open'))
         self.mdfcc.add_organization("nanomfg")
-
 
         # Don't publish specific recipes. Later on, we will bundle datasets and
         # and publish an omnibus dataset
@@ -43,10 +44,9 @@ class MDFAdaptor:
             # "sample_thickness": recipe.thickness,
             # "orientation": "",
             # "grain_size": ""
-
         }
 
-        print("\n\n\n\n------>",submission)
+        print("\n\n\n\n------>", submission)
 
         try:
             mdf_result = self.mdfcc.submit_dataset(submission=submission, update=False)
@@ -62,10 +62,10 @@ class MDFAdaptor:
 
         if not mdf_result["success"]:
             self.mdfcc.reset_submission()
-            print("\n\n\n--->Error-----> "+mdf_result['error'])
-            raise MDFException(mdf_result['error'])
+            print("\n\n\n--->Error-----> " + mdf_result["error"])
+            raise MDFException(mdf_result["error"])
 
-        print("Submitted to MDF -----> "+str(mdf_result))
+        print("Submitted to MDF -----> " + str(mdf_result))
         self.mdfcc.reset_submission()
         return mdf_result['source_id']
 
@@ -105,7 +105,7 @@ class MDFAdaptor:
 
         submission = self.mdfcc.get_submission()
 
-        print("\n\n\n\n------>",submission)
+        print("\n\n\n\n------>", submission)
 
         try:
             mdf_result = self.mdfcc.submit_dataset(submission=submission, update=False)
@@ -121,10 +121,10 @@ class MDFAdaptor:
 
         if not mdf_result["success"]:
             self.mdfcc.reset_submission()
-            print("\n\n\n--->Error-----> "+mdf_result['error'])
-            raise MDFException(mdf_result['error'])
+            print("\n\n\n--->Error-----> " + mdf_result["error"])
+            raise MDFException(mdf_result["error"])
 
-        print("Submitted raman analysis to MDF -----> "+str(mdf_result))
+        print("Submitted raman analysis to MDF -----> " + str(mdf_result))
         self.mdfcc.reset_submission()
         return mdf_result['source_id']
 

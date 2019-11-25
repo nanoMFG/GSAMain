@@ -34,6 +34,7 @@ class RamanSet(Base):
         foreign_keys="RamanSpectrum.set_id",
         back_populates="raman_set",
         primaryjoin="RamanSet.id==RamanSpectrum.set_id",
+        lazy="subquery",
     )
 
     authors = relationship(
@@ -47,10 +48,10 @@ class RamanSet(Base):
     experiment_date = Column(
         Date,
         default=datetime.date.today,
-        info={"verbose_name": "Experiment Date", "required": True, "std_unit": None},
+        info={"verbose_name": "Experiment Date", "required": True},
     )
-    d_to_g = Column(Float, info={"verbose_name": "Weighted D/G", "std_unit": None})
-    gp_to_g = Column(Float, info={"verbose_name": "Weighted G'/G", "std_unit": None})
+    d_to_g = Column(Float, info={"verbose_name": "Weighted D/G"})
+    gp_to_g = Column(Float, info={"verbose_name": "Weighted G'/G"})
     d_peak_shift = Column(
         Float,
         info={
@@ -60,12 +61,7 @@ class RamanSet(Base):
         },
     )
     d_peak_amplitude = Column(
-        Float,
-        info={
-            "verbose_name": "Weighted D Peak Amplitude",
-            "std_unit": None,
-            "required": False,
-        },
+        Float, info={"verbose_name": "Weighted D Peak Amplitude", "required": False}
     )
     d_fwhm = Column(
         Float,
@@ -84,12 +80,7 @@ class RamanSet(Base):
         },
     )
     g_peak_amplitude = Column(
-        Float,
-        info={
-            "verbose_name": "Weighted G Peak Amplitude",
-            "std_unit": None,
-            "required": False,
-        },
+        Float, info={"verbose_name": "Weighted G Peak Amplitude", "required": False}
     )
     g_fwhm = Column(
         Float,
@@ -108,12 +99,7 @@ class RamanSet(Base):
         },
     )
     g_prime_peak_amplitude = Column(
-        Float,
-        info={
-            "verbose_name": "Weighted G' Peak Amplitude",
-            "std_unit": None,
-            "required": False,
-        },
+        Float, info={"verbose_name": "Weighted G' Peak Amplitude", "required": False}
     )
     g_prime_fwhm = Column(
         Float,
@@ -123,6 +109,14 @@ class RamanSet(Base):
             "required": False,
         },
     )
+
+    def __repr__(self):
+        return self._repr(
+            id=self.id,
+            sample_id=self.sample_id,
+            raman_spectra=self.raman_spectra,
+            authors=self.authors,
+        )
 
     def json_encodable(self):
         RamanSpectrum = class_registry["RamanSpectrum"]
@@ -144,9 +138,10 @@ class RamanSet(Base):
         json_dict["d_to_g"] = {"value:": getattr(self, "d_to_g"), "unit": None}
         json_dict["gp_to_g"] = {"value:": getattr(self, "gp_to_g"), "unit": None}
         for p in params:
+            info = getattr(RamanSpectrum, p).info
             json_dict[p] = {
                 "value": getattr(self, p),
-                "unit": getattr(RamanSpectrum, p).info["std_unit"],
+                "unit": info["std_unit"] if "std_unit" in info else None,
             }
 
         return json_dict
