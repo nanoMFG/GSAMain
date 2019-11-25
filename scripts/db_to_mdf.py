@@ -27,6 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import json
 import os
+import sys
 import uuid
 
 from gresq.database.models import sample, Sample
@@ -55,7 +56,6 @@ def zipdir(path, ziph):
 
 
 box_config_path = "box_config.json"
-
 
 def stage_upload(sample, sem_files=[], raman_files=[], json_name='mdf'):
     import zipfile, time, shutil
@@ -113,7 +113,7 @@ def upload_file(file_path, folder_name=None):
     return box_file.get_shared_link_download_url(access='open')
 
 
-dal.init_db(config['development'])
+dal.init_db(config['production'])
 
 with dal.session_scope() as session:
     samples = session.query(Sample)

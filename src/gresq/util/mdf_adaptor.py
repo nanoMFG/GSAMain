@@ -1,13 +1,16 @@
 from mdf_connect_client import MDFConnectClient
 from datetime import datetime
 import uuid
+from mdf_forge.forge import Forge
+
 
 class MDFException(Exception):
     """Exceptions related to the MDF Service"""
 
 class MDFAdaptor:
     def __init__(self):
-        self.mdfcc = MDFConnectClient(test=True, service_instance="prod")
+        self.mdfcc = MDFConnectClient(test=False, service_instance="prod")
+        self.forge = Forge("mdf-test")
 
     def upload_recipe(self, recipe, box_file):
         title = "Graphene Synthesis on " + recipe.catalyst+" " +\
@@ -25,7 +28,8 @@ class MDFAdaptor:
         # Don't publish specific recipes. Later on, we will bundle datasets and
         # and publish an omnibus dataset
         # mdfcc.add_service("globus_publish")
-        self.mdfcc.set_source_name("NanoHub GreSQ ID "+str(recipe.recipe['primary_key']))
+        source_id = "NanoHub GreSQ ID "+str(recipe.recipe['primary_key'])
+        self.mdfcc.set_source_name(source_id)
 
         submission = self.mdfcc.get_submission()
 
@@ -45,7 +49,13 @@ class MDFAdaptor:
         print("\n\n\n\n------>",submission)
 
         try:
-            mdf_result = self.mdfcc.submit_dataset(submission=submission)
+            mdf_result = self.mdfcc.submit_dataset(submission=submission, update=False)
+
+            if not mdf_result["success"]:
+                print("New insert failed. Trying with update=True")
+                submission['update'] = True
+                mdf_result = self.mdfcc.submit_dataset(submission=submission,
+                                                       update=True)
         except Exception as e:
             print("Exception submitting dataset to mdf ", str(e))
             raise MDFException(e)
@@ -84,7 +94,8 @@ class MDFAdaptor:
 
         self.mdfcc.add_data_source(raman_box_file.get_shared_link_download_url(access='open'))
 
-        self.mdfcc.set_source_name(str(uuid.uuid4()))
+        source_id = "Raman analysis of "+recipe_source_id
+        self.mdfcc.set_source_name(source_id)
 
         raman_mapping = {
             "raman.peaks": "peaks",
@@ -97,7 +108,13 @@ class MDFAdaptor:
         print("\n\n\n\n------>",submission)
 
         try:
-            mdf_result = self.mdfcc.submit_dataset(submission=submission)
+            mdf_result = self.mdfcc.submit_dataset(submission=submission, update=False)
+            if not mdf_result["success"]:
+                print("New insert failed. Trying with update=True")
+                submission['update'] = True
+                mdf_result = self.mdfcc.submit_dataset(submission=submission,
+                                                       update=True)
+
         except Exception as e:
             print("Exception submitting raman analysis dataset to mdf ", str(e))
             raise MDFException(e)
