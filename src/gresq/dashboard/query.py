@@ -24,7 +24,7 @@ from gresq.database.models import (
     SemFile,
     SemAnalysis,
 )
-from sqlalchemy import String, Integer, Float, Numeric
+from sqlalchemy import String, Integer, Float, Numeric, or_
 from gresq.config import config
 from gsaimage import ImageEditor
 import scipy
@@ -347,7 +347,7 @@ class GSAQuery(QtGui.QWidget):
         if self.privileges["validate"]:
             self.results.query(filters)
         else:
-            self.results.query(filters + [Sample.validated == True])
+            self.results.query(filters + [or_(Sample.validated == True, Sample.nanohub_userid == os.getuid())])
         self.results.results_table.selectionModel().currentChanged.connect(
             lambda x: self.preview.select(self.results.results_model, x)
         )
@@ -368,7 +368,12 @@ class ValueFilter(QtGui.QWidget):
         self.validate = validate
 
         layout = QtGui.QGridLayout(self)
-        self.label = QtGui.QLabel(getattr(model, field).info["verbose_name"])
+        info = getattr(model, field).info
+
+        label = "%s"%info["verbose_name"]
+        if 'std_unit' in info.keys() and info['std_unit'] != None:
+            label += " (%s)"%info['std_unit']
+        self.label = QtGui.QLabel(label)
         # self.label.setFixedWidth(150)
         self.label.setWordWrap(True)
         self.comparator = QtGui.QComboBox()
