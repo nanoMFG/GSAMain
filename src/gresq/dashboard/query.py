@@ -8,6 +8,7 @@ import cv2
 import io
 import sip
 import requests
+import uuid
 from PIL import Image
 from gresq.util.util import ResultsTableModel, errorCheck, DownloadThread
 from gresq.util.box_adaptor import BoxAdaptor
@@ -149,9 +150,12 @@ class GSAQuery(QtGui.QWidget):
     """
 
     def __init__(
-        self, privileges={"read": True, "write": False, "validate": False}, parent=None
+        self, privileges={"read": True, "write": False, "validate": False}, 
+        box_config_path = None,
+        parent=None
     ):
         super(GSAQuery, self).__init__(parent=parent)
+        self.box_config_path = box_config_path
         self.privileges = privileges
         self.filters = []
         self.filter_fields = QtGui.QStackedWidget()
@@ -209,7 +213,7 @@ class GSAQuery(QtGui.QWidget):
             QtGui.QSizePolicy.Maximum, QtGui.QSizePolicy.Preferred
         )
 
-        self.preview = PreviewWidget(privileges=self.privileges)
+        self.preview = PreviewWidget(privileges=self.privileges,box_config_path=self.box_config_path)
         if self.privileges["validate"] or self.privileges["write"]:
             self.preview.admin_tab.updateQuery.connect(lambda: self.query(self.filters))
             self.preview.admin_tab.queryUnvalidated.connect(
@@ -498,11 +502,12 @@ class PreviewWidget(QtGui.QTabWidget):
         -Provenance information
     """
 
-    def __init__(self, privileges=None, parent=None):
+    def __init__(self, privileges=None, box_config_path=None, parent=None):
         super(PreviewWidget, self).__init__(parent=parent)
         self.privileges = privileges
+        self.box_config_path = box_config_path
         self.detail_tab = DetailWidget()
-        self.sem_tab = SEMDisplayTab(privileges=privileges)
+        self.sem_tab = SEMDisplayTab(privileges=privileges,box_config_path=self.box_config_path)
         self.raman_tab = RamanDisplayTab()
         self.recipe_tab = RecipeDisplayTab()
         self.provenance_tab = ProvenanceDisplayTab()
@@ -749,6 +754,9 @@ class SEMAdminTab(QtGui.QScrollArea):
         self.default_label = QtGui.QLabel("")
         self.primary_label = QtGui.QLabel("")
         self.sem_list = QtGui.QListWidget()
+        self.sem_list.setSizePolicy(
+            QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Minimum
+        )
         self.mask_stack = QtGui.QStackedWidget()
 
         with dal.session_scope() as session:
@@ -757,7 +765,7 @@ class SEMAdminTab(QtGui.QScrollArea):
             for a, analysis in enumerate(sem.analyses):
                 mask_widget = RawImageTab()
 
-                self.sem_list.addItem(analysis.id)
+                self.sem_list.addItem(str(analysis.id))
                 self.mask_stack.addWidget(mask_widget)
 
                 thread = DownloadThread(
@@ -770,26 +778,27 @@ class SEMAdminTab(QtGui.QScrollArea):
 
         self.layout = QtGui.QGridLayout(self)
         self.layout.addWidget(self.set_primary_button, 0, 0, 1, 1)
-        self.layout.addWidget(self.primary_label, 0, 1, 1, 2)
-        self.layout.addWidget(self.sem_list, 1, 0, 2, 1)
-        self.layout.addWidget(self.mask_stack, 1, 1, 1, 2)
-        self.layout.addWidget(self.set_default_button, 2, 1, 1, 1)
-        self.layout.addWidget(self.default_label, 2, 2, 1, 1)
+        self.layout.addWidget(self.primary_label, 0, 1, 1, 1)
+        self.layout.addWidget(self.sem_list, 1, 0, 1, 1)
+        self.layout.addWidget(self.mask_stack, 1, 1, 1, 1)
+        self.layout.addWidget(self.set_default_button, 3, 0, 1, 1)
+        self.layout.addWidget(self.default_label, 3, 1, 1, 1)
 
         self.set_primary_button.clicked.connect(self.setPrimary)
         self.sem_list.currentRowChanged.connect(self.mask_stack.setCurrentIndex)
         self.sem_list.currentItemChanged.connect(
             lambda curr, prev: self.setDefaultStatus(int(curr.text()))
         )
-        self.set_default_button.clicked.connect(lambda: self.setDefault)
+        self.set_default_button.clicked.connect(self.setDefault)
 
     def setDefaultStatus(self, analysis_id):
         with dal.session_scope() as session:
             sem_file_model = (
                 session.query(SemFile).filter(SemFile.id == self.sem_id).first()
             )
+
             self.default_label.setText(
-                str(sem_file_model.default_analysis == analysis_id)
+                str(sem_file_model.default_analysis_id == analysis_id)
             )
 
     def setDefault(self):
@@ -798,9 +807,11 @@ class SEMAdminTab(QtGui.QScrollArea):
             sem_file_model = (
                 session.query(SemFile).filter(SemFile.id == self.sem_id).first()
             )
-            sem_file_model.default_analysis = analysis_id
 
-            self.setDefaultStatus(analysis_id)
+            sem_file_model.default_analysis_id = analysis_id
+            session.commit()
+
+        self.setDefaultStatus(analysis_id)
 
     def setPrimary(self):
         with dal.session_scope() as session:
@@ -808,12 +819,23 @@ class SEMAdminTab(QtGui.QScrollArea):
                 session.query(Sample).filter(Sample.id == self.sample_id).first()
             )
             sample_model.primary_sem_file_id = self.sem_id
+            session.commit()
+
+        self.setPrimaryStatus()
+
+    def setPrimaryStatus(self):
+        with dal.session_scope() as session:
+            sample_model = (
+                session.query(Sample).filter(Sample.id == self.sample_id).first()
+            )
+            self.primary_label.setText(str(sample_model.primary_sem_file_id == self.sem_id))        
 
 
 class SEMDisplayTab(QtGui.QScrollArea):
-    def __init__(self, privileges, mode="local", parent=None):
+    def __init__(self, privileges, mode="local", box_config_path=None, parent=None):
         super(SEMDisplayTab, self).__init__(parent=parent)
         self.privileges = privileges
+        self.box_config_path = box_config_path
         self.mode = mode
 
         self.contentWidget = QtGui.QWidget()
@@ -845,8 +867,10 @@ class SEMDisplayTab(QtGui.QScrollArea):
 
         return box_file.get_shared_link_download_url(access="open")
 
-    @errorCheck
+    # @errorCheck
     def submitMask(self, sem_id, px_per_um, mask):
+        assert isinstance(mask,np.ndarray)
+        assert isinstance(px_per_um,int)
         mask_img = 255 * (1 - mask.astype(np.uint8))
         with dal.session_scope() as session:
             analysis = SemAnalysis()
@@ -855,13 +879,18 @@ class SEMDisplayTab(QtGui.QScrollArea):
                 session.query(Sample).filter(Sample.id == self.sample_id).first()
             )
             analysis.automated = False
-            analysis.growth_coverage = np.mean(mask.astype(int))
-            analysis.px_per_um = px_per_um
+            analysis.growth_coverage = float(np.mean(mask.astype(int)))
+            analysis.px_per_um = int(px_per_um)
 
             fname = os.path.join(os.getcwd(), "%s_mask.png" % sem_id)
             cv2.imwrite(fname, mask_img)
             analysis.mask_url = self.upload_file(fname)
             os.remove(fname)
+
+            print({i.name: getattr(analysis, i.name) for i in analysis.__table__.columns})
+
+            session.add(analysis)
+            session.commit()
 
             self.update(sample_model, force_refresh=True)
 
@@ -885,7 +914,7 @@ class SEMDisplayTab(QtGui.QScrollArea):
             edit_tab = ImageEditor(
                 sem_id=sem.id, privileges=self.privileges, mode=self.mode
             )
-            edit_tab.submitClicked.connect(self.submitMask)
+            edit_tab.submitClicked.connect(lambda x,y,z: self.submitMask(x,y,z))
             admin_tab = SEMAdminTab(sem_id=sem.id, sample_id=self.sample_id)
 
             sem_tabs.addTab(edit_tab, "Mask Editor")
@@ -926,7 +955,7 @@ class SEMDisplayTab(QtGui.QScrollArea):
                 if len(sample_model.sem_files) > 0:
                     self.progress_bar.setValue(1)
                     for sem in sample_model.sem_files:
-                        self.file_list.addItem("SEM Image %s" % sem.id)
+                        self.file_list.addItem("SEM ID: %s" % sem.id)
                         self.sem_info.addWidget(self.createSEMTabs(sem))
                 else:
                     self.progress_bar.setValue(100)
