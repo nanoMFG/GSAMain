@@ -1,7 +1,7 @@
 # nanoMFG Software Planning Document
 <!-- Replace text below with long title of project:short-name -->
 ## Graphene Recipes for synthesis of high Quality materials: Gr-ResQ
-### Target Release: 1.0.0 : November, 2019
+### Target Release: 1.1.0 : February 24, 2019
 
 ## Development Team
 <!-- Complete table for all team members 
@@ -23,7 +23,7 @@ Aagam Shah | developer | AagamShah97 | -- | aagam2@illinois.edu | active
 
 ## 1. Introduction
 <!-- A  concise description of the current iteration of work. -->
-Version 1.1.0 is mainly a feature release, the primary focus being interaction with SEM images for data submitters/curators.
+Version 1.1.0 is mainly a feature release, the primary focus being interaction with SEM images for data submitters/curators.  It is possible some technical debt issues will be included (testing code cleanup etc.).
 
 ### 1.1 Purpose and Vision Statement
 <!--Why are we building this tool? What is the key benefit? How does it relate to existing tools and existing software? How does it fit into the overall objectives for the nanoMFG node? Who will use it?-->
@@ -56,6 +56,9 @@ Chemical vapor deposition (CVD) synthesis of graphene depends on numerous input 
 
 ### 2.3 Scope and Limitations for Subsequent Releases
 <!--Short summary of  future envisioned roadmap for subsequent efforts.-->
+* ?.?.?: Bug fix release for file upload hang issue.  Not critical, but high priority.
+* Other minor feature releases?
+* 2.0.0: Introduce REST API for Gr-ResQ Database.
 
 
 ### 2.3 Operating Environment
