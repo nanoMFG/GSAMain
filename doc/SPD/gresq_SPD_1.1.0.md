@@ -23,7 +23,7 @@ Aagam Shah | developer | AagamShah97 | -- | aagam2@illinois.edu | active
 
 ## 1. Introduction
 <!-- A  concise description of the current iteration of work. -->
-This iteration comprises the first release of the Gr-ResQ tool. It contains tools for submission, query, analysis and an interface to OSCM.
+Version 1.1.0 is mainly a feature release, the primary focus being interaction with SEM images for data submitters/curators.
 
 ### 1.1 Purpose and Vision Statement
 <!--Why are we building this tool? What is the key benefit? How does it relate to existing tools and existing software? How does it fit into the overall objectives for the nanoMFG node? Who will use it?-->
@@ -39,7 +39,7 @@ Chemical vapor deposition (CVD) synthesis of graphene depends on numerous input 
 
 <img width="743" alt="Screen Shot 2019-10-10 at 6 46 21 PM" src="https://user-images.githubusercontent.com/12614221/66614426-a5bcad80-eb8e-11e9-81b8-48cf18cfffb4.png">
 
-The work in this release consists of the construction of a submission tool to collect graphene recipe data, a query tool to search for and visualize the data and associated analysis tools. The analyses allow for SEM segmentation to determine graphene coverage of a substrate, automatic processing of Raman spectroscopy data to extract graphene characteristics as well as statistical tools to view the recipes. In addition, Gr-ResQ is connected to OSCM to facilitate the creation of new experiments directly from the platform. The data on the platform can then be stored in the Materials Data Facility (MDF) for greater open source access to other researchers.
+
 
 <!--### 2.1 Product Background and Strategic Fit -->
 <!--Provide context for the proposed product.  Is this a completely new projects, or next version of an existing project? This can include a description of any contextual research, or the status of any existing prototype application.  If this SPD describes a component, describe its relationship to larger system. Can include diagrams.-->
@@ -47,11 +47,7 @@ The work in this release consists of the construction of a submission tool to co
 ### 2.2 Scope and Limitations for Current Release
 <!--List the all planned goals/features for this release.  These should be links to issues.  Add a new subsection for each release.  Equally important, document feature you explicity are not doing at this time-->
 
-- [Image segmentation of SEM images](https://github.com/nanoMFG/GSAMain/issues/77)
-- [Submit graphene recipe and associated data](https://github.com/nanoMFG/GSAMain/issues/78)
-- [Query graphene data](https://github.com/nanoMFG/GSAMain/issues/79)
-- [Visualize recipe data in database](https://github.com/nanoMFG/GSAMain/issues/80)
-- [Analysis on graphene data](https://github.com/nanoMFG/GSAMain/issues/81)
+
 
 <!-- ##### 2.2.1 Planned Features -->
 
@@ -60,11 +56,23 @@ The work in this release consists of the construction of a submission tool to co
 
 ### 2.3 Scope and Limitations for Subsequent Releases
 <!--Short summary of  future envisioned roadmap for subsequent efforts.-->
-This release will be constrained to primary functionality: submission, query and validation. Future releases will allow image segmentation (both manual and automatic) as well as possible machine learning integration.
+
 
 ### 2.3 Operating Environment
 <!--Describe the target environment.  Identify components or application that are needed.  Describe technical infrastructure need to support the application.-->
 python environment utilizing the pyqt framework. Database utilizes MySQL backend with a SQLAlchemy ORM. Other requirements are listed in the requirements.txt file. Designed to work locally or on nanohub.org.
+
+#### nanoHUB Environment Factors
+
+1. PyQT python app is rendered in the web browser when launched.
+  * Problems with sizine and scrolling have been reported.
+  (may need to optimize code for linux look/feel)
+
+2. A new nanoHUB session is created for each tool launch.
+  * Files and logs are saved for each tool launch.
+
+3. File upload/download must use nanoHUB librries for file up/down widgets.
+  * App hanging issues have occured with file upload widget
 
 <!-- ### 2.4 Design and Implementation Constraints -->
 <!--This could include pre-existing code that needs to be incorporated ,a certain programming language or toolkit and software dependencies.  Describe the origin and rationale for each constraint.-->
@@ -96,6 +104,8 @@ OSCM User  | Submits recipes to OSCM | Read or write | Uses submit tool along wi
 
 <img width="1259" alt="Screen Shot 2019-09-13 at 1 05 48 PM" src="https://user-images.githubusercontent.com/12614221/66623058-b29dc900-ebaf-11e9-9d20-30fb013e27d2.png">
 
+#### Changes in 1.1.0
+
 ### 3.4 Documentation Plan
 <!-- List planned documentation activities -->
 Tutorial will be provided either on nanoHub or hosted on a GitLab platform. 
@@ -108,6 +118,8 @@ Tutorial will be provided either on nanoHub or hosted on a GitLab platform.
 ### 4.1 Data Dictionary
 <!--Summarize inputs and outputs for the application.-->
 ![dbmodel_figure](https://user-images.githubusercontent.com/12614221/66664982-30df8700-ec13-11e9-8302-8b6b788cba45.png)
+
+**ToDo**: Describe DB Schema here.
 
 ### 4.2 Usability and Performance
 <!--Summarize usability requirements such as easy of adoption for new users (eg example data),  inline documentation, avoiding errors, efficient interaction, etc.  Describe performance expectations  and/or document challenges.  Note you can reference user requirements from above if needed. -->
@@ -127,3 +139,5 @@ Tutorial will be provided either on nanoHub or hosted on a GitLab platform.
 - Program will see minor release for beta testing to group members before general release
 - Data is released with program for testing database and functionality
 - pytest integration
+
+**ToDo**: Describe data mirgation and develpment vs. production uses and procedures.
