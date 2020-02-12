@@ -105,6 +105,18 @@ Give an example
 
 <!-- Add additional notes about how to deploy this on a live system -->
 
+### Database Procedures
+
+* All testing should be done against `gresq_testing` or `gresq_development` NOT `gresq_production`.
+
+### Local Testing
+
+### Workspace Testing on nanoHUB
+* Load latest code to your nanoHUB workspace using git command line in the nanoHUB workspace.
+* Run the `middleware/invoke` script to launch the application into your workspace.  Note: **we need a way to ensurte these test invocations of the tool do not run against the production DB.**
+
+### Release Checklist
+
 ## Built With
 <!--
 * [Dropwizard](http://www.dropwizard.io/1.0.2/docs/) - The web framework used
