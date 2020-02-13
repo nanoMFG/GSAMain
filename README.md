@@ -8,7 +8,7 @@
 
 ## Getting Started
 
-##### On nanoHUB
+The latest production version of this application is hosted **on nanoHUB** for public use:<br/>
 [https://nanohub.org/tools/gresq](https://nanohub.org/tools/gresq)
 
 <!-- These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. 
