@@ -2,6 +2,9 @@
 
 [![Dev Status](https://img.shields.io/endpoint?url=https://salty-headland-67572.herokuapp.com/badges/phase?repo=GSAMain)](https://img.shields.io/endpoint?url=https://salty-headland-67572.herokuapp.com/badges/phase?repo=GSAMain)
 
+#### Current Software Planning Document(SPD)
+[gresq_SPD_1.1.0.md](https://github.com/nanoMFG/GSAMain/blob/planning_1.1.0/doc/SPD/gresq_SPD_1.1.0.md)
+
 # Graphene-Synthesis-Analysis
 
 <!-- One Paragraph of project description goes here -->
