@@ -1,5 +1,5 @@
 from __future__ import division
-from PyQt5 import QtGui
+from PyQt5 import QtGui, QtCore
 from gresq.dashboard.submit import GSASubmit
 from gresq.dashboard.query import GSAQuery
 
@@ -17,7 +17,6 @@ class GSADashboard(QtGui.QTabWidget):
         test=False,
     ):
         super(GSADashboard, self).__init__(parent=parent)
-
         self.query_tab = GSAQuery(privileges=privileges)
         # self.image_tab = GSAImage(mode=mode).widget()
         self.submit_tab = GSASubmit(
@@ -35,3 +34,16 @@ class GSADashboard(QtGui.QTabWidget):
 
         if test:
             self.submit_tab.test()
+
+    #     self.setMouseTracking(True)
+
+    # def setMouseTracking(self, flag):
+    #     def recursive_set(parent):
+    #         for child in parent.findChildren(QtCore.QObject):
+    #             try:
+    #                 child.setMouseTracking(flag)
+    #             except:
+    #                 pass
+    #             recursive_set(child)
+    #     QtGui.QWidget.setMouseTracking(self, flag)
+    #     recursive_set(self)

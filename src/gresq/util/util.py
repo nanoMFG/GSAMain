@@ -1,15 +1,69 @@
 import os
-from PyQt5 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore, QtWidgets
 import pandas as pd
 import copy
 import io
 import requests
 from mlxtend.frequent_patterns import apriori
-
+import functools
 from gresq.database.models import Sample
 import logging
 
 logger = logging.getLogger(__name__)
+
+class Label(QtWidgets.QLabel):
+    def __init__(self,text='',tooltip=None):
+        super(Label,self).__init__()
+        self.tooltip = tooltip
+        if text is None:
+            text = ''
+        self.setText(text)
+        if isinstance(self.tooltip,str):
+            self.setMouseTracking(True)
+
+    def setMouseTracking(self,flag):
+        QtGui.QWidget.setMouseTracking(self, flag)
+        def recursive(widget,flag):
+            try:
+                if widget.mouseTracking() != flag:
+                    widget.setMouseTracking(flag)
+                    recursive(widget.parent(),flag)
+            except:
+                pass
+        recursive(self.parent(),flag)
+
+    def event(self,event):
+        if event.type() == QtCore.QEvent.Leave:
+            QtWidgets.QToolTip.hideText()
+        return QtGui.QLabel.event(self,event)
+
+    def mouseMoveEvent(self,event):
+        QtWidgets.QToolTip.showText(
+            event.globalPos(),
+            self.tooltip
+            )
+
+class LabelMaker:
+    def __init__(self,font=None,size=None,bold=False,italic=False):
+        self.font = font
+        self.size = size
+        self.bold = bold
+        self.italic = italic
+
+    def __call__(self,text,tooltip=None):
+        label = Label(text,tooltip=tooltip)
+        font = QtGui.QFont()
+        if self.font:
+            font.setFamily(font)
+        if self.size:
+            font.setPointSize(self.size)
+        if self.bold:
+            font.setBold(self.bold)
+        if self.italic:
+            font.setItalic(self.italic)
+        label.setFont(font)
+
+        return label
 
 
 class DownloadThread(QtCore.QThread):
@@ -224,19 +278,28 @@ def downloadAllImageMasks(session, directory):
             thread.downloadFinished.connect(lambda x, y, z: saveTo)
 
 
-def errorCheck(func, success_text="Success!", error_text="Error!"):
-    def wrapper(self, *args, **kwargs):
-        try:
-            return func(self, *args, **kwargs)
-            success_dialog = QtGui.QMessageBox(self)
-            success_dialog.setText(success_text)
-            success_dialog.setWindowModality(QtCore.Qt.WindowModal)
-            success_dialog.exec()
-        except Exception as e:
-            error_dialog = QtGui.QMessageBox(self)
-            error_dialog.setWindowModality(QtCore.Qt.WindowModal)
-            error_dialog.setText(error_text)
-            error_dialog.setInformativeText(str(e))
-            error_dialog.exec()
+def errorCheck(success_text="Success!", error_text="Error!",logging=True):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs):
+            try:
+                return func(self, *args, **kwargs)
+                success_dialog = QtGui.QMessageBox(self)
+                success_dialog.setText(success_text)
+                success_dialog.setWindowModality(QtCore.Qt.WindowModal)
+                success_dialog.exec()
+            except Exception as e:
+                error_dialog = QtGui.QMessageBox(self)
+                error_dialog.setWindowModality(QtCore.Qt.WindowModal)
+                error_dialog.setText(error_text)
+                if logging:
+                    logging.exception(str(e))
+                else:
+                    error_dialog.setInformativeText(str(e))
+                error_dialog.exec()
 
-    return wrapper
+        return wrapper
+    return decorator
+
+HeaderLabel = LabelMaker(font='Helvetica',size=28,bold=True)
+BasicLabel = LabelMaker()

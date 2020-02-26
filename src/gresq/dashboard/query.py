@@ -10,7 +10,7 @@ import sip
 import requests
 import uuid
 from PIL import Image
-from gresq.util.util import ResultsTableModel, errorCheck, DownloadThread
+from gresq.util.util import ResultsTableModel, errorCheck, DownloadThread, BasicLabel
 from gresq.util.box_adaptor import BoxAdaptor
 from gresq.dashboard.stats import TSNEWidget, PlotWidget
 from gresq.database import dal, Base
@@ -680,7 +680,8 @@ class FieldsDisplayWidget(QtGui.QScrollArea):
                     label = "%s:" % (info["verbose_name"])
             else:
                 label = "%s:" % (info["verbose_name"])
-            self.fields[field]["label"] = QtGui.QLabel(label)
+            tooltip = info['tooltip'] if 'tooltip' in info.keys() else None
+            self.fields[field]["label"] = BasicLabel(label,tooltip=tooltip)
             self.fields[field]["label"].setWordWrap(True)
             # self.fields[field]['label'].setMaximumWidth(120)
             # self.fields[field]['label'].setMinimumHeight(self.fields[field]['label'].sizeHint().height())
@@ -726,6 +727,7 @@ class FieldsDisplayWidget(QtGui.QScrollArea):
                     print(type(value), e)
                     value = ""
             self.fields[field]["value"].setText(str(value))
+
 
 
 class RawImageTab(pg.GraphicsLayoutWidget):
@@ -801,6 +803,7 @@ class SEMAdminTab(QtGui.QScrollArea):
                 str(sem_file_model.default_analysis_id == analysis_id)
             )
 
+    @errorCheck(error_text="Error setting as default SEM!")
     def setDefault(self):
         analysis_id = int(self.sem_list.currentItem().text())
         with dal.session_scope() as session:
@@ -813,6 +816,7 @@ class SEMAdminTab(QtGui.QScrollArea):
 
         self.setDefaultStatus(analysis_id)
 
+    @errorCheck(error_text="Error setting as primary SEM!")
     def setPrimary(self):
         with dal.session_scope() as session:
             sample_model = (
@@ -867,7 +871,7 @@ class SEMDisplayTab(QtGui.QScrollArea):
 
         return box_file.get_shared_link_download_url(access="open")
 
-    # @errorCheck
+    @errorCheck(error_text='Error submitting mask.')
     def submitMask(self, sem_id, px_per_um, mask):
         assert isinstance(mask,np.ndarray)
         assert isinstance(px_per_um,int)

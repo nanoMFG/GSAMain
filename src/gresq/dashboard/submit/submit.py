@@ -4,6 +4,7 @@ import cv2, sys, time, json, copy, subprocess, os
 from PyQt5 import QtGui, QtCore
 import uuid
 from gresq.util.box_adaptor import BoxAdaptor
+from gresq.util.util import BasicLabel
 from gresq.database import dal, Base
 from gresq import __version__ as GRESQ_VERSION
 from gsaraman import __version__ as GSARAMAN_VERSION
@@ -196,7 +197,8 @@ class FieldsFormWidget(QtGui.QScrollArea):
             row = f % 9
             col = f // 9
             info = getattr(model, field).info
-            self.layout.addWidget(QtGui.QLabel(info["verbose_name"]), row, 3 * col)
+            tooltip = info['tooltip'] if 'tooltip' in info.keys() else None
+            self.layout.addWidget(BasicLabel(info["verbose_name"],tooltip=tooltip), row, 3 * col)
             if sql_validator["str"](getattr(model, field)):
                 input_set = []
                 if "choices" in info.keys():
@@ -871,6 +873,8 @@ class FileUploadTab(QtGui.QWidget):
         self.sem_list = QtGui.QListWidget()
         self.stackedRamanFormWidget = QtGui.QStackedWidget()
         self.stackedRamanFormWidget.setFrameStyle(QtGui.QFrame.StyledPanel)
+        self.stackedImages = QtGui.QStackedWidget()
+        self.stackedSpectra = QtGui.QStackedWidget()
 
         self.upload_sem = QtGui.QPushButton("Upload SEM Image")
         self.upload_raman = QtGui.QPushButton("Upload Raman Spectroscopy")
@@ -906,6 +910,9 @@ class FileUploadTab(QtGui.QWidget):
         self.raman_list.currentRowChanged.connect(
             self.stackedRamanFormWidget.setCurrentIndex
         )
+        self.sem_list.currentRowChanged.connect(
+            self.stackedImages.setCurrentIndex
+        )
         self.remove_sem.clicked.connect(self.removeSEM)
         self.remove_raman.clicked.connect(self.removeRaman)
         self.clearButton.clicked.connect(self.clear)
@@ -915,12 +922,15 @@ class FileUploadTab(QtGui.QWidget):
 
     def removeSEM(self):
         x = self.sem_list.currentRow()
-        self.sem_list.takeItem(x)
+        if x > -1:
+            self.sem_list.takeItem(x)
+            self.stackedImages.removeWidget(self.stackedImages.widget(x))
 
     def removeRaman(self):
         x = self.raman_list.currentRow()
-        self.stackedRamanFormWidget.removeWidget(self.stackedRamanFormWidget.widget(x))
-        self.raman_list.takeItem(x)
+        if x > -1:
+            self.stackedRamanFormWidget.removeWidget(self.stackedRamanFormWidget.widget(x))
+            self.raman_list.takeItem(x)
 
     def importSEM(self, file_path=None):
         if file_path:
@@ -929,6 +939,9 @@ class FileUploadTab(QtGui.QWidget):
             self.sem_file_path = self.importFile()
         if isinstance(self.sem_file_path, str):
             self.sem_list.addItem(self.sem_file_path)
+            image = util.ImageWidget().loadImage(self.sem_file_path)
+            self.stackedImages.addWidget(image)
+
 
     def importRaman(self, file_path=None, pct=None):
         if file_path:
