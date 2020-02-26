@@ -44,17 +44,17 @@ class Label(QtWidgets.QLabel):
             )
 
 class LabelMaker:
-    def __init__(self,font=None,size=None,bold=False,italic=False):
-        self.font = font
+    def __init__(self,family=None,size=None,bold=False,italic=False):
+        self.family = family
         self.size = size
         self.bold = bold
         self.italic = italic
 
-    def __call__(self,text,tooltip=None):
+    def __call__(self,text='',tooltip=None):
         label = Label(text,tooltip=tooltip)
         font = QtGui.QFont()
-        if self.font:
-            font.setFamily(font)
+        if self.family:
+            font.setFamily(self.family)
         if self.size:
             font.setPointSize(self.size)
         if self.bold:
@@ -301,5 +301,5 @@ def errorCheck(success_text="Success!", error_text="Error!",logging=True):
         return wrapper
     return decorator
 
-HeaderLabel = LabelMaker(font='Helvetica',size=28,bold=True)
+HeaderLabel = LabelMaker(family='Helvetica',size=28,bold=True)
 BasicLabel = LabelMaker()

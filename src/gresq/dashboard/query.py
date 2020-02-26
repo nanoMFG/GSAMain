@@ -10,7 +10,7 @@ import sip
 import requests
 import uuid
 from PIL import Image
-from gresq.util.util import ResultsTableModel, errorCheck, DownloadThread, BasicLabel
+from gresq.util.util import ResultsTableModel, errorCheck, DownloadThread, BasicLabel, HeaderLabel
 from gresq.util.box_adaptor import BoxAdaptor
 from gresq.dashboard.stats import TSNEWidget, PlotWidget
 from gresq.database import dal, Base
@@ -225,11 +225,8 @@ class GSAQuery(QtGui.QWidget):
             lambda: self.addFilter(self.filter_fields.currentWidget())
         )
 
-        searchLabel = QtGui.QLabel("Query")
-        searchLabel.setFont(label_font)
-
-        resultsLabel = QtGui.QLabel("Results")
-        resultsLabel.setFont(label_font)
+        searchLabel = HeaderLabel("Query")
+        resultsLabel = HeaderLabel("Results")
 
         searchLayout = QtGui.QGridLayout()
         searchLayout.setAlignment(QtCore.Qt.AlignTop)
@@ -377,7 +374,7 @@ class ValueFilter(QtGui.QWidget):
         label = "%s"%info["verbose_name"]
         if 'std_unit' in info.keys() and info['std_unit'] != None:
             label += " (%s)"%info['std_unit']
-        self.label = QtGui.QLabel(label)
+        self.label = BasicLabel(label)
         # self.label.setFixedWidth(150)
         self.label.setWordWrap(True)
         self.comparator = QtGui.QComboBox()
@@ -434,7 +431,7 @@ class ClassFilter(QtGui.QWidget):
         self.validate = validate
 
         layout = QtGui.QGridLayout(self)
-        self.label = QtGui.QLabel(getattr(model, field).info["verbose_name"])
+        self.label = BasicLabel(getattr(model, field).info["verbose_name"])
         # self.label.setFixedWidth(150)
         self.label.setWordWrap(True)
         self.classes = QtGui.QComboBox()
@@ -476,10 +473,8 @@ class DetailWidget(QtGui.QWidget):
             fields=recipe_fields + hybrid_recipe_fields, model=Recipe
         )
 
-        propertiesLabel = QtGui.QLabel("Properties")
-        propertiesLabel.setFont(label_font)
-        conditionsLabel = QtGui.QLabel("Conditions")
-        conditionsLabel.setFont(label_font)
+        propertiesLabel = HeaderLabel("Properties")
+        conditionsLabel = HeaderLabel("Conditions")
 
         layout = QtGui.QGridLayout(self)
         layout.addWidget(propertiesLabel, 0, 0)
@@ -685,7 +680,7 @@ class FieldsDisplayWidget(QtGui.QScrollArea):
             self.fields[field]["label"].setWordWrap(True)
             # self.fields[field]['label'].setMaximumWidth(120)
             # self.fields[field]['label'].setMinimumHeight(self.fields[field]['label'].sizeHint().height())
-            self.fields[field]["value"] = QtGui.QLabel()
+            self.fields[field]["value"] = BasicLabel()
             self.fields[field]["value"].setMinimumWidth(50)
             self.fields[field]["value"].setAlignment(QtCore.Qt.AlignCenter)
             self.layout.addWidget(
@@ -753,8 +748,8 @@ class SEMAdminTab(QtGui.QScrollArea):
 
         self.set_default_button = QtGui.QPushButton("Set Default Analysis")
         self.set_primary_button = QtGui.QPushButton("Set Primary Analysis")
-        self.default_label = QtGui.QLabel("")
-        self.primary_label = QtGui.QLabel("")
+        self.default_label = BasicLabel("")
+        self.primary_label = BasicLabel("")
         self.sem_list = QtGui.QListWidget()
         self.sem_list.setSizePolicy(
             QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Minimum
@@ -1088,7 +1083,7 @@ class RecipeDisplayTab(QtGui.QScrollArea):
         # self.recipe_plot.setMouseEnabled(x=True, y=False)
 
         self.layout.addWidget(self.recipe_plot, 0, 0, 1, 2)
-        self.layout.addWidget(QtGui.QLabel("Primary Axis:"), 1, 0)
+        self.layout.addWidget(BasicLabel("Primary Axis:"), 1, 0)
         self.layout.addWidget(self.primary_axis, 1, 1)
 
     def update(self, recipe_model):
@@ -1217,7 +1212,7 @@ class AdminDisplayTab(QtGui.QScrollArea):
 
         self.validate_button = QtGui.QPushButton("Validate/Unvalidate")
         self.validate_button.clicked.connect(self.toggle_validate_model)
-        self.validate_status_label = QtGui.QLabel("")
+        self.validate_status_label = BasicLabel("")
 
         self.delete_button = QtGui.QPushButton("Delete Selected Entry")
         self.delete_button.clicked.connect(self.delete_model)
@@ -1233,7 +1228,7 @@ class AdminDisplayTab(QtGui.QScrollArea):
         self.delete_button.setEnabled(False)
 
         self.layout.addWidget(self.query_unvalidated_button, 0, 0, 1, 3)
-        self.layout.addWidget(QtGui.QLabel("Validation Status:"), 1, 0)
+        self.layout.addWidget(BasicLabel("Validation Status:"), 1, 0)
         self.layout.addWidget(self.validate_status_label, 1, 1)
         self.layout.addWidget(self.validate_button, 1, 2)
         self.layout.addWidget(self.delete_button, 2, 0, 1, 3)
