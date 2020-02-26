@@ -302,4 +302,5 @@ def errorCheck(success_text="Success!", error_text="Error!",logging=True):
     return decorator
 
 HeaderLabel = LabelMaker(family='Helvetica',size=28,bold=True)
+SubheaderLabel = LabelMaker(family='Helvetica',size=18)
 BasicLabel = LabelMaker()

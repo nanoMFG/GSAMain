@@ -4,7 +4,7 @@ import cv2, sys, time, json, copy, subprocess, os
 from PyQt5 import QtGui, QtCore
 import uuid
 from gresq.util.box_adaptor import BoxAdaptor
-from gresq.util.util import BasicLabel
+from gresq.util.util import BasicLabel, HeaderLabel, SubheaderLabel
 from gresq.database import dal, Base
 from gresq import __version__ as GRESQ_VERSION
 from gsaraman import __version__ as GSARAMAN_VERSION
@@ -560,7 +560,7 @@ class PropertiesTab(QtGui.QWidget):
         self.layout.setAlignment(QtCore.Qt.AlignTop)
         self.layout.addWidget(self.properties_form, 0, 0)
         self.layout.addWidget(
-            QtGui.QLabel(
+            BasicLabel(
                 "NOTE:\nThis section optional. Please input any properties data you may have."
             ),
             2,
@@ -896,7 +896,7 @@ class FileUploadTab(QtGui.QWidget):
         self.layout.addWidget(self.upload_raman, 3, 0, 1, 1)
         self.layout.addWidget(self.wavelength_input, 4, 0, 1, 1)
         self.layout.addWidget(
-            QtGui.QLabel("Characteristic Percentage (%):"), 5, 0, 1, 1
+            BasicLabel("Characteristic Percentage (%):"), 5, 0, 1, 1
         )
         self.layout.addWidget(self.stackedRamanFormWidget, 6, 0, 1, 1)
         self.layout.addWidget(self.remove_raman, 7, 0, 1, 1)
@@ -1179,14 +1179,10 @@ class ReviewTab(QtGui.QScrollArea):
         self.layout = QtGui.QGridLayout(self.contentWidget)
         self.layout.setAlignment(QtCore.Qt.AlignTop)
 
-        propertiesLabel = QtGui.QLabel("Properties")
-        propertiesLabel.setFont(label_font)
-        preparationLabel = QtGui.QLabel("Recipe")
-        preparationLabel.setFont(label_font)
-        filesLabel = QtGui.QLabel("Files")
-        filesLabel.setFont(label_font)
-        authorsLabel = QtGui.QLabel("Authors")
-        authorsLabel.setFont(label_font)
+        propertiesLabel = HeaderLabel("Properties")
+        preparationLabel = HeaderLabel("Recipe")
+        filesLabel = HeaderLabel("Files")
+        authorsLabel = HeaderLabel("Authors")
 
         # Author response
         self.layout.addWidget(
@@ -1195,7 +1191,7 @@ class ReviewTab(QtGui.QScrollArea):
         for a, auth in enumerate(provenance_response["author"]):
             row = self.layout.rowCount()
             self.layout.addWidget(
-                QtGui.QLabel(
+                BasicLabel(
                     "%s, %s   [%s]"
                     % (
                         auth["last_name"]["value"],
@@ -1209,25 +1205,25 @@ class ReviewTab(QtGui.QScrollArea):
         self.layout.addWidget(
             propertiesLabel, self.layout.rowCount(), 0, QtCore.Qt.AlignLeft
         )
-        label = QtGui.QLabel()
+        label = BasicLabel()
         for field in properties_response.keys():
             info = getattr(Properties, field).info
             row = self.layout.rowCount()
             value = properties_response[field]["value"]
             unit = convertScripts(properties_response[field]["unit"])
 
-            label = QtGui.QLabel(info["verbose_name"])
+            label = BasicLabel(info["verbose_name"])
             self.layout.addWidget(
                 label, row, 0, QtCore.Qt.AlignLeft | QtCore.Qt.AlignCenter
             )
             self.layout.addWidget(
-                QtGui.QLabel(str(value)),
+                BasicLabel(str(value)),
                 row,
                 1,
                 QtCore.Qt.AlignRight | QtCore.Qt.AlignCenter,
             )
             self.layout.addWidget(
-                QtGui.QLabel(str(unit)),
+                BasicLabel(str(unit)),
                 row,
                 2,
                 QtCore.Qt.AlignLeft | QtCore.Qt.AlignCenter,
@@ -1261,18 +1257,18 @@ class ReviewTab(QtGui.QScrollArea):
             row = self.layout.rowCount()
             value = recipe_response[field]["value"]
             unit = convertScripts(recipe_response[field]["unit"])
-            label = QtGui.QLabel(info["verbose_name"])
+            label = BasicLabel(info["verbose_name"])
             self.layout.addWidget(
                 label, row, 0, QtCore.Qt.AlignLeft | QtCore.Qt.AlignCenter
             )
             self.layout.addWidget(
-                QtGui.QLabel(str(value)),
+                BasicLabel(str(value)),
                 row,
                 1,
                 QtCore.Qt.AlignRight | QtCore.Qt.AlignCenter,
             )
             self.layout.addWidget(
-                QtGui.QLabel(str(unit)),
+                BasicLabel(str(unit)),
                 row,
                 2,
                 QtCore.Qt.AlignLeft | QtCore.Qt.AlignCenter,
@@ -1288,14 +1284,13 @@ class ReviewTab(QtGui.QScrollArea):
             )
 
         self.layout.addWidget(
-            QtGui.QLabel("Preparation Steps:"),
+            BasicLabel("Preparation Steps:"),
             self.layout.rowCount(),
             0,
             QtCore.Qt.AlignLeft,
         )
         for step, step_response in enumerate(preparation_response["preparation_step"]):
-            stepLabel = QtGui.QLabel("Step %s" % step)
-            stepLabel.setFont(sublabel_font)
+            stepLabel = SubheaderLabel("Step %s" % step)
             self.layout.addWidget(
                 stepLabel, self.layout.rowCount(), 0, QtCore.Qt.AlignLeft
             )
@@ -1304,18 +1299,18 @@ class ReviewTab(QtGui.QScrollArea):
                 row = self.layout.rowCount()
                 value = step_response[field]["value"]
                 unit = convertScripts(step_response[field]["unit"])
-                label = QtGui.QLabel(info["verbose_name"])
+                label = BasicLabel(info["verbose_name"])
                 self.layout.addWidget(
                     label, row, 0, QtCore.Qt.AlignLeft | QtCore.Qt.AlignCenter
                 )
                 self.layout.addWidget(
-                    QtGui.QLabel(str(value)),
+                    BasicLabel(str(value)),
                     row,
                     1,
                     QtCore.Qt.AlignRight | QtCore.Qt.AlignCenter,
                 )
                 self.layout.addWidget(
-                    QtGui.QLabel(str(unit)),
+                    BasicLabel(str(unit)),
                     row,
                     2,
                     QtCore.Qt.AlignLeft | QtCore.Qt.AlignCenter,
@@ -1344,30 +1339,30 @@ class ReviewTab(QtGui.QScrollArea):
             filesLabel, self.layout.rowCount(), 0, QtCore.Qt.AlignLeft
         )
         self.layout.addWidget(
-            QtGui.QLabel("SEM Image Files:"), self.layout.rowCount(), 0
+            BasicLabel("SEM Image Files:"), self.layout.rowCount(), 0
         )
         for k in range(len(files_response["SEM Image Files"])):
             row = self.layout.rowCount()
             name = files_response["SEM Image Files"][k]
-            label = QtGui.QLabel("%s" % (name))
+            label = BasicLabel("%s" % (name))
             self.layout.addWidget(
                 label, row, 0, QtCore.Qt.AlignLeft | QtCore.Qt.AlignCenter
             )
 
         self.layout.addWidget(
-            QtGui.QLabel("Raman Wavelength"), self.layout.rowCount(), 0
+            BasicLabel("Raman Wavelength"), self.layout.rowCount(), 0
         )
         self.layout.addWidget(
-            QtGui.QLabel(files_response["Raman Wavelength"]), self.layout.rowCount(), 1
+            BasicLabel(files_response["Raman Wavelength"]), self.layout.rowCount(), 1
         )
         self.layout.addWidget(
-            QtGui.QLabel("Raman Spectroscopy Files:"), self.layout.rowCount(), 0
+            BasicLabel("Raman Spectroscopy Files:"), self.layout.rowCount(), 0
         )
         for k in range(len(files_response["Raman Files"])):
             row = self.layout.rowCount()
             name = files_response["Raman Files"][k]
             pct = files_response["Characteristic Percentage"][k]
-            label = QtGui.QLabel("[%s]  %s" % (pct, name))
+            label = BasicLabel("[%s]  %s" % (pct, name))
             self.layout.addWidget(
                 label, row, 0, QtCore.Qt.AlignLeft | QtCore.Qt.AlignCenter
             )
