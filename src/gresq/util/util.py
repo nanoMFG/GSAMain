@@ -12,6 +12,8 @@ import functools
 from gresq.database.models import Sample
 import logging
 from sqlalchemy import String, Integer, Float, Numeric, Date
+from collections.abc import Sequence
+from collections import OrderedDict
 
 logger = logging.getLogger(__name__)
 
@@ -358,6 +360,8 @@ def errorCheck(success_text=None, error_text="Error!",logging=True,show_tracebac
         def wrapper(*args, **kwargs):
             if inspect.ismethod(func):
                 self = args[0]
+            else:
+                self = None
             try:
                 return func(*args, **kwargs)
                 if success_text:
@@ -379,6 +383,54 @@ def errorCheck(success_text=None, error_text="Error!",logging=True,show_tracebac
 
         return wrapper
     return decorator
+
+
+class GStackedWidget(Sequence,QtWidgets.QStackedWidget):
+    widgetAdded = QtCore.pyqtSignal(str)
+    def __init__(self,parent=None):
+        QtWidgets.QStackedWidget.__init__(self,parent=parent)
+        self.meta = OrderedDict()
+
+        self.widgetRemoved.connect(lambda i: del self.meta[i])
+        self.widgetAdded.connect(lambda s: self.meta[s] = {})
+
+    def __getitem__(self,key):
+        return self.widget(key)
+
+    def __len__(self):
+        return self.count()
+
+    def createListWidget(self):
+        list_widget = QtWidgets.QListWidget()
+        for name in self.meta.keys():
+            list_widget.addItem(name)
+        
+        self.widgetAdded.connect(list_widget.addItem)
+        self.widgetRemoved.connect(list_widget.takeItem)
+        self.currentChanged.connect(list_widget.setCurrentRow)
+
+        list_widget.currentRowChanged.connect(self.setCurrentIndex)
+
+        return list_widget
+
+    def addWidget(self,widget,name=None,focus_slot=None):
+        QtWidgets.QStackedWidget.addWidget(self,widget)
+        
+        if callable(focus_slot):
+            self.currentChanged.connect(focus_slot)
+        else:
+            raise TypeError("Parameter 'focus_slot' must be a callable function!")
+
+        if not isinstance(name,str):
+            name = "%s - %s"%(widget.__class__.__name__,self.count()-1)
+        self.widgetAdded.emit(name)
+
+    def changeNameByIndex(self,index,name):
+        assert isinstance(index,int)
+        assert isinstance(name,str)
+        self.meta = OrderedDict([(name, item[1]) if i == index else item for i, item in enumerate(self.meta.items())])
+
+
 
 HeaderLabel = LabelMaker(family='Helvetica',size=28,bold=True)
 SubheaderLabel = LabelMaker(family='Helvetica',size=18)
