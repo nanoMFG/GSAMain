@@ -221,12 +221,9 @@ class GSAQuery(QtGui.QWidget):
             lambda: self.addFilter(self.filter_fields.currentWidget())
         )
 
-        searchLabel = HeaderLabel("Query")
-        resultsLabel = HeaderLabel("Results")
-
         searchLayout = QtGui.QGridLayout()
         searchLayout.setAlignment(QtCore.Qt.AlignTop)
-        searchLayout.addWidget(searchLabel,0,0)
+        searchLayout.addWidget(HeaderLabel("Query"),0,0)
         searchLayout.addWidget(self.primary_selection, 2, 0)
         searchLayout.addWidget(self.secondary_selection, 3, 0)
         searchLayout.addWidget(self.filter_fields, 4, 0)
@@ -237,7 +234,7 @@ class GSAQuery(QtGui.QWidget):
 
         resultsLayout = QtGui.QGridLayout()
         resultsLayout.setAlignment(QtCore.Qt.AlignTop)
-        resultsLayout.addWidget(resultsLabel,0,0)
+        resultsLayout.addWidget(HeaderLabel("Results"),0,0)
         resultsLayout.addWidget(self.results,1,0)
 
         vsplitLayout = QtGui.QSplitter(QtCore.Qt.Vertical)
@@ -258,11 +255,6 @@ class GSAQuery(QtGui.QWidget):
 
         self.layout = QtGui.QGridLayout(self)
         self.layout.addWidget(hsplitLayout)
-        # self.layout.setAlignment(QtCore.Qt.AlignTop)
-        # self.layout.addWidget(searchLabel, 0, 0)
-        # self.layout.addLayout(searchLayout, 1, 0)
-        # self.layout.addWidget(resultsLabel, 0, 1)
-        # self.layout.addWidget(resultsLayout, 1, 1)
 
         self.primary_selection.activated[str].emit(self.primary_selection.currentText())
         self.secondary_selection.activated[str].emit(
@@ -279,8 +271,8 @@ class GSAQuery(QtGui.QWidget):
         """
         Generates an input selected field of selected model.
 
-        model:          sqlalchemy model to which the field corresponds
-        field:          column within the sqlalchemy model
+        model:          SQLAlchemy model to which the field corresponds
+        field:          Column within the sqlalchemy model
         """
         cla = model
         if sql_validator["int"](getattr(cla, field)) == True:
@@ -757,10 +749,10 @@ class RawImageTab(pg.GraphicsLayoutWidget):
     def __init__(self, parent=None):
         super(RawImageTab, self).__init__(parent=parent)
         self._id = None
-        self.wImgBox_VB = self.addViewBox(row=1, col=1)
-        self.wImgItem = pg.ImageItem()
-        self.wImgBox_VB.addItem(self.wImgItem)
-        self.wImgBox_VB.setAspectLocked(True)
+        self.viewbox = self.addViewBox(row=1, col=1)
+        self.img_item = pg.ImageItem()
+        self.viewbox.addItem(self.img_item)
+        self.viewbox.setAspectLocked(True)
 
     def loadImage(self, data, thread_id, info):
         """
@@ -772,7 +764,7 @@ class RawImageTab(pg.GraphicsLayoutWidget):
         """
         self._id = thread_id
         img = np.array(Image.open(io.BytesIO(data)))
-        self.wImgItem.setImage(img, levels=(0, 255))
+        self.img_item.setImage(img, levels=(0, 255))
 
 
 class SEMAdminTab(QtGui.QScrollArea):

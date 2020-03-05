@@ -384,6 +384,28 @@ def errorCheck(success_text=None, error_text="Error!",logging=True,show_tracebac
         return wrapper
     return decorator
 
+class ConfirmationBox(QtGui.QMessageBox):
+    okSignal = QtCore.pyqtSignal()
+    cancelSignal = QtCore.pyqtSignal()
+    def __init__(self,question_text,informative_text=None,parent=None):
+        super(ConfirmationBox,self).__init__(self,parent=parent)
+        assert isinstance(question_text,str)
+
+        self.setText(question_text)
+        if informative_text:
+            self.setInformativeText(informative_text)
+        self.setStandardButtons(
+            QtGui.QMessageBox.Ok | QtGui.QMessageBox.Cancel
+        )
+        self.setWindowModality(QtCore.Qt.WindowModal)
+
+        self.buttonClicked.connect(self.onClick)
+
+    def onClick(self,btn):
+        if btn.text() == "OK":
+            self.okSignal.emit()
+        else:
+            self.cancelSignal.emit()    
 
 class GStackedWidget(Sequence,QtWidgets.QStackedWidget):
     widgetAdded = QtCore.pyqtSignal(str)
@@ -429,6 +451,9 @@ class GStackedWidget(Sequence,QtWidgets.QStackedWidget):
         assert isinstance(index,int)
         assert isinstance(name,str)
         self.meta = OrderedDict([(name, item[1]) if i == index else item for i, item in enumerate(self.meta.items())])
+
+
+
 
 
 
