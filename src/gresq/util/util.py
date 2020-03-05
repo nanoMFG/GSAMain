@@ -3,13 +3,68 @@ from PyQt5 import QtGui, QtCore, QtWidgets
 import pandas as pd
 import copy
 import io
+import operator
 import requests
+import traceback
+import inspect
 from mlxtend.frequent_patterns import apriori
 import functools
 from gresq.database.models import Sample
 import logging
+from sqlalchemy import String, Integer, Float, Numeric, Date
 
 logger = logging.getLogger(__name__)
+
+sql_validator = {
+    "int": lambda x: isinstance(x.property.columns[0].type, Integer),
+    "float": lambda x: isinstance(x.property.columns[0].type, Float),
+    "str": lambda x: isinstance(x.property.columns[0].type, String),
+    "date": lambda x: isinstance(x.property.columns[0].type, Date),
+}
+
+operators = {
+    "==": operator.eq,
+    "!=": operator.ne,
+    "<": operator.lt,
+    ">": operator.gt,
+    "<=": operator.le,
+    ">=": operator.ge,
+}
+
+
+class ConfigParams:
+    def __init__(self,box_config_path=None,mode='local',read=True,write=False,validate=False,test=False):
+        assert mode in ['local','nanohub']
+        self.box_config_path = box_config_path
+        self.mode = mode
+        self.read = read
+        self.write = write
+        self.validate = validate
+        self.test = test
+
+    def canRead(self):
+        return self.read
+
+    def canWrite(self):
+        return self.write
+
+    def canValidate(self):
+        return self.validate
+
+    def canRead(self):
+        return self.read
+
+    def setRead(self,flag):
+        assert isinstance(flag,bool)
+        self.read = flag
+
+    def setWrite(self,flag):
+        assert isinstance(flag,bool)
+        self.write = flag
+
+    def setValidate(self,flag):
+        assert isinstance(flag,bool)
+        self.validate = flag
 
 class Label(QtWidgets.QLabel):
     def __init__(self,text='',tooltip=None):
@@ -22,6 +77,10 @@ class Label(QtWidgets.QLabel):
             self.setMouseTracking(True)
 
     def setMouseTracking(self,flag):
+        """
+        Ensures mouse tracking is allowed for label and all parent widgets 
+        so that tooltip can be displayed when mouse hovers over it.
+        """
         QtGui.QWidget.setMouseTracking(self, flag)
         def recursive(widget,flag):
             try:
@@ -83,13 +142,19 @@ class DownloadThread(QtCore.QThread):
         self.thread_id = thread_id
         self.info = info
         self.data = None
+        self.sendSignal = True
 
-        self.finished.connect(
-            lambda: self.downloadFinished.emit(self.data, self.thread_id, self.info)
-        )
+        self.finished.connect(self.signal())
 
     def __del__(self):
         self.wait()
+
+    def signal(self):
+        if self.sendSignal:
+            self.downloadFinished.emit(self.data, self.thread_id, self.info)
+
+    def cancel(self):
+        self.sendSignal = False
 
     def run(self):
         r = requests.get(self.url)
@@ -278,22 +343,36 @@ def downloadAllImageMasks(session, directory):
             thread.downloadFinished.connect(lambda x, y, z: saveTo)
 
 
-def errorCheck(success_text="Success!", error_text="Error!",logging=True):
+def errorCheck(success_text=None, error_text="Error!",logging=True,show_traceback=False):
+    """
+    Decorator for class functions to catch errors and display success or error dialog boxes.
+    Checks is method is a bound method in order to properly handle parents for dialog box.
+
+    success_text:               (str) What header to show in the dialog box when there is no error. None displays no dialog box at all.
+    error_text:                 (str) What header to show in the dialog box when there is an error.
+    logging:                    (bool) Whether to write error to log. True writes to log, False does not.
+    show_traceback:             (bool) Whether to display full traceback in error dialog box. 
+    """
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(self, *args, **kwargs):
+        def wrapper(*args, **kwargs):
+            if inspect.ismethod(func):
+                self = args[0]
             try:
-                return func(self, *args, **kwargs)
-                success_dialog = QtGui.QMessageBox(self)
-                success_dialog.setText(success_text)
-                success_dialog.setWindowModality(QtCore.Qt.WindowModal)
-                success_dialog.exec()
+                return func(*args, **kwargs)
+                if success_text:
+                    success_dialog = QtGui.QMessageBox(self)
+                    success_dialog.setText(success_text)
+                    success_dialog.setWindowModality(QtCore.Qt.WindowModal)
+                    success_dialog.exec()
             except Exception as e:
                 error_dialog = QtGui.QMessageBox(self)
                 error_dialog.setWindowModality(QtCore.Qt.WindowModal)
                 error_dialog.setText(error_text)
                 if logging:
-                    logging.exception(str(e))
+                    logging.exception(traceback.format_exc())
+                elif show_traceback:
+                    error_dialog.setInformativeText(traceback.format_exc())
                 else:
                     error_dialog.setInformativeText(str(e))
                 error_dialog.exec()

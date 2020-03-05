@@ -4,7 +4,7 @@ import cv2, sys, time, json, copy, subprocess, os
 from PyQt5 import QtGui, QtCore
 import uuid
 from gresq.util.box_adaptor import BoxAdaptor
-from gresq.util.util import BasicLabel, HeaderLabel, SubheaderLabel
+from gresq.util.util import BasicLabel, HeaderLabel, SubheaderLabel, sql_validator, ConfigParams
 from gresq.database import dal, Base
 from gresq import __version__ as GRESQ_VERSION
 from gsaraman import __version__ as GSARAMAN_VERSION
@@ -73,13 +73,6 @@ properties_fields = [
 
 author_fields = ["first_name", "last_name", "institution"]
 
-sql_validator = {
-    "int": lambda x: isinstance(x.property.columns[0].type, Integer),
-    "float": lambda x: isinstance(x.property.columns[0].type, Float),
-    "str": lambda x: isinstance(x.property.columns[0].type, String),
-    "date": lambda x: isinstance(x.property.columns[0].type, Date),
-}
-
 
 def convertValue(value, field):
     if sql_validator["int"](field):
@@ -89,10 +82,6 @@ def convertValue(value, field):
     else:
         value = str(value)
     return value
-
-
-label_font = QtGui.QFont("Helvetica", 28, QtGui.QFont.Bold)
-sublabel_font = QtGui.QFont("Helvetica", 18)
 
 
 class GSASubmit(QtGui.QTabWidget):
@@ -987,7 +976,7 @@ class FileUploadTab(QtGui.QWidget):
         elif self.mode == "nanohub":
             try:
                 file_path = (
-                    subprocess.check_output("importfile", shell=True)
+                    subprocess.check_output("/apps/importfile/bin/", shell=True)
                     .strip()
                     .decode("utf-8")
                 )

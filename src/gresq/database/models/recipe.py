@@ -48,7 +48,7 @@ class Recipe(Base):
 
     # EXPERIMENTAL CONDITIONS:
     catalyst = Column(
-        String(64), info={"verbose_name": "Catalyst", "choices": [], "required": True}
+        String(64), info={"verbose_name": "Catalyst", "choices": [], "required": True,"tooltip":"Substrate catalyst."}
     )
     tube_diameter = Column(
         Float(precision=32),

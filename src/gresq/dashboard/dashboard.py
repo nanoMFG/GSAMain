@@ -34,16 +34,3 @@ class GSADashboard(QtGui.QTabWidget):
 
         if test:
             self.submit_tab.test()
-
-    #     self.setMouseTracking(True)
-
-    # def setMouseTracking(self, flag):
-    #     def recursive_set(parent):
-    #         for child in parent.findChildren(QtCore.QObject):
-    #             try:
-    #                 child.setMouseTracking(flag)
-    #             except:
-    #                 pass
-    #             recursive_set(child)
-    #     QtGui.QWidget.setMouseTracking(self, flag)
-    #     recursive_set(self)

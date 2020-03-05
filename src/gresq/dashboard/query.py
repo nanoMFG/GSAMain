@@ -9,8 +9,9 @@ import io
 import sip
 import requests
 import uuid
+import json
 from PIL import Image
-from gresq.util.util import ResultsTableModel, errorCheck, DownloadThread, BasicLabel, HeaderLabel
+from gresq.util.util import ResultsTableModel, errorCheck, DownloadThread, BasicLabel, HeaderLabel, ConfigParams, sql_validator, operators
 from gresq.util.box_adaptor import BoxAdaptor
 from gresq.dashboard.stats import TSNEWidget, PlotWidget
 from gresq.database import dal, Base
@@ -113,23 +114,6 @@ selection_list = {
     "Provenance Information": {"fields": author_fields, "model": Author},
 }
 
-sql_validator = {
-    "int": lambda x: isinstance(x.property.columns[0].type, Integer),
-    "float": lambda x: isinstance(x.property.columns[0].type, Float),
-    "str": lambda x: isinstance(x.property.columns[0].type, String),
-}
-
-operators = {
-    "==": operator.eq,
-    "!=": operator.ne,
-    "<": operator.lt,
-    ">": operator.gt,
-    "<=": operator.le,
-    ">=": operator.ge,
-}
-
-label_font = QtGui.QFont("Helvetica", 28, QtGui.QFont.Bold)
-
 
 def convertScripts(text):
     if "^" in text:
@@ -147,21 +131,33 @@ def convertScripts(text):
 class GSAQuery(QtGui.QWidget):
     """
     Main query widget.
+
+    privileges:             (dict) Dictionary of access privileges. {"read": bool, "write":bool, "validate":bool}
+    box_config_path:        (str) Path to box configuration file.
+    mode:                   (str) Run mode ("local" or "nanohub"). Default: "local".
+    test:                   (bool) Test mode. Default: False.
     """
 
     def __init__(
         self, privileges={"read": True, "write": False, "validate": False}, 
         box_config_path = None,
+        mode = 'local',
+        test=False,
         parent=None
     ):
         super(GSAQuery, self).__init__(parent=parent)
-        self.box_config_path = box_config_path
-        self.privileges = privileges
+        self.config = ConfigParams(
+            box_config_path=box_config_path,
+            mode=mode,
+            read=privileges['read'],
+            write=privileges['write'],
+            validate=privileges['validate'],
+            test=test)
         self.filters = []
         self.filter_fields = QtGui.QStackedWidget()
-        self.filter_fields.setMaximumHeight(50)
+        # self.filter_fields.setMaximumHeight(50)
         self.filter_fields.setSizePolicy(
-            QtGui.QSizePolicy.Maximum, QtGui.QSizePolicy.Preferred
+            QtGui.QSizePolicy.Maximum, QtGui.QSizePolicy.Maximum
         )
         self.filters_dict = {}
         for selection in selection_list.keys():
@@ -205,7 +201,7 @@ class GSAQuery(QtGui.QWidget):
         self.filter_table.setWordWrap(True)
         self.filter_table.verticalHeader().setVisible(False)
         self.filter_table.setSizePolicy(
-            QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Minimum
+            QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.MinimumExpanding
         )
 
         self.results = ResultsWidget()
@@ -213,8 +209,8 @@ class GSAQuery(QtGui.QWidget):
             QtGui.QSizePolicy.Maximum, QtGui.QSizePolicy.Preferred
         )
 
-        self.preview = PreviewWidget(privileges=self.privileges,box_config_path=self.box_config_path)
-        if self.privileges["validate"] or self.privileges["write"]:
+        self.preview = PreviewWidget(config=self.config)
+        if self.config.canWrite() or self.config.canValidate():
             self.preview.admin_tab.updateQuery.connect(lambda: self.query(self.filters))
             self.preview.admin_tab.queryUnvalidated.connect(
                 lambda: self.query([Sample.validated.is_(False)])
@@ -230,23 +226,43 @@ class GSAQuery(QtGui.QWidget):
 
         searchLayout = QtGui.QGridLayout()
         searchLayout.setAlignment(QtCore.Qt.AlignTop)
-        searchLayout.addWidget(self.primary_selection, 1, 0)
-        searchLayout.addWidget(self.secondary_selection, 2, 0)
-        searchLayout.addWidget(self.filter_fields, 3, 0)
-        searchLayout.addWidget(self.addFilterBtn, 4, 0)
-        searchLayout.addWidget(self.filter_table, 5, 0, 4, 1)
+        searchLayout.addWidget(searchLabel,0,0)
+        searchLayout.addWidget(self.primary_selection, 2, 0)
+        searchLayout.addWidget(self.secondary_selection, 3, 0)
+        searchLayout.addWidget(self.filter_fields, 4, 0)
+        searchLayout.addWidget(self.addFilterBtn, 5, 0)
+        dummyLayout = QtGui.QGridLayout()
+        dummyLayout.addWidget(self.filter_table)
+        searchLayout.addLayout(dummyLayout,6,0)
 
-        resultsLayout = QtGui.QSplitter(QtCore.Qt.Vertical)
-        # resultsLayout.setAlignment(QtCore.Qt.AlignTop)
-        resultsLayout.addWidget(self.results)
-        resultsLayout.addWidget(self.preview)
+        resultsLayout = QtGui.QGridLayout()
+        resultsLayout.setAlignment(QtCore.Qt.AlignTop)
+        resultsLayout.addWidget(resultsLabel,0,0)
+        resultsLayout.addWidget(self.results,1,0)
+
+        vsplitLayout = QtGui.QSplitter(QtCore.Qt.Vertical)
+        vsplitLayout.addWidget(self.results)
+        vsplitLayout.addWidget(self.preview)
+        vsplitLayout.setSizePolicy(
+            QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Preferred
+        )
+
+        hsplitLayout = QtGui.QSplitter(QtCore.Qt.Horizontal)
+        dummy = QtWidgets.QWidget()
+        dummy.setLayout(searchLayout)
+        dummy.setSizePolicy(
+            QtGui.QSizePolicy.Maximum, QtGui.QSizePolicy.Preferred
+        )
+        hsplitLayout.addWidget(dummy)
+        hsplitLayout.addWidget(vsplitLayout)
 
         self.layout = QtGui.QGridLayout(self)
-        self.layout.setAlignment(QtCore.Qt.AlignTop)
-        self.layout.addWidget(searchLabel, 0, 0)
-        self.layout.addLayout(searchLayout, 1, 0)
-        self.layout.addWidget(resultsLabel, 0, 1)
-        self.layout.addWidget(resultsLayout, 1, 1)
+        self.layout.addWidget(hsplitLayout)
+        # self.layout.setAlignment(QtCore.Qt.AlignTop)
+        # self.layout.addWidget(searchLabel, 0, 0)
+        # self.layout.addLayout(searchLayout, 1, 0)
+        # self.layout.addWidget(resultsLabel, 0, 1)
+        # self.layout.addWidget(resultsLayout, 1, 1)
 
         self.primary_selection.activated[str].emit(self.primary_selection.currentText())
         self.secondary_selection.activated[str].emit(
@@ -345,7 +361,7 @@ class GSAQuery(QtGui.QWidget):
         Runs query on results widget. This is a separate function so as to make the selection signal work properly.
         This is because the model must be set before selection signalling can be connected.
         """
-        if self.privileges["validate"]:
+        if self.config.canValidate():
             self.results.query(filters)
         else:
             self.results.query(filters + [or_(Sample.validated == True, Sample.nanohub_userid == os.getuid())])
@@ -464,6 +480,9 @@ class ClassFilter(QtGui.QWidget):
 
 
 class DetailWidget(QtGui.QWidget):
+    """
+    Widget that displays information pertaining to the properties and conditions of the entry.
+    """
     def __init__(self, parent=None):
         super(DetailWidget, self).__init__(parent=parent)
         self.properties = FieldsDisplayWidget(
@@ -497,17 +516,19 @@ class PreviewWidget(QtGui.QTabWidget):
         -Provenance information
     """
 
-    def __init__(self, privileges=None, box_config_path=None, parent=None):
+    def __init__(self, config, parent=None):
         super(PreviewWidget, self).__init__(parent=parent)
-        self.privileges = privileges
-        self.box_config_path = box_config_path
+        self.config = config
         self.detail_tab = DetailWidget()
-        self.sem_tab = SEMDisplayTab(privileges=privileges,box_config_path=self.box_config_path)
-        self.raman_tab = RamanDisplayTab()
-        self.recipe_tab = RecipeDisplayTab()
+        self.sem_tab = SEMDisplayTab(config=config)
+        self.raman_tab = RamanDisplayTab(config=config)
+        self.recipe_tab = RecipeDisplayTab(config=config)
         self.provenance_tab = ProvenanceDisplayTab()
         self.admin_tab = None
         self.setTabPosition(QtGui.QTabWidget.South)
+        self.setSizePolicy(
+            QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Preferred
+        )
 
         self.addTab(self.detail_tab, "Details")
         self.addTab(self.sem_tab, "SEM")
@@ -515,10 +536,9 @@ class PreviewWidget(QtGui.QTabWidget):
         self.addTab(self.recipe_tab, "Recipe")
         self.addTab(self.provenance_tab, "Provenance")
 
-        if privileges:
-            if privileges["write"] or privileges["validate"]:
-                self.admin_tab = AdminDisplayTab(privileges=privileges)
-                self.addTab(self.admin_tab, "Admin")
+        if config.canWrite() or config.canRead:
+            self.admin_tab = AdminDisplayTab(config=config)
+            self.addTab(self.admin_tab, "Admin")
 
     def select(self, model=None, index=None):
         """
@@ -575,6 +595,10 @@ class ResultsWidget(QtGui.QTabWidget):
         self.results_table.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
         self.results_table.setSortingEnabled(True)
 
+        self.setSizePolicy(
+            QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Preferred
+        )
+
         self.tsne = TSNEWidget()
         self.plot = PlotWidget()
 
@@ -589,6 +613,7 @@ class ResultsWidget(QtGui.QTabWidget):
             lambda plot, points: self.plotClicked.emit(plot, points)
         )
 
+    @errorCheck(error_text="Error querying database!")
     def query(self, filters):
         """
         Queries SQL database using list of sqlalchemy filters.
@@ -652,8 +677,8 @@ class FieldsDisplayWidget(QtGui.QScrollArea):
     """
     Generic widget that creates a display from the selected fields from a particular model.
 
-    fields: The fields from the model to generate the form. Note: fields must exist in the model.
-    model:  The model to base the display on.
+    fields:             (list of str) The fields from the model to generate the form. Note: fields must exist in the model.
+    model:              (SQLAlchemy model) The model to base the display on.
     """
 
     def __init__(self, fields, model, elements_per_col=100, parent=None):
@@ -726,6 +751,9 @@ class FieldsDisplayWidget(QtGui.QScrollArea):
 
 
 class RawImageTab(pg.GraphicsLayoutWidget):
+    """
+    Widget to display an image. Useful for connecting threaded downloads to image display.
+    """
     def __init__(self, parent=None):
         super(RawImageTab, self).__init__(parent=parent)
         self._id = None
@@ -735,12 +763,25 @@ class RawImageTab(pg.GraphicsLayoutWidget):
         self.wImgBox_VB.setAspectLocked(True)
 
     def loadImage(self, data, thread_id, info):
+        """
+        Loads image. Good for slotting into a downloadFinished signal from a DownloadThread object.
+
+        data:           Bytes object to be decoded into image.
+        thread_id:      Thread ID. Useful for keeping track of threads.
+        info:           (dict) Dictionary of ancillary parameters from DownloadThread.
+        """
         self._id = thread_id
         img = np.array(Image.open(io.BytesIO(data)))
         self.wImgItem.setImage(img, levels=(0, 255))
 
 
 class SEMAdminTab(QtGui.QScrollArea):
+    """
+    Widget for handling admin functionality in the SEM display tab.
+
+    sem_id:             (int) sem_file model ID
+    sample_id:          (int) sample model ID
+    """
     def __init__(self, sem_id, sample_id, parent=None):
         super(SEMAdminTab, self).__init__(parent=parent)
         self.sem_id = sem_id
@@ -831,11 +872,9 @@ class SEMAdminTab(QtGui.QScrollArea):
 
 
 class SEMDisplayTab(QtGui.QScrollArea):
-    def __init__(self, privileges, mode="local", box_config_path=None, parent=None):
+    def __init__(self, config, parent=None):
         super(SEMDisplayTab, self).__init__(parent=parent)
-        self.privileges = privileges
-        self.box_config_path = box_config_path
-        self.mode = mode
+        self.config = config
 
         self.contentWidget = QtGui.QWidget()
         self.layout = QtGui.QGridLayout(self.contentWidget)
@@ -860,13 +899,13 @@ class SEMDisplayTab(QtGui.QScrollArea):
         self.file_list.currentRowChanged.connect(self.sem_info.setCurrentIndex)
 
     def upload_file(self, file_path, folder_name=None):
-        box_adaptor = BoxAdaptor(self.box_config_path)
+        box_adaptor = BoxAdaptor(self.config.box_config_path)
         upload_folder = box_adaptor.create_upload_folder(folder_name=folder_name)
         box_file = box_adaptor.upload_file(upload_folder, file_path, str(uuid.uuid4()))
 
         return box_file.get_shared_link_download_url(access="open")
 
-    @errorCheck(error_text='Error submitting mask.')
+    @errorCheck(success_text="Successfully submitted mask to database!",error_text='Error submitting mask!')
     def submitMask(self, sem_id, px_per_um, mask):
         assert isinstance(mask,np.ndarray)
         assert isinstance(px_per_um,int)
@@ -909,9 +948,9 @@ class SEMDisplayTab(QtGui.QScrollArea):
 
         edit_tab = None
         admin_tab = None
-        if self.privileges["validate"]:
+        if config.canValidate():
             edit_tab = ImageEditor(
-                sem_id=sem.id, privileges=self.privileges, mode=self.mode
+                sem_id=sem.id, config=self.config
             )
             edit_tab.submitClicked.connect(lambda x,y,z: self.submitMask(x,y,z))
             admin_tab = SEMAdminTab(sem_id=sem.id, sample_id=self.sample_id)
@@ -932,12 +971,12 @@ class SEMDisplayTab(QtGui.QScrollArea):
         if sem.default_analysis:
             thread = DownloadThread(url=sem.default_analysis.mask_url, thread_id=sem.id)
             thread.downloadFinished.connect(mask_tab.loadImage)
-            thread.downloadFinished.connect(self.update_progress_bar)
             thread.start()
             self.threads.append(thread)
 
         return sem_tabs
 
+    @errorCheck(error_text="Error updating SEM display!")
     def update(self, sample_model=None, force_refresh=False):
         if sample_model != None:
             if sample_model.id != self.sample_id or force_refresh:
@@ -972,6 +1011,7 @@ class ProvenanceDisplayTab(QtGui.QScrollArea):
 
         self.author_widgets = []
 
+    @errorCheck(error_text="Error updating provenance display!")
     def update(self, author_models=[]):
         for widget in self.author_widgets:
             self.layout.removeWidget(widget)
@@ -987,8 +1027,9 @@ class ProvenanceDisplayTab(QtGui.QScrollArea):
 
 
 class RamanDisplayTab(QtGui.QScrollArea):
-    def __init__(self, parent=None):
+    def __init__(self, config, parent=None):
         super(RamanDisplayTab, self).__init__(parent=parent)
+        self.config = config
         self.contentWidget = QtGui.QWidget()
         self.layout = QtGui.QGridLayout(self.contentWidget)
         self.layout.setAlignment(QtCore.Qt.AlignTop)
@@ -1033,6 +1074,7 @@ class RamanDisplayTab(QtGui.QScrollArea):
                 100 * sum([t.isFinished() for t in self.threads]) / len(self.threads)
             )
 
+    @errorCheck(error_text="Error updating Raman display!")
     def update(self, sample_model=None):
         if sample_model != None:
             if sample_model.id != self.sample_id:
@@ -1054,10 +1096,10 @@ class RamanDisplayTab(QtGui.QScrollArea):
                         thread = DownloadThread(
                             url=spectrum.raman_file.url,
                             thread_id=raman_analysis.sample_id,
-                            info={"spectrum_id": spectrum.id},
+                            info={"spectrum": spectrum},
                         )
                         thread.downloadFinished.connect(
-                            lambda x, y, z: self.loadSpectrum(x, y, spectrum)
+                            lambda data, thread_id, info: self.loadSpectrum(data, thread_id, info['spectrum'])
                         )
                         thread.start()
                         print("Thread started.")
@@ -1067,8 +1109,9 @@ class RamanDisplayTab(QtGui.QScrollArea):
 
 
 class RecipeDisplayTab(QtGui.QScrollArea):
-    def __init__(self, parent=None):
+    def __init__(self, config, parent=None):
         super(RecipeDisplayTab, self).__init__(parent=parent)
+        self.config = config
         self.contentWidget = QtGui.QWidget()
         self.layout = QtGui.QGridLayout(self.contentWidget)
         self.layout.setAlignment(QtCore.Qt.AlignTop)
@@ -1086,6 +1129,23 @@ class RecipeDisplayTab(QtGui.QScrollArea):
         self.layout.addWidget(BasicLabel("Primary Axis:"), 1, 0)
         self.layout.addWidget(self.primary_axis, 1, 1)
 
+    @errorCheck(error_text="Error exporting recipe!")
+    def exportRecipe(self):
+        if self.config.mode == 'local':
+            name = QtWidgets.QFileDialog.getSaveFileName(None, "Export Image", '', "JSON File (*.json)")[0]
+            if name != '':
+                with open(name,'w') as f:
+                    json.dump(self.recipe_model.json_encodable(),f)
+        elif self.config.mode == 'nanohub':
+            name = 'recipe_%s.json'%self.recipe_model.id
+            with open(name,'w') as f:
+                json.dump(self.recipe_model.json_encodable(),f)
+            subprocess.check_output('exportfile %s'%name,shell=True)
+            os.remove(name)
+        else:
+            return        
+
+    @errorCheck(error_text="Error updating recipe display!")
     def update(self, recipe_model):
         try:
             self.primary_axis.activated[str].disconnect()
@@ -1198,10 +1258,10 @@ class AdminDisplayTab(QtGui.QScrollArea):
     updateQuery = QtCore.pyqtSignal()
     queryUnvalidated = QtCore.pyqtSignal()
 
-    def __init__(self, privileges, parent=None):
+    def __init__(self, config, parent=None):
         super(AdminDisplayTab, self).__init__(parent=parent)
         self.sample_id = None
-        self.privileges = privileges
+        self.config = config
 
         self.contentWidget = QtGui.QWidget()
         self.layout = QtGui.QGridLayout(self.contentWidget)
@@ -1223,7 +1283,7 @@ class AdminDisplayTab(QtGui.QScrollArea):
             lambda: self.queryUnvalidated.emit()
         )
 
-        if self.privileges["validate"] == False:
+        if self.config.canValidate() == False:
             self.validate_button.setEnabled(False)
         self.delete_button.setEnabled(False)
 
@@ -1233,15 +1293,16 @@ class AdminDisplayTab(QtGui.QScrollArea):
         self.layout.addWidget(self.validate_button, 1, 2)
         self.layout.addWidget(self.delete_button, 2, 0, 1, 3)
 
+    @errorCheck(error_text="Error updating admin display!")
     def update(self, sample_model):
         self.sample_id = sample_model.id
         self.validate_status_label.setText(str(sample_model.validated))
 
-        if self.privileges["write"] or self.privileges["validate"]:
-            if self.privileges["validate"]:
+        if self.config.canWrite() or self.config.canValidate():
+            if self.config.canValidate():
                 self.delete_button.setEnabled(True)
             elif (
-                self.privileges["write"]
+                self.config.canWrite()
                 and sample_model.nanohub_userid
                 and sample_model.nanohub_userid == os.getuid()
                 and sample_model.validate == False
