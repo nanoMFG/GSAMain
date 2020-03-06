@@ -504,7 +504,7 @@ class GStackedWidget(QtWidgets.QStackedWidget,Sequence,metaclass=GStackedMeta):
 
         return list_widget
 
-    def addWidget(self,widget,name=None,focus_slot=None):
+    def addWidget(self,widget,name=None,focus_slot=None,metadict=None):
         QtWidgets.QStackedWidget.addWidget(self,widget)
         
         if callable(focus_slot):
@@ -515,22 +515,46 @@ class GStackedWidget(QtWidgets.QStackedWidget,Sequence,metaclass=GStackedMeta):
         if not isinstance(name,str):
             name = "%s - %s"%(widget.__class__.__name__,self.count()-1)
         self.widgetAdded.emit(name)
+        
+        if metadict is not None:
+            self.meta[name].update(metadict)
 
-    def removeWidget(self,widget):
-        QtWidgets.QStackedWidget.removeWidget(self,widget)
+        return self.count()-1
 
     def removeIndex(self,index):
-        QtWidgets.QStackedWidget.removeWidget(self,self.widget(index))        
+        QtWidgets.QStackedWidget.removeWidget(self,self.widget(index))
+
+    def removeCurrentWidget(self):
+        widget = self.currentWidget()
+        if widget != 0:
+            QtWidgets.QStackedWidget.removeWidget(self,widget)
 
     def changeNameByIndex(self,index,name):
         assert isinstance(index,int)
         assert isinstance(name,str)
         self.meta = OrderedDict([(name, item[1]) if i == index else item for i, item in enumerate(self.meta.items())])
 
-    def clear(self):
-        for widget in self:
-            self.removeWidget(widget)
+    def getMetanames(self):
+        return self.meta.keys()
 
+    def metaname(self,index):
+        return list(self.meta.keys())[index]
+
+    def clear(self):
+        while self.count()>0:
+            self.removeIndex(0)
+
+
+class ImageWidget(pg.GraphicsLayoutWidget):
+    def __init__(self, path, parent=None):
+        super(ImageWidget, self).__init__(parent=parent)
+        self.viewbox = self.addViewBox(row=1, col=1)
+        self.img_item = pg.ImageItem()
+        self.viewbox.addItem(self.img_item)
+        self.viewbox.setAspectLocked(True)
+
+        img = np.array(Image.open(path))
+        self.img_item.setImage(img, levels=(0, 255))
 
 HeaderLabel = LabelMaker(family='Helvetica',size=28,bold=True)
 SubheaderLabel = LabelMaker(family='Helvetica',size=18)
