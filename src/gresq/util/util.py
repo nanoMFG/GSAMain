@@ -1,4 +1,6 @@
 import os
+import numpy as np
+from PIL import Image
 from PyQt5 import QtGui, QtCore, QtWidgets
 import pandas as pd
 import copy
@@ -14,6 +16,7 @@ import logging
 from sqlalchemy import String, Integer, Float, Numeric, Date
 from collections.abc import Sequence
 from collections import OrderedDict, deque
+import pyqtgraph as pg
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +130,41 @@ class LabelMaker:
         return label
 
 
+class SpacerMaker:
+    def __init__(self,vexpand=True,hexpand=True,width=None,height=None):
+        if vexpand == True:
+            self.vexpand = QtGui.QSizePolicy.Ignored
+        else:
+            self.vexpand = QtGui.QSizePolicy.Preferred
+
+        if hexpand == True:
+            self.hexpand = QtGui.QSizePolicy.Ignored
+        else:
+            self.hexpand = QtGui.QSizePolicy.Preferred
+
+        self.width = width
+        self.height = height
+
+
+    def __call__(self):
+        if isinstance(self.width,int):
+            width = self.width
+        else:
+            width = BasicLabel().sizeHint().width()
+        if isinstance(self.height,int):
+            height = self.height
+        else:
+            height = BasicLabel().sizeHint().height()
+
+        spacer = QtGui.QSpacerItem(
+            width,
+            height,
+            vPolicy=self.vexpand,
+            hPolicy=self.hexpand
+        )
+
+        return spacer
+
 class DownloadThread(QtCore.QThread):
     """
     Threading class for downloading files. Can be used to download files in parallel.
@@ -197,7 +235,8 @@ class DownloadPool:
     def maxThreadCount(self):
         return self.max_thread_count
 
-    def addThread(self,runner):
+    def addRunner(self,runner):
+        assert isinstance(runner,DownloadRunner)
         # 'terminated' signal tells all runners to prevent DownloadThread 'finished' signal from emitting
         self.terminated.connect(runner.interrupt)
 
@@ -220,6 +259,7 @@ class DownloadPool:
     def run(self):
         while len(self.running) < self.max_thread_count and len(self.queue) > 0:
             self.runNext()
+        self.started.emit()
 
     def terminate(self):
         self.terminated.emit()
@@ -475,10 +515,11 @@ class GStackedMeta(type(QtWidgets.QStackedWidget),type(Sequence)):
 
 class GStackedWidget(QtWidgets.QStackedWidget,Sequence,metaclass=GStackedMeta):
     widgetAdded = QtCore.pyqtSignal(str)
-    def __init__(self,parent=None):
+    def __init__(self,border=False,parent=None):
         QtWidgets.QStackedWidget.__init__(self,parent=parent)
         self.meta = OrderedDict()
-
+        if border == True:
+            self.setFrameStyle(QtGui.QFrame.StyledPanel)
         self.widgetRemoved.connect(lambda i: self.meta.pop(list(self.meta.keys())[i]))
         self.widgetAdded.connect(lambda s: self.meta.update({s:{}}))
 
@@ -552,10 +593,16 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         self.img_item = pg.ImageItem()
         self.viewbox.addItem(self.img_item)
         self.viewbox.setAspectLocked(True)
+        self.viewbox.setMouseEnabled(False,False)
 
         img = np.array(Image.open(path))
         self.img_item.setImage(img, levels=(0, 255))
 
+        self.viewbox.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Minimum)
+        self.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Minimum)
+
 HeaderLabel = LabelMaker(family='Helvetica',size=28,bold=True)
 SubheaderLabel = LabelMaker(family='Helvetica',size=18)
 BasicLabel = LabelMaker()
+
+MaxSpacer = SpacerMaker()

@@ -4,7 +4,7 @@ import cv2, sys, time, json, copy, subprocess, os
 from PyQt5 import QtGui, QtCore
 import uuid
 from gresq.util.box_adaptor import BoxAdaptor
-from gresq.util.util import BasicLabel, HeaderLabel, SubheaderLabel, sql_validator, ConfigParams
+from gresq.util.util import BasicLabel, HeaderLabel, SubheaderLabel, sql_validator, ConfigParams, GStackedWidget, ImageWidget, MaxSpacer
 from gresq.database import dal, Base
 from gresq import __version__ as GRESQ_VERSION
 from gsaraman import __version__ as GSARAMAN_VERSION
@@ -843,6 +843,20 @@ class PreparationTab(QtGui.QWidget):
         # Stop preparing recipe and go to oscm widget (not sure if this work!!!)
         self.oscm_signal.emit()
 
+class RamanFileWidget(QtGui.QWidget):
+    def __init__(self,parent=None):
+        super(RamanFileWidget,self).__init__(parent=parent)
+        self.layout = QtGui.QGridLayout(self)
+        self.layout.setAlignment(QtCore.Qt.AlignTop)
+
+        self.characteristic = QtGui.QLineEdit()
+        self.characteristic.setValidator(QtGui.QDoubleValidator(0.0, 100.0, 2))
+
+        self.layout.addWidget(BasicLabel("Characteristic Percentage:",tooltip="Percent of sample this spectrum represents."),0,0)
+        self.layout.addWidget(self.characteristic,0,1)
+
+    def percent(self):
+        return float("0"+self.characteristic.text())
 
 class FileUploadTab(QtGui.QWidget):
     """
@@ -856,52 +870,54 @@ class FileUploadTab(QtGui.QWidget):
         self.layout = QtGui.QGridLayout(self)
         self.layout.setAlignment(QtCore.Qt.AlignTop)
         self.mode = mode
-        self.sem_file_path = ""
 
-        self.raman_list = QtGui.QListWidget()
-        self.sem_list = QtGui.QListWidget()
-        self.stackedRamanFormWidget = QtGui.QStackedWidget()
-        self.stackedRamanFormWidget.setFrameStyle(QtGui.QFrame.StyledPanel)
-        self.stackedImages = QtGui.QStackedWidget()
-        self.stackedSpectra = QtGui.QStackedWidget()
+        self.images = GStackedWidget(border=True)
+        self.images.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Minimum)
+        self.spectra = GStackedWidget(border=True)
+        self.spectra.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Minimum)
+        self.raman_list = self.spectra.createListWidget()
+        self.sem_list = self.images.createListWidget()
 
-        self.upload_sem = QtGui.QPushButton("Upload SEM Image")
-        self.upload_raman = QtGui.QPushButton("Upload Raman Spectroscopy")
-        self.remove_sem = QtGui.QPushButton("Remove SEM Image")
-        self.remove_raman = QtGui.QPushButton("Remove Raman Spectroscopy")
+        self.upload_sem = QtGui.QPushButton("Import")
+        self.upload_raman = QtGui.QPushButton("Import")
+        self.remove_sem = QtGui.QPushButton("Remove")
+        self.remove_raman = QtGui.QPushButton("Remove")
         self.clearButton = QtGui.QPushButton("Clear Fields")
         self.wavelength_input = FieldsFormWidget(fields=["wavelength"], model=RamanFile)
 
         self.nextButton = QtGui.QPushButton("Next >>>")
-        spacer = QtGui.QSpacerItem(
-            self.nextButton.sizeHint().width(),
-            self.nextButton.sizeHint().height(),
-            vPolicy=QtGui.QSizePolicy.Expanding,
-        )
 
-        self.layout.addWidget(self.upload_sem, 0, 0, 1, 1)
-        self.layout.addWidget(self.remove_sem, 1, 0, 1, 1)
-        self.layout.addWidget(self.sem_list, 0, 1, 3, 1)
-        self.layout.addWidget(self.upload_raman, 3, 0, 1, 1)
-        self.layout.addWidget(self.wavelength_input, 4, 0, 1, 1)
-        self.layout.addWidget(
-            BasicLabel("Characteristic Percentage (%):"), 5, 0, 1, 1
-        )
-        self.layout.addWidget(self.stackedRamanFormWidget, 6, 0, 1, 1)
-        self.layout.addWidget(self.remove_raman, 7, 0, 1, 1)
-        self.layout.addWidget(self.raman_list, 3, 1, 5, 1)
-        self.layout.addItem(spacer, 9, 0, 1, 2)
-        self.layout.addWidget(self.clearButton, 8, 0, 1, 2)
-        self.layout.addWidget(self.nextButton, 10, 0, 1, 2)
+        
+        sem_layout = QtGui.QGridLayout()
+        sem_layout.setAlignment(QtCore.Qt.AlignTop)
+        sem_layout.addWidget(HeaderLabel("Upload SEM"),0,0,1,2)
+        sem_layout.addWidget(self.sem_list,1,0,1,2)
+        sem_layout.addWidget(self.upload_sem,2,0,1,1)
+        sem_layout.addWidget(self.remove_sem,2,1,1,1)
+        sem_dummy = QtGui.QWidget()
+        sem_dummy.setLayout(sem_layout)
+        sem_dummy.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Preferred)
+
+        raman_layout = QtGui.QGridLayout()
+        raman_layout.setAlignment(QtCore.Qt.AlignTop)
+        raman_layout.addWidget(HeaderLabel("Upload Raman"),0,0,1,2)
+        raman_layout.addWidget(self.wavelength_input,1,0,1,2)
+        raman_layout.addWidget(self.raman_list,2,0,1,2)
+        raman_layout.addWidget(self.upload_raman,3,0,1,1)
+        raman_layout.addWidget(self.remove_raman,3,1,1,1)
+        raman_dummy = QtGui.QWidget()
+        raman_dummy.setLayout(raman_layout)
+        raman_dummy.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Preferred)
+
+        self.layout.addWidget(sem_dummy,0,0)
+        self.layout.addWidget(self.images,0,1)
+        self.layout.addWidget(raman_dummy,1,0)
+        self.layout.addWidget(self.spectra,1,1)
+        self.layout.addWidget(self.clearButton, 2, 0)
+        self.layout.addWidget(self.nextButton, 2, 1)
 
         self.upload_sem.clicked.connect(self.importSEM)
         self.upload_raman.clicked.connect(self.importRaman)
-        self.raman_list.currentRowChanged.connect(
-            self.stackedRamanFormWidget.setCurrentIndex
-        )
-        self.sem_list.currentRowChanged.connect(
-            self.stackedImages.setCurrentIndex
-        )
         self.remove_sem.clicked.connect(self.removeSEM)
         self.remove_raman.clicked.connect(self.removeRaman)
         self.clearButton.clicked.connect(self.clear)
@@ -910,56 +926,28 @@ class FileUploadTab(QtGui.QWidget):
         self.wavelength_input.setText(str(wavelength))
 
     def removeSEM(self):
-        x = self.sem_list.currentRow()
-        if x > -1:
-            self.sem_list.takeItem(x)
-            self.stackedImages.removeWidget(self.stackedImages.widget(x))
+        self.images.removeCurrentWidget()
 
     def removeRaman(self):
-        x = self.raman_list.currentRow()
-        if x > -1:
-            self.stackedRamanFormWidget.removeWidget(self.stackedRamanFormWidget.widget(x))
-            self.raman_list.takeItem(x)
+        self.spectra.removeCurrentWidget()
 
     def importSEM(self, file_path=None):
         if file_path:
-            self.sem_file_path = file_path
+            sem_file_path = file_path
         else:
-            self.sem_file_path = self.importFile()
-        if isinstance(self.sem_file_path, str):
-            self.sem_list.addItem(self.sem_file_path)
-            image = util.ImageWidget().loadImage(self.sem_file_path)
-            self.stackedImages.addWidget(image)
-
+            sem_file_path = self.importFile()
+        if isinstance(sem_file_path, str) and os.path.isfile(sem_file_path):
+            image = ImageWidget(sem_file_path)
+            self.images.addWidget(image,name=sem_file_path)
 
     def importRaman(self, file_path=None, pct=None):
         if file_path:
-            self.raman_file_path = file_path
+            raman_file_path = file_path
         else:
-            self.raman_file_path = self.importFile()
+            raman_file_path = self.importFile()
 
-        if isinstance(self.raman_file_path, str):
-            if self.stackedRamanFormWidget.count() > 0:
-                sm = sum(
-                    [
-                        float(self.stackedRamanFormWidget.widget(i).text())
-                        for i in range(self.stackedRamanFormWidget.count())
-                    ]
-                )
-            else:
-                sm = 0
-
-            self.raman_list.addItem(self.raman_file_path)
-            w = QtGui.QLineEdit()
-            w.setPlaceholderText("Input must be <= %s" % (100 - sm))
-            w.setValidator(QtGui.QDoubleValidator(0.0, 100.0 - sm, 2))
-            self.stackedRamanFormWidget.addWidget(w)
-            self.stackedRamanFormWidget.setCurrentIndex(
-                self.stackedRamanFormWidget.count() - 1
-            )
-
-            if pct:
-                w.setText(str(pct))
+        if isinstance(raman_file_path, str) and os.path.isfile(raman_file_path):
+            self.spectra.addWidget(RamanFileWidget(),name=raman_file_path)
 
     def importFile(self):
         if self.mode == "local":
@@ -976,7 +964,7 @@ class FileUploadTab(QtGui.QWidget):
         elif self.mode == "nanohub":
             try:
                 file_path = (
-                    subprocess.check_output("/apps/importfile/bin/", shell=True)
+                    subprocess.check_output("importfile", shell=True)
                     .strip()
                     .decode("utf-8")
                 )
@@ -1031,16 +1019,9 @@ class FileUploadTab(QtGui.QWidget):
             Raman Wavelength:           The wavelength of the Raman spectroscopy.
         """
         r = {
-            "SEM Image Files": [
-                self.sem_list.item(i).text() for i in range(self.sem_list.count())
-            ],
-            "Raman Files": [
-                self.raman_list.item(i).text() for i in range(self.raman_list.count())
-            ],
-            "Characteristic Percentage": [
-                self.stackedRamanFormWidget.widget(i).text()
-                for i in range(self.stackedRamanFormWidget.count())
-            ],
+            "SEM Image Files": list(self.images.getMetanames()),
+            "Raman Files": list(self.spectra.getMetanames()),
+            "Characteristic Percentage": [spec.percent() for spec in self.spectra],
             "Raman Wavelength": self.wavelength_input.getResponse()["wavelength"][
                 "value"
             ],
@@ -1048,12 +1029,8 @@ class FileUploadTab(QtGui.QWidget):
         return r
 
     def clear(self):
-        while self.raman_list.count() > 0:
-            self.raman_list.setCurrentRow(0)
-            self.removeRaman()
-        while self.sem_list.count() > 0:
-            self.sem_list.setCurrentRow(0)
-            self.removeSEM()
+        self.images.clear()
+        self.spectra.clear()
         self.wavelength_input.clear()
 
 
