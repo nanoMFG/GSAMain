@@ -13,7 +13,7 @@ from gresq.database.models import Sample
 import logging
 from sqlalchemy import String, Integer, Float, Numeric, Date
 from collections.abc import Sequence
-from collections import OrderedDict
+from collections import OrderedDict, deque
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +83,7 @@ class Label(QtWidgets.QLabel):
         Ensures mouse tracking is allowed for label and all parent widgets 
         so that tooltip can be displayed when mouse hovers over it.
         """
-        QtGui.QWidget.setMouseTracking(self, flag)
+        QtWidgets.QWidget.setMouseTracking(self, flag)
         def recursive(widget,flag):
             try:
                 if widget.mouseTracking() != flag:
@@ -96,7 +96,7 @@ class Label(QtWidgets.QLabel):
     def event(self,event):
         if event.type() == QtCore.QEvent.Leave:
             QtWidgets.QToolTip.hideText()
-        return QtGui.QLabel.event(self,event)
+        return QtWidgets.QLabel.event(self,event)
 
     def mouseMoveEvent(self,event):
         QtWidgets.QToolTip.showText(
@@ -144,7 +144,6 @@ class DownloadThread(QtCore.QThread):
         self.thread_id = thread_id
         self.info = info
         self.data = None
-        self.sendSignal = True
 
         self.finished.connect(self.signal())
 
@@ -155,12 +154,76 @@ class DownloadThread(QtCore.QThread):
         if self.sendSignal:
             self.downloadFinished.emit(self.data, self.thread_id, self.info)
 
-    def cancel(self):
-        self.sendSignal = False
-
     def run(self):
         r = requests.get(self.url)
         self.data = r.content
+
+class DownloadRunner(QtCore.QObject):
+    """
+    Allows for download interruption by intercepting and preventing signal. Does not actually terminate thread.
+    """
+    finished = QtCore.pyqtSignal([],[object, int, object])
+    terminated = QtCore.pyqtSignal()
+    def __init__(self,url, thread_id, info={}):
+        self.thread = DownloadThread(url,thread_id,info)
+        self.interrupted = False
+
+        self.thread.finished.connect(self.sendSignal)
+
+    def sendSignal(self,*args):
+        if not self.interrupted:
+            self.finished[object, int, object].emit(*args)
+            self.finished.emit()
+
+    def interrupt(self):
+        self.interrupted = True
+        self.terminated.emit()
+
+    def start(self):
+        self.thread.start()
+
+class DownloadPool:
+    """
+    Thread pooler for handling download threads
+    """
+    started = QtCore.pyqtSignal()
+    finished = QtCore.pyqtSignal()
+    terminated = QtCore.pyqtSignal()
+    def __init__(self,max_thread_count=1):
+        self.max_thread_count = max_thread_count
+        self.queue = deque()
+        self.running = []
+
+    def maxThreadCount(self):
+        return self.max_thread_count
+
+    def addThread(self,runner):
+        # 'terminated' signal tells all runners to prevent DownloadThread 'finished' signal from emitting
+        self.terminated.connect(runner.interrupt)
+
+        self.queue.append(runner)
+
+    def runNext(self):
+        if len(self.queue) > 0 and len(self.running) <= self.max_thread_count:
+            runner = self.queue.popleft()
+
+            self.running.append(runner)
+            # When runner is interrupted or its DownloadThread finishes, thread is removed from pool
+            runner.terminated.connect(lambda: self.running.remove(runner) if runner in self.running else None)
+            runner.terminated.connect(lambda: self.queue.remove(runner) if runner in self.queue else None)
+            # When thread finishes, run next thread in queue
+            runner.finished.connect(self.runNext)
+            runner.start()
+        elif len(self.running) == 0:
+            self.finished.emit()
+
+    def run(self):
+        while len(self.running) < self.max_thread_count and len(self.queue) > 0:
+            self.runNext()
+
+    def terminate(self):
+        self.terminated.emit()
+
 
 
 class ItemsetsTableModel(QtCore.QAbstractTableModel):
@@ -347,8 +410,8 @@ def downloadAllImageMasks(session, directory):
 
 def errorCheck(success_text=None, error_text="Error!",logging=True,show_traceback=False):
     """
-    Decorator for class functions to catch errors and display success or error dialog boxes.
-    Checks is method is a bound method in order to properly handle parents for dialog box.
+    Decorator for class functions to catch errors and display a dialog box for a success or error.
+    Checks if method is a bound method in order to properly handle parents for dialog box.
 
     success_text:               (str) What header to show in the dialog box when there is no error. None displays no dialog box at all.
     error_text:                 (str) What header to show in the dialog box when there is an error.
@@ -365,12 +428,12 @@ def errorCheck(success_text=None, error_text="Error!",logging=True,show_tracebac
             try:
                 return func(*args, **kwargs)
                 if success_text:
-                    success_dialog = QtGui.QMessageBox(self)
+                    success_dialog = QtWidgets.QMessageBox(self)
                     success_dialog.setText(success_text)
                     success_dialog.setWindowModality(QtCore.Qt.WindowModal)
                     success_dialog.exec()
             except Exception as e:
-                error_dialog = QtGui.QMessageBox(self)
+                error_dialog = QtWidgets.QMessageBox(self)
                 error_dialog.setWindowModality(QtCore.Qt.WindowModal)
                 error_dialog.setText(error_text)
                 if logging:
@@ -384,7 +447,7 @@ def errorCheck(success_text=None, error_text="Error!",logging=True,show_tracebac
         return wrapper
     return decorator
 
-class ConfirmationBox(QtGui.QMessageBox):
+class ConfirmationBox(QtWidgets.QMessageBox):
     okSignal = QtCore.pyqtSignal()
     cancelSignal = QtCore.pyqtSignal()
     def __init__(self,question_text,informative_text=None,parent=None):
@@ -395,7 +458,7 @@ class ConfirmationBox(QtGui.QMessageBox):
         if informative_text:
             self.setInformativeText(informative_text)
         self.setStandardButtons(
-            QtGui.QMessageBox.Ok | QtGui.QMessageBox.Cancel
+            QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel
         )
         self.setWindowModality(QtCore.Qt.WindowModal)
 
@@ -407,17 +470,23 @@ class ConfirmationBox(QtGui.QMessageBox):
         else:
             self.cancelSignal.emit()    
 
-class GStackedWidget(Sequence,QtWidgets.QStackedWidget):
+class GStackedMeta(type(QtWidgets.QStackedWidget),type(Sequence)):
+    pass
+
+class GStackedWidget(QtWidgets.QStackedWidget,Sequence,metaclass=GStackedMeta):
     widgetAdded = QtCore.pyqtSignal(str)
     def __init__(self,parent=None):
         QtWidgets.QStackedWidget.__init__(self,parent=parent)
         self.meta = OrderedDict()
 
-        self.widgetRemoved.connect(lambda i: del self.meta[i])
-        self.widgetAdded.connect(lambda s: self.meta[s] = {})
+        self.widgetRemoved.connect(lambda i: self.meta.pop(list(self.meta.keys())[i]))
+        self.widgetAdded.connect(lambda s: self.meta.update({s:{}}))
 
     def __getitem__(self,key):
-        return self.widget(key)
+        if key < self.count():
+            return self.widget(key)
+        else:
+            raise IndexError("Index %s out of range for GStackedWidget with length %s"%(key,self.count()))
 
     def __len__(self):
         return self.count()
@@ -440,21 +509,27 @@ class GStackedWidget(Sequence,QtWidgets.QStackedWidget):
         
         if callable(focus_slot):
             self.currentChanged.connect(focus_slot)
-        else:
+        elif focus_slot is not None:
             raise TypeError("Parameter 'focus_slot' must be a callable function!")
 
         if not isinstance(name,str):
             name = "%s - %s"%(widget.__class__.__name__,self.count()-1)
         self.widgetAdded.emit(name)
 
+    def removeWidget(self,widget):
+        QtWidgets.QStackedWidget.removeWidget(self,widget)
+
+    def removeIndex(self,index):
+        QtWidgets.QStackedWidget.removeWidget(self,self.widget(index))        
+
     def changeNameByIndex(self,index,name):
         assert isinstance(index,int)
         assert isinstance(name,str)
         self.meta = OrderedDict([(name, item[1]) if i == index else item for i, item in enumerate(self.meta.items())])
 
-
-
-
+    def clear(self):
+        for widget in self:
+            self.removeWidget(widget)
 
 
 HeaderLabel = LabelMaker(family='Helvetica',size=28,bold=True)
