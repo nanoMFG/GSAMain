@@ -10,6 +10,7 @@ import requests
 import traceback
 import inspect
 import functools
+import json
 from gresq.database.models import Sample
 from gresq.util.util import errorCheck
 import logging
@@ -139,11 +140,26 @@ class DownloadPool(QtCore.QObject):
 
 
 class IO(QtWidgets.QWidget):
+	"""
+	Widget for handling import/export.
+
+	config:				(object ConfigParams) holds configuration for IO mode.
+	imptext:			(str, None) Text on import button. None removes import button.
+	exptext:			(str, None) Text on export button. None removes export button.
+	"""
     def __init__(self,config,imptext="Import",exptext="Export",parent=None):
         super(IO,self).__init__(parent=parent)
         self.config = config
-        self.import_button = QtWidgets.QPushButton(imptext)
-        self.export_button = QtWidgets.QPushButton(exptext)
+
+        self.layout = QtGui.QGridLayout(self)
+        self.layout.setAlignment(QtCore.Qt.AlignTop)
+
+        if isinstance(imptext,str):
+        	self.import_button = QtWidgets.QPushButton(imptext)
+        	self.layout.addWidget(self.import_button,0,0)
+        if isinstance(exptext,str):
+	        self.export_button = QtWidgets.QPushButton(exptext)
+	        self.layout.addWidget(self.export_button,0,1)
 
     @errorCheck(error_text="Error importing file!")
     def importFile(self):
@@ -164,8 +180,31 @@ class IO(QtWidgets.QWidget):
         else:
             return
 
+    def saveLocal(self,data,filename,ftype=None):
+    	with open(filename,'w') as f:
+    		if ftype == None:
+    			f.write(filename)
+    		elif ftype == 'json':
+    			json.dump(data,f)
+    		elif ftype == 'image':
+    			cv2.imwrite(data)
+    		else:
+    			raise ValueError("Parameter 'ftype' must be 'image', 'json' or 'None'!")
+    	return filename
+
     @errorCheck(error_text="Error exporting file!")
-    def exportFile(self,default_filename=None,extension=None):
+    def exportFile(self,data,default_filename=None,ftype='json',extension=None):
+    	if isinstance(extension,str) == False and extension is not None:
+    		raise ValueError("Parameter 'extension' must be of type 'str' or 'None'!")
+    	if ftype == 'image' and extension is None:
+    		raise ValueError("Parameter 'extension' cannot be 'None' if ftype is 'image'!")
+
+    	if ftype=='json':
+    		if extension is None:
+    			extension = 'json'
+    		elif extension != 'json' or extension != '.json':
+    			raise ValueError("Parameter 'ftype' is 'json' but parameter 'extension' is not 'None' or 'json'!")
+
         if isinstance(extension,str):
             extension = extension.strip('.')
         if isinstance(default_filename,str):
@@ -173,7 +212,7 @@ class IO(QtWidgets.QWidget):
         else:
             filename = 'untitled'
             if isinstance(extension,str):
-                filename = filename + ".%s"extension
+                filename = filename + ".%s"%extension
 
         directory = os.path.join(os.getcwd(),filename)
         if self.config.mode == 'local':
@@ -181,18 +220,16 @@ class IO(QtWidgets.QWidget):
                 filt = "File Type (*.%s)"%extension
             else:
                 filt = ''
-            name = QtWidgets.QFileDialog.getSaveFileName(None, 
+            filename = QtWidgets.QFileDialog.getSaveFileName(None, 
                 caption="Export Image", 
                 dir=directory,
                 filter=filt)[0]
-            if name != '':
-                with open(name,'w') as f:
-                    json.dump(self.recipe_model.json_encodable(),f)
+            if filename != '':
+            	self.saveLocal(data,filename,ftype)
         elif self.config.mode == 'nanohub':
-            with open(filename,'w') as f:
-                json.dump(self.recipe_model.json_encodable(),f)
+        	self.saveLocal(data,filename,ftype)
             subprocess.check_output('exportfile %s'%filename,shell=True)
-            os.remove(name)
+            os.remove(filename)
 
 def downloadAllImageMasks(session, directory):
     def saveTo(data, path):
