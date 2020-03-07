@@ -11,7 +11,8 @@ import requests
 import uuid
 import json
 from PIL import Image
-from gresq.util.util import ResultsTableModel, errorCheck, DownloadThread, BasicLabel, HeaderLabel, ConfigParams, sql_validator, operators
+from gresq.util.io import DownloadThread, DownloadPool, DownloadRunner
+from gresq.util.util import ConfigParams, sql_validator, operators, ResultsTableModel, errorCheck, BasicLabel, HeaderLabel
 from gresq.util.box_adaptor import BoxAdaptor
 from gresq.dashboard.stats import TSNEWidget, PlotWidget
 from gresq.database import dal, Base
@@ -877,6 +878,7 @@ class SEMDisplayTab(QtGui.QScrollArea):
         self.sem_info = QtGui.QStackedWidget()
         self.sample_id = None
         self.threads = []
+        self.threadpool = DownloadPool(2)
 
         self.setWidgetResizable(True)
         self.setWidget(self.contentWidget)
@@ -928,6 +930,8 @@ class SEMDisplayTab(QtGui.QScrollArea):
         self.progress_bar.setValue(
             100 * sum([t.isFinished() for t in self.threads]) / len(self.threads)
         )
+        # self.progress_bar.setValue(100 * self.threadpool.doneCount() / self.threadpool.count())
+        # pass
 
     def createSEMTabs(self, sem):
         sem_tabs = QtGui.QTabWidget()
@@ -940,31 +944,41 @@ class SEMDisplayTab(QtGui.QScrollArea):
 
         edit_tab = None
         admin_tab = None
-        if config.canValidate():
-            edit_tab = ImageEditor(
-                sem_id=sem.id, config=self.config
-            )
+        if self.config.canValidate():
+            edit_tab = ImageEditor(sem_id=sem.id, config=self.config)
             edit_tab.submitClicked.connect(lambda x,y,z: self.submitMask(x,y,z))
             admin_tab = SEMAdminTab(sem_id=sem.id, sample_id=self.sample_id)
 
             sem_tabs.addTab(edit_tab, "Mask Editor")
             sem_tabs.addTab(admin_tab, "Admin")
 
-        thread = DownloadThread(
-            url=sem.url, thread_id=sem.sample_id, info={"sem_id": sem.id}
-        )
-        thread.downloadFinished.connect(image_tab.loadImage)
-        thread.downloadFinished.connect(self.update_progress_bar)
-        if edit_tab:
-            thread.downloadFinished.connect(edit_tab.loadImage)
-        thread.start()
-        self.threads.append(thread)
+        # thread = DownloadThread(url=sem.url, thread_id=sem.sample_id, info={"sem_id": sem.id})
+        # thread.downloadFinished.connect(image_tab.loadImage)
+        # thread.downloadFinished.connect(self.update_progress_bar)
+        # if edit_tab:
+        #     thread.downloadFinished.connect(edit_tab.loadImage)
+        # thread.start()
+        # self.threads.append(thread)
+
+        # if sem.default_analysis:
+        #     thread = DownloadThread(url=sem.default_analysis.mask_url, thread_id=sem.id)
+        #     thread.downloadFinished.connect(mask_tab.loadImage)
+        #     thread.start()
+        #     self.threads.append(thread)
+
+        runner = DownloadRunner(url=sem.url, thread_id=sem.sample_id, info={"sem_id": sem.id})
+        runner.finished[object, int, object].connect(image_tab.loadImage)
+        runner.finished.connect(self.update_progress_bar)
+        if edit_tab is not None:
+            runner.finished[object, int, object].connect(edit_tab.loadImage)
+        self.threadpool.addRunner(runner)
 
         if sem.default_analysis:
-            thread = DownloadThread(url=sem.default_analysis.mask_url, thread_id=sem.id)
-            thread.downloadFinished.connect(mask_tab.loadImage)
-            thread.start()
-            self.threads.append(thread)
+            runner = DownloadRunner(url=sem.default_analysis.mask_url, thread_id=sem.id)
+            runner.finished[object, int, object].connect(mask_tab.loadImage)
+            self.threadpool.addRunner(runner)
+
+        self.threadpool.run()
 
         return sem_tabs
 
@@ -975,12 +989,11 @@ class SEMDisplayTab(QtGui.QScrollArea):
                 self.file_list.clear()
                 self.progress_bar.reset()
 
-                for w in [
-                    self.sem_info.widget(i) for i in range(self.sem_info.count())
-                ]:
-                    self.sem_info.removeWidget(w)
+                while self.sem_info.count()>0:
+                    self.sem_info.removeWidget(0)
 
                 self.threads = []
+                self.threadpool.terminate()
                 self.sample_id = sample_model.id
                 if len(sample_model.sem_files) > 0:
                     self.progress_bar.setValue(1)
