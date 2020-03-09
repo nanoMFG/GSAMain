@@ -74,7 +74,7 @@ class DownloadRunner(QtCore.QObject):
         self.terminated.emit()
 
     def start(self):
-        print('Runner [%s] started.'%thread.thread_id)
+        print('Runner [%s] started.'%self.thread.thread_id)
         self.thread.start()
 
 class DownloadPool(QtCore.QObject):
