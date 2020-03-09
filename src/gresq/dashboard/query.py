@@ -877,7 +877,6 @@ class SEMDisplayTab(QtGui.QScrollArea):
         self.file_list = QtGui.QListWidget()
         self.sem_info = QtGui.QStackedWidget()
         self.sample_id = None
-        self.threads = []
         self.threadpool = DownloadPool(2)
 
         self.setWidgetResizable(True)
@@ -927,11 +926,7 @@ class SEMDisplayTab(QtGui.QScrollArea):
             self.update(sample_model, force_refresh=True)
 
     def update_progress_bar(self, *args, **kwargs):
-        self.progress_bar.setValue(
-            100 * sum([t.isFinished() for t in self.threads]) / len(self.threads)
-        )
-        # self.progress_bar.setValue(100 * self.threadpool.doneCount() / self.threadpool.count())
-        # pass
+        self.progress_bar.setValue(100 * self.threadpool.doneCount() / self.threadpool.count())
 
     def createSEMTabs(self, sem):
         sem_tabs = QtGui.QTabWidget()
@@ -953,32 +948,16 @@ class SEMDisplayTab(QtGui.QScrollArea):
             sem_tabs.addTab(admin_tab, "Admin")
 
         thread = DownloadThread(url=sem.url, thread_id=sem.sample_id, info={"sem_id": sem.id})
-        thread.downloadFinished.connect(image_tab.loadImage)
-        thread.downloadFinished.connect(self.update_progress_bar)
-        if edit_tab:
-            thread.downloadFinished.connect(edit_tab.loadImage)
-        thread.start()
-        self.threads.append(thread)
+        runner = self.threadpool.addThread(thread)
+        runner.finished[object, int, object].connect(image_tab.loadImage)
+        runner.finished.connect(self.update_progress_bar)
+        if edit_tab is not None:
+            runner.finished[object, int, object].connect(edit_tab.loadImage)
 
         if sem.default_analysis:
             thread = DownloadThread(url=sem.default_analysis.mask_url, thread_id=sem.id)
-            thread.downloadFinished.connect(mask_tab.loadImage)
-            thread.start()
-            self.threads.append(thread)
-
-        # runner = DownloadRunner(url=sem.url, thread_id=sem.sample_id, info={"sem_id": sem.id})
-        # runner.finished[object, int, object].connect(image_tab.loadImage)
-        # runner.finished.connect(self.update_progress_bar)
-        # if edit_tab is not None:
-        #     runner.finished[object, int, object].connect(edit_tab.loadImage)
-        # self.threadpool.addRunner(runner)
-
-        # if sem.default_analysis:
-        #     runner = DownloadRunner(url=sem.default_analysis.mask_url, thread_id=sem.id)
-        #     runner.finished[object, int, object].connect(mask_tab.loadImage)
-        #     self.threadpool.addRunner(runner)
-
-        # self.threadpool.run()
+            runner = self.threadpool.addRunner(thread)
+            runner.finished[object, int, object].connect(mask_tab.loadImage)
 
         return sem_tabs
 
@@ -990,9 +969,8 @@ class SEMDisplayTab(QtGui.QScrollArea):
                 self.progress_bar.reset()
 
                 while self.sem_info.count()>0:
-                    self.sem_info.removeWidget(0)
+                    self.sem_info.removeWidget(self.sem_info.widget(0))
 
-                self.threads = []
                 self.threadpool.terminate()
                 self.sample_id = sample_model.id
                 if len(sample_model.sem_files) > 0:
@@ -1000,6 +978,7 @@ class SEMDisplayTab(QtGui.QScrollArea):
                     for sem in sample_model.sem_files:
                         self.file_list.addItem("SEM ID: %s" % sem.id)
                         self.sem_info.addWidget(self.createSEMTabs(sem))
+                    self.threadpool.run()
                 else:
                     self.progress_bar.setValue(100)
 

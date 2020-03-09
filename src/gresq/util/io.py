@@ -39,7 +39,7 @@ class DownloadThread(QtCore.QThread):
         self.info = info
         self.data = None
 
-        self.finished.connect(self.signal())
+        self.finished.connect(self.signal)
 
     def __del__(self):
         self.wait()
@@ -57,8 +57,9 @@ class DownloadRunner(QtCore.QObject):
     """
     finished = QtCore.pyqtSignal([],[object, int, object])
     terminated = QtCore.pyqtSignal()
-    def __init__(self,url,thread_id, info={}):
-        self.thread = DownloadThread(url,thread_id,info)
+    def __init__(self,thread,parent=None):
+        super(DownloadRunner,self).__init__(parent=parent)
+        self.thread = thread
         self.interrupted = False
 
         self.thread.downloadFinished.connect(self.sendSignal)
@@ -73,6 +74,7 @@ class DownloadRunner(QtCore.QObject):
         self.terminated.emit()
 
     def start(self):
+        print('Runner [%s] started.'%thread.thread_id)
         self.thread.start()
 
 class DownloadPool(QtCore.QObject):
@@ -91,6 +93,8 @@ class DownloadPool(QtCore.QObject):
         self.queue = deque()
         self.running = []
 
+        self.started.connect(lambda: print("Threads Started. Count: %s"%self.count()))
+
     def maxThreadCount(self):
         return self.max_thread_count
 
@@ -106,24 +110,28 @@ class DownloadPool(QtCore.QObject):
     def doneCount(self):
         return self.count() - self.runCount() - self.queueCount()
 
-    def addRunner(self,runner):
-        assert isinstance(runner,DownloadRunner)
+    def addThread(self,thread):
+        assert isinstance(thread,DownloadThread)
         # 'terminated' signal tells all runners to prevent DownloadThread 'finished' signal from emitting
+        runner = DownloadRunner(thread)
         self.terminated.connect(runner.interrupt)
+        # When runner is interrupted or its DownloadThread finishes, thread is removed from pool
+        runner.finished.connect(lambda: self.running.remove(runner) if runner in self.running else None)
+        runner.terminated.connect(lambda: self.queue.remove(runner) if runner in self.queue else None)
+        # When thread finishes, run next thread in queue
+        runner.finished.connect(self.runNext)
 
         self.queue.append(runner)
         self._count += 1
 
+        print("Thread added: %s (Count: %s)"%(runner.thread.thread_id,self.count()))
+
+        return runner
+
     def runNext(self):
         if len(self.queue) > 0 and len(self.running) <= self.max_thread_count:
             runner = self.queue.popleft()
-
             self.running.append(runner)
-            # When runner is interrupted or its DownloadThread finishes, thread is removed from pool
-            runner.terminated.connect(lambda: self.running.remove(runner) if runner in self.running else None)
-            runner.terminated.connect(lambda: self.queue.remove(runner) if runner in self.queue else None)
-            # When thread finishes, run next thread in queue
-            runner.finished.connect(self.runNext)
             runner.start()
         elif len(self.running) == 0:
             self.finished.emit()
@@ -134,6 +142,7 @@ class DownloadPool(QtCore.QObject):
             self.runNext()
 
     def terminate(self):
+        print("Thread pool termminated. (Queue: %s, Running: %s)"%(self.queueCount(),self.runCount()))
         self.terminated.emit()
         self._count = 0
 
