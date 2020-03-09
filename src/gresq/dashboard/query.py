@@ -154,13 +154,13 @@ class GSAQuery(QtGui.QWidget):
             write=privileges['write'],
             validate=privileges['validate'],
             test=test)
-        self.filters = []
-        self.filter_fields = QtGui.QStackedWidget()
+        self.filters = [] # list of filters to apply to query
+        self.filter_fields = QtGui.QStackedWidget() # display for filter inputs
         # self.filter_fields.setMaximumHeight(50)
         self.filter_fields.setSizePolicy(
             QtGui.QSizePolicy.Maximum, QtGui.QSizePolicy.Maximum
         )
-        self.filters_dict = {}
+        self.filters_dict = {} # dictionary of filter inputs
         for selection in selection_list.keys():
             for field in selection_list[selection]["fields"]:
                 widget = self.generate_field(
@@ -952,33 +952,33 @@ class SEMDisplayTab(QtGui.QScrollArea):
             sem_tabs.addTab(edit_tab, "Mask Editor")
             sem_tabs.addTab(admin_tab, "Admin")
 
-        # thread = DownloadThread(url=sem.url, thread_id=sem.sample_id, info={"sem_id": sem.id})
-        # thread.downloadFinished.connect(image_tab.loadImage)
-        # thread.downloadFinished.connect(self.update_progress_bar)
-        # if edit_tab:
-        #     thread.downloadFinished.connect(edit_tab.loadImage)
-        # thread.start()
-        # self.threads.append(thread)
-
-        # if sem.default_analysis:
-        #     thread = DownloadThread(url=sem.default_analysis.mask_url, thread_id=sem.id)
-        #     thread.downloadFinished.connect(mask_tab.loadImage)
-        #     thread.start()
-        #     self.threads.append(thread)
-
-        runner = DownloadRunner(url=sem.url, thread_id=sem.sample_id, info={"sem_id": sem.id})
-        runner.finished[object, int, object].connect(image_tab.loadImage)
-        runner.finished.connect(self.update_progress_bar)
-        if edit_tab is not None:
-            runner.finished[object, int, object].connect(edit_tab.loadImage)
-        self.threadpool.addRunner(runner)
+        thread = DownloadThread(url=sem.url, thread_id=sem.sample_id, info={"sem_id": sem.id})
+        thread.downloadFinished.connect(image_tab.loadImage)
+        thread.downloadFinished.connect(self.update_progress_bar)
+        if edit_tab:
+            thread.downloadFinished.connect(edit_tab.loadImage)
+        thread.start()
+        self.threads.append(thread)
 
         if sem.default_analysis:
-            runner = DownloadRunner(url=sem.default_analysis.mask_url, thread_id=sem.id)
-            runner.finished[object, int, object].connect(mask_tab.loadImage)
-            self.threadpool.addRunner(runner)
+            thread = DownloadThread(url=sem.default_analysis.mask_url, thread_id=sem.id)
+            thread.downloadFinished.connect(mask_tab.loadImage)
+            thread.start()
+            self.threads.append(thread)
 
-        self.threadpool.run()
+        # runner = DownloadRunner(url=sem.url, thread_id=sem.sample_id, info={"sem_id": sem.id})
+        # runner.finished[object, int, object].connect(image_tab.loadImage)
+        # runner.finished.connect(self.update_progress_bar)
+        # if edit_tab is not None:
+        #     runner.finished[object, int, object].connect(edit_tab.loadImage)
+        # self.threadpool.addRunner(runner)
+
+        # if sem.default_analysis:
+        #     runner = DownloadRunner(url=sem.default_analysis.mask_url, thread_id=sem.id)
+        #     runner.finished[object, int, object].connect(mask_tab.loadImage)
+        #     self.threadpool.addRunner(runner)
+
+        # self.threadpool.run()
 
         return sem_tabs
 

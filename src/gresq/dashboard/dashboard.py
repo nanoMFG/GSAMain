@@ -18,7 +18,6 @@ class GSADashboard(QtGui.QTabWidget):
     ):
         super(GSADashboard, self).__init__(parent=parent)
         self.query_tab = GSAQuery(privileges=privileges)
-        # self.image_tab = GSAImage(mode=mode).widget()
         self.submit_tab = GSASubmit(
             mode=mode, box_config_path=box_config_path, privileges=privileges
         )
@@ -28,7 +27,6 @@ class GSADashboard(QtGui.QTabWidget):
         )
 
         self.addTab(self.query_tab, "Query")
-        # self.addTab(self.image_tab, 'SEM Analysis')
         self.addTab(self.submit_tab, "Submit")
         self.addTab(self.oscm_tab, "OSCM")
 

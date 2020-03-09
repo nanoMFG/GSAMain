@@ -140,13 +140,13 @@ class DownloadPool(QtCore.QObject):
 
 
 class IO(QtWidgets.QWidget):
-	"""
-	Widget for handling import/export.
+    """
+    Widget for handling import/export.
 
-	config:				(object ConfigParams) holds configuration for IO mode.
-	imptext:			(str, None) Text on import button. None removes import button.
-	exptext:			(str, None) Text on export button. None removes export button.
-	"""
+    config:             (object ConfigParams) holds configuration for IO mode.
+    imptext:            (str, None) Text on import button. None removes import button.
+    exptext:            (str, None) Text on export button. None removes export button.
+    """
     def __init__(self,config,imptext="Import",exptext="Export",parent=None):
         super(IO,self).__init__(parent=parent)
         self.config = config
@@ -155,11 +155,11 @@ class IO(QtWidgets.QWidget):
         self.layout.setAlignment(QtCore.Qt.AlignTop)
 
         if isinstance(imptext,str):
-        	self.import_button = QtWidgets.QPushButton(imptext)
-        	self.layout.addWidget(self.import_button,0,0)
+            self.import_button = QtWidgets.QPushButton(imptext)
+            self.layout.addWidget(self.import_button,0,0)
         if isinstance(exptext,str):
-	        self.export_button = QtWidgets.QPushButton(exptext)
-	        self.layout.addWidget(self.export_button,0,1)
+            self.export_button = QtWidgets.QPushButton(exptext)
+            self.layout.addWidget(self.export_button,0,1)
 
     @errorCheck(error_text="Error importing file!")
     def importFile(self):
@@ -181,29 +181,29 @@ class IO(QtWidgets.QWidget):
             return
 
     def saveLocal(self,data,filename,ftype=None):
-    	with open(filename,'w') as f:
-    		if ftype == None:
-    			f.write(filename)
-    		elif ftype == 'json':
-    			json.dump(data,f)
-    		elif ftype == 'image':
-    			cv2.imwrite(data)
-    		else:
-    			raise ValueError("Parameter 'ftype' must be 'image', 'json' or 'None'!")
-    	return filename
+        with open(filename,'w') as f:
+            if ftype == None:
+                f.write(filename)
+            elif ftype == 'json':
+                json.dump(data,f)
+            elif ftype == 'image':
+                cv2.imwrite(data)
+            else:
+                raise ValueError("Parameter 'ftype' must be 'image', 'json' or 'None'!")
+        return filename
 
     @errorCheck(error_text="Error exporting file!")
     def exportFile(self,data,default_filename=None,ftype='json',extension=None):
-    	if isinstance(extension,str) == False and extension is not None:
-    		raise ValueError("Parameter 'extension' must be of type 'str' or 'None'!")
-    	if ftype == 'image' and extension is None:
-    		raise ValueError("Parameter 'extension' cannot be 'None' if ftype is 'image'!")
+        if isinstance(extension,str) == False and extension is not None:
+            raise ValueError("Parameter 'extension' must be of type 'str' or 'None'!")
+        if ftype == 'image' and extension is None:
+            raise ValueError("Parameter 'extension' cannot be 'None' if ftype is 'image'!")
 
-    	if ftype=='json':
-    		if extension is None:
-    			extension = 'json'
-    		elif extension != 'json' or extension != '.json':
-    			raise ValueError("Parameter 'ftype' is 'json' but parameter 'extension' is not 'None' or 'json'!")
+        if ftype=='json':
+            if extension is None:
+                extension = 'json'
+            elif extension != 'json' or extension != '.json':
+                raise ValueError("Parameter 'ftype' is 'json' but parameter 'extension' is not 'None' or 'json'!")
 
         if isinstance(extension,str):
             extension = extension.strip('.')
@@ -225,9 +225,9 @@ class IO(QtWidgets.QWidget):
                 dir=directory,
                 filter=filt)[0]
             if filename != '':
-            	self.saveLocal(data,filename,ftype)
+                self.saveLocal(data,filename,ftype)
         elif self.config.mode == 'nanohub':
-        	self.saveLocal(data,filename,ftype)
+            self.saveLocal(data,filename,ftype)
             subprocess.check_output('exportfile %s'%filename,shell=True)
             os.remove(filename)
 
