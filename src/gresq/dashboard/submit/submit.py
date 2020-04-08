@@ -88,29 +88,24 @@ def convertValue(value, field):
 class GSASubmit(QtGui.QTabWidget):
     """
     Main submission widget
-    mode:               Upload method (local or nanohub)
-    box_config_path:    Path to box configuration file
     """
 
     def __init__(
         self,
-        privileges={"read": True, "write": False, "validate": False},
-        mode="local",
-        parent=None,
-        box_config_path=None,
+        config,
+        parent=None
     ):
         super(GSASubmit, self).__init__(parent=parent)
-        self.mode = mode
-        self.privileges = privileges
-        self.properties = PropertiesTab()
-        self.preparation = PreparationTab()
-        self.provenance = ProvenanceTab()
-        self.file_upload = FileUploadTab(mode=self.mode)
-        self.review = ReviewTab(box_config_path=box_config_path, mode=self.mode)
+        self.config = config
+        self.properties = PropertiesTab(config=self.config)
+        self.preparation = PreparationTab(config=self.config)
+        self.provenance = ProvenanceTab(config=self.config)
+        self.file_upload = FileUploadTab(config=self.config)
+        self.review = ReviewTab(config=self.config)
 
         self.setTabPosition(QtGui.QTabWidget.South)
         self.addTab(self.preparation, "Preparation")
-        if self.privileges["write"]:
+        if self.config.canWrite():
             self.addTab(self.properties, "Properties")
             self.addTab(self.file_upload, "File Upload")
             self.addTab(self.provenance, "Provenance")
@@ -153,6 +148,9 @@ class GSASubmit(QtGui.QTabWidget):
             lambda: self.setCurrentWidget(self.provenance)
         )
 
+        if config.test:
+            self.test()
+
     def test(self):
         self.properties.testFill()
         self.provenance.testFill()
@@ -166,9 +164,9 @@ class FieldsFormWidget(QtGui.QScrollArea):
     allows users to select the appropriate unit as defined in the model. If the field is a String
     field and 'choices' is not in the model 'info' dictionary, a line edit is used instead of combo box.
 
-    fields: The fields from the model to generate the form. NOTE: fields must exist in the model!
-    model:  The model to base the form on. The model is used to determine data type of each field
-            and appropriate ancillary information found in the field's 'info' dictionary.
+    fields:         (list of str) The fields from the model to generate the form. NOTE: fields must exist in the model!
+    model:          (SQLAlchemy model) The model to base the form on. The model is used to determine data type of each field
+                    and appropriate ancillary information found in the field's 'info' dictionary.
     """
 
     def __init__(self, fields, model, parent=None):
@@ -269,6 +267,20 @@ class FieldsFormWidget(QtGui.QScrollArea):
 
         self.setWidgetResizable(True)
         self.setWidget(self.contentWidget)
+
+    def validate(self):
+        # Future implementations should use 'required' boolean field in info dict instead of a list.
+        states = []
+        for field in self.fields:
+            input_widget = self.input_widgets[field]
+            if isinstance(input_widget,QtGui.QLineEdit):
+                validator = input_widget.validator()
+                if validator != 0:
+                    val = validator.validate(input_widget.text(),0)[0]
+                    if val != QtGui.QValidator.Acceptable:
+                        states.append("Field '%s' of model '%s' has input with validation state '%s'."%(field,self.model.__class__.__name__,val))
+        return states
+
 
     def getModel(self):
         form_model = self.model()
@@ -388,10 +400,14 @@ class ProvenanceTab(QtGui.QWidget):
     Provenance information tab. Users input author information.
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, config, parent=None):
         super(ProvenanceTab, self).__init__(parent=parent)
+        self.config = config
         self.mainLayout = QtGui.QGridLayout(self)
         self.mainLayout.setAlignment(QtCore.Qt.AlignTop)
+
+        # self.authors = GStackedWidget(border=True)
+        # self.author_list = self.authors.createListWidget()
 
         self.stackedFormWidget = QtGui.QStackedWidget()
         self.stackedFormWidget.setFrameStyle(QtGui.QFrame.StyledPanel)
@@ -404,17 +420,17 @@ class ProvenanceTab(QtGui.QWidget):
         self.remove_author_btn = QtGui.QPushButton("Remove Author")
         self.nextButton = QtGui.QPushButton("Next >>>")
         self.clearButton = QtGui.QPushButton("Clear Fields")
-        spacer = QtGui.QSpacerItem(
-            self.nextButton.sizeHint().width(),
-            self.nextButton.sizeHint().height(),
-            vPolicy=QtGui.QSizePolicy.Expanding,
-        )
-        hspacer = QtGui.QSpacerItem(
-            self.nextButton.sizeHint().width(),
-            self.nextButton.sizeHint().height(),
-            vPolicy=QtGui.QSizePolicy.Expanding,
-            hPolicy=QtGui.QSizePolicy.Expanding,
-        )
+        # spacer = QtGui.QSpacerItem(
+        #     self.nextButton.sizeHint().width(),
+        #     self.nextButton.sizeHint().height(),
+        #     vPolicy=QtGui.QSizePolicy.Expanding,
+        # )
+        # hspacer = QtGui.QSpacerItem(
+        #     self.nextButton.sizeHint().width(),
+        #     self.nextButton.sizeHint().height(),
+        #     vPolicy=QtGui.QSizePolicy.Expanding,
+        #     hPolicy=QtGui.QSizePolicy.Expanding,
+        # )
 
         self.layout = QtGui.QGridLayout()
         self.layout.setAlignment(QtCore.Qt.AlignTop)
@@ -423,10 +439,10 @@ class ProvenanceTab(QtGui.QWidget):
         self.layout.addWidget(self.add_author_btn, 2, 0, 1, 1)
         self.layout.addWidget(self.remove_author_btn, 2, 1, 1, 1)
         self.layout.addWidget(self.author_list, 3, 0, 1, 2)
-        self.layout.addItem(spacer, 5, 0)
+        self.layout.addItem(MaxSpacer(), 5, 0)
         self.layout.addWidget(self.clearButton, 4, 0, 1, 2)
         self.mainLayout.addLayout(self.layout, 0, 0)
-        self.mainLayout.addItem(hspacer, 0, 1)
+        self.mainLayout.addItem(MaxSpacer(), 0, 1)
         self.mainLayout.addWidget(self.nextButton, 1, 0, 1, 2)
 
         self.add_author_btn.clicked.connect(self.addAuthor)
@@ -526,8 +542,9 @@ class PropertiesTab(QtGui.QWidget):
     Properties tab widget. Users input graphene properties and experimental parameters.
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, config, parent=None):
         super(PropertiesTab, self).__init__(parent=parent)
+        self.config = config
         self.mainLayout = QtGui.QGridLayout(self)
         self.mainLayout.setAlignment(QtCore.Qt.AlignTop)
 
@@ -585,8 +602,9 @@ class PreparationTab(QtGui.QWidget):
 
     oscm_signal = QtCore.pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, config, parent=None):
         super(PreparationTab, self).__init__(parent=parent)
+        self.config = config
         self.layout = QtGui.QGridLayout(self)
         self.layout.setAlignment(QtCore.Qt.AlignTop)
         self.layout.setAlignment(QtCore.Qt.AlignRight)
@@ -845,16 +863,20 @@ class PreparationTab(QtGui.QWidget):
         self.oscm_signal.emit()
 
 class RamanFileWidget(QtGui.QWidget):
-    def __init__(self,parent=None):
+    def __init__(self,file_path=None,parent=None):
         super(RamanFileWidget,self).__init__(parent=parent)
+        self.file_path = file_path
         self.layout = QtGui.QGridLayout(self)
         self.layout.setAlignment(QtCore.Qt.AlignTop)
 
         self.characteristic = QtGui.QLineEdit()
         self.characteristic.setValidator(QtGui.QDoubleValidator(0.0, 100.0, 2))
 
+        self.raman_display = QtGui.QWidget() # replace QtGui.QWidget() with raman display, should use file_path to load spectrum
+
         self.layout.addWidget(BasicLabel("Characteristic Percentage:",tooltip="Percent of sample this spectrum represents."),0,0)
         self.layout.addWidget(self.characteristic,0,1)
+        self.layout.addWidget(self.raman_display,1,0,1,2)
 
     def percent(self):
         return float("0"+self.characteristic.text())
@@ -866,11 +888,11 @@ class FileUploadTab(QtGui.QWidget):
     mode:   Upload method (local or nanohub)
     """
 
-    def __init__(self, parent=None, mode="local"):
+    def __init__(self, config, parent=None):
         super(FileUploadTab, self).__init__(parent=parent)
         self.layout = QtGui.QGridLayout(self)
         self.layout.setAlignment(QtCore.Qt.AlignTop)
-        self.mode = mode
+        self.config = config
 
         self.images = GStackedWidget(border=True)
         self.images.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Minimum)
@@ -948,10 +970,10 @@ class FileUploadTab(QtGui.QWidget):
             raman_file_path = self.importFile()
 
         if isinstance(raman_file_path, str) and os.path.isfile(raman_file_path):
-            self.spectra.addWidget(RamanFileWidget(),name=raman_file_path)
+            self.spectra.addWidget(RamanFileWidget(raman_file_path),name=raman_file_path) # RamanFileWidget claass should be modified to display spectrum
 
     def importFile(self):
-        if self.mode == "local":
+        if self.config.mode == "local":
             try:
                 file_path = QtGui.QFileDialog.getOpenFileName()
                 if isinstance(file_path, tuple):
@@ -962,7 +984,7 @@ class FileUploadTab(QtGui.QWidget):
             except Exception as e:
                 print(e)
                 return
-        elif self.mode == "nanohub":
+        elif self.config.mode == "nanohub":
             try:
                 file_path = (
                     subprocess.check_output("importfile", shell=True)
@@ -981,8 +1003,8 @@ class FileUploadTab(QtGui.QWidget):
             try:
                 sm = []
                 for i in files_response["Characteristic Percentage"]:
-                    if i != "":
-                        sm.append(float(i))
+                    if i.strip() != "":
+                        sm.append(float("0"+i))
                 sm = sum(sm)
             except:
                 return "Please make sure you have input a characteristic percentage for all Raman spectra."
@@ -1038,17 +1060,14 @@ class FileUploadTab(QtGui.QWidget):
 class ReviewTab(QtGui.QScrollArea):
     """
     Review tab widget. Allows users to look over input and submit. Validates data and then uploads to MDF.
-
-    box_config_path:    Path to box configuration file
     """
 
-    def __init__(self, parent=None, box_config_path=None, mode="local"):
+    def __init__(self, config, parent=None):
         super(ReviewTab, self).__init__(parent=parent)
+        self.config = config
         self.properties_response = None
         self.preparation_response = None
         self.files_response = None
-        self.box_config_path = box_config_path
-        self.mode = mode
         self.submitButton = QtGui.QPushButton("Submit")
 
     def zipdir(self, path, ziph):
@@ -1080,7 +1099,7 @@ class ReviewTab(QtGui.QScrollArea):
         json.dump(response_dict, dump_file)
         dump_file.close()
 
-        box_adaptor = BoxAdaptor(self.box_config_path)
+        box_adaptor = BoxAdaptor(self.config.box_config_path)
         upload_folder = box_adaptor.create_upload_folder()
 
         zip_path = mdf_path + ".zip"
@@ -1117,7 +1136,7 @@ class ReviewTab(QtGui.QScrollArea):
             )
 
     def upload_file(self, file_path, folder_name=None):
-        box_adaptor = BoxAdaptor(self.box_config_path)
+        box_adaptor = BoxAdaptor(self.config.box_config_path)
         upload_folder = box_adaptor.create_upload_folder(folder_name=folder_name)
         box_file = box_adaptor.upload_file(upload_folder, file_path, str(uuid.uuid4()))
 
@@ -1396,7 +1415,7 @@ class ReviewTab(QtGui.QScrollArea):
                 software_name=gresq_soft.name, software_version=gresq_soft.version
             )
 
-            if self.mode == "nanohub":
+            if self.config.mode == "nanohub":
                 s.nanohub_userid = os.getuid()
             for field, item in provenance_response["sample"].items():
                 value = item["value"]
@@ -1613,11 +1632,11 @@ class ReviewTab(QtGui.QScrollArea):
                         #   )
                         # dataset_id = self.upload_raman(response_dict,raman_dict,box_file,dataset_id)
                         session.commit()
-
-                        for ram in files_response["Raman Files"]:
-                            os.remove(ram)
-                        for sem in files_response["SEM Image Files"]:
-                            os.remove(sem)
+                        if config.mode == 'nanohub':
+                            for ram in files_response["Raman Files"]:
+                                os.remove(ram)
+                            for sem in files_response["SEM Image Files"]:
+                                os.remove(sem)
 
                         success_dialog = QtGui.QMessageBox(self)
                         success_dialog.setText("Recipe successfully submitted.")

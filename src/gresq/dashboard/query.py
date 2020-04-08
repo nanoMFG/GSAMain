@@ -132,28 +132,15 @@ def convertScripts(text):
 class GSAQuery(QtGui.QWidget):
     """
     Main query widget.
-
-    privileges:             (dict) Dictionary of access privileges. {"read": bool, "write":bool, "validate":bool}
-    box_config_path:        (str) Path to box configuration file.
-    mode:                   (str) Run mode ("local" or "nanohub"). Default: "local".
-    test:                   (bool) Test mode. Default: False.
     """
 
     def __init__(
-        self, privileges={"read": True, "write": False, "validate": False}, 
-        box_config_path = None,
-        mode = 'local',
-        test=False,
+        self, 
+        config,
         parent=None
     ):
         super(GSAQuery, self).__init__(parent=parent)
-        self.config = ConfigParams(
-            box_config_path=box_config_path,
-            mode=mode,
-            read=privileges['read'],
-            write=privileges['write'],
-            validate=privileges['validate'],
-            test=test)
+        self.config = config
         self.filters = [] # list of filters to apply to query
         self.filter_fields = QtGui.QStackedWidget() # display for filter inputs
         # self.filter_fields.setMaximumHeight(50)
@@ -1040,7 +1027,8 @@ class RamanDisplayTab(QtGui.QScrollArea):
 
     def loadSpectrum(self, data, thread_id, spectrum_model):
         raman_tabs = QtGui.QTabWidget()
-        spectrum_plot_tab = QtGui.QWidget()
+        spectrum_plot_tab = QtGui.QWidget() # Replace QtGui.QWidget() with raman display, should use data to load spectrum. 
+                                            # Note: may have to use io.BytesIO(data) to convert to bytes object to read from.
         spectrum_properties_tab = FieldsDisplayWidget(
             fields=spectrum_fields, model=RamanSpectrum
         )
