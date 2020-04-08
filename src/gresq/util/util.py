@@ -16,7 +16,7 @@ from sqlalchemy import String, Integer, Float, Numeric, Date
 from collections.abc import Sequence
 from collections import OrderedDict, deque
 import pyqtgraph as pg
-from gresq.util.gwidgets import LabelMaker, SpacerMaker
+from gresq.util.gwidgets import LabelMaker, SpacerMaker, BasicLabel, SubheaderLabel, HeaderLabel, MaxSpacer
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ def errorCheck(success_text=None, error_text="Error!",logging=True,show_tracebac
                 error_dialog.setText(error_text)
                 if logging:
                     logger.exception(traceback.format_exc())
-                elif show_traceback:
+                if show_traceback:
                     error_dialog.setInformativeText(traceback.format_exc())
                 else:
                     error_dialog.setInformativeText(str(e))
@@ -276,9 +276,3 @@ class ItemsetsTableModel(QtCore.QAbstractTableModel):
             ["Support", "# Features", "Feature Set"]
         ]
         self.endResetModel()
-
-HeaderLabel = LabelMaker(family='Helvetica',size=28,bold=True)
-SubheaderLabel = LabelMaker(family='Helvetica',size=18)
-BasicLabel = LabelMaker()
-
-MaxSpacer = SpacerMaker()

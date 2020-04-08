@@ -156,6 +156,8 @@ class IO(QtWidgets.QWidget):
     imptext:            (str, None) Text on import button. None removes import button.
     exptext:            (str, None) Text on export button. None removes export button.
     """
+    importClicked = QtCore.pyqtSignal(object)
+    exportClicked = QtCore.pyqtSignal()
     def __init__(self,config,imptext="Import",exptext="Export",parent=None):
         super(IO,self).__init__(parent=parent)
         self.config = config
@@ -171,23 +173,23 @@ class IO(QtWidgets.QWidget):
             self.layout.addWidget(self.export_button,0,1)
 
     @errorCheck(error_text="Error importing file!")
-    def importFile(self):
+    def importFile(self,extension=None):
         if self.config.mode == "local":
             file_path = QtGui.QFileDialog.getOpenFileName()
             if isinstance(file_path, tuple):
                 file_path = file_path[0]
             else:
-                return
-            return file_path
+                pass
+            self.importClicked.emit(file_path) 
         elif self.config.mode == "nanohub":
             file_path = (
                 subprocess.check_output("importfile", shell=True)
                 .strip()
                 .decode("utf-8")
             )
-            return file_path
+            self.importClicked.emit(file_path) 
         else:
-            return
+            pass
 
     def saveLocal(self,data,filename,ftype=None):
         with open(filename,'w') as f:
@@ -226,7 +228,7 @@ class IO(QtWidgets.QWidget):
         directory = os.path.join(os.getcwd(),filename)
         if self.config.mode == 'local':
             if isinstance(extension,str):
-                filt = "File Type (*.%s)"%extension
+                filt = "%s (*.%s)"%(extension.upper(),extension.lower())
             else:
                 filt = ''
             filename = QtWidgets.QFileDialog.getSaveFileName(None, 
@@ -235,10 +237,12 @@ class IO(QtWidgets.QWidget):
                 filter=filt)[0]
             if filename != '':
                 self.saveLocal(data,filename,ftype)
+                self.exportClicked.emit()
         elif self.config.mode == 'nanohub':
             self.saveLocal(data,filename,ftype)
             subprocess.check_output('exportfile %s'%filename,shell=True)
             os.remove(filename)
+            self.exportClicked.emit()
 
 def downloadAllImageMasks(session, directory):
     def saveTo(data, path):

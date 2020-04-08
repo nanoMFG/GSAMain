@@ -142,6 +142,21 @@ class GStackedMeta(type(QtWidgets.QStackedWidget),type(Sequence)):
     pass
 
 class GStackedWidget(QtWidgets.QStackedWidget,Sequence,metaclass=GStackedMeta):
+    """
+    A much better version of QStackedWidget. Has more functionality inclusing:
+
+        - widgetAdded signal
+        - meta dictionary that contains associated names and attributes for stacked widgets
+        - creates lists that are linked to GStackedWidget
+        - is indexable (i.e. w = stackedwidget[i] will get you the i'th widget)
+        - can make it autosignal a focus/update function
+        - existing functions have more flexibility
+
+    border:         (bool) Whether the widget should have a border.
+
+
+    widgetAdded signal emits the widget name (str).
+    """
     widgetAdded = QtCore.pyqtSignal(str)
     def __init__(self,border=False,parent=None):
         QtWidgets.QStackedWidget.__init__(self,parent=parent)
@@ -149,7 +164,6 @@ class GStackedWidget(QtWidgets.QStackedWidget,Sequence,metaclass=GStackedMeta):
         if border == True:
             self.setFrameStyle(QtGui.QFrame.StyledPanel)
         self.widgetRemoved.connect(lambda i: self.meta.pop(list(self.meta.keys())[i]))
-        self.widgetAdded.connect(lambda s: self.meta.update({s:{}}))
 
     def __getitem__(self,key):
         if key < self.count():
@@ -161,6 +175,11 @@ class GStackedWidget(QtWidgets.QStackedWidget,Sequence,metaclass=GStackedMeta):
         return self.count()
 
     def createListWidget(self):
+        """
+        Returns a a QListWidget that is linked to this GStackedWidget. Any widgets added will have
+        their metanames added to the list. If list row is changed, GStackedWidget switches to the
+        associated widget.
+        """
         list_widget = QtWidgets.QListWidget()
         for name in self.meta.keys():
             list_widget.addItem(name)
@@ -174,16 +193,29 @@ class GStackedWidget(QtWidgets.QStackedWidget,Sequence,metaclass=GStackedMeta):
         return list_widget
 
     def addWidget(self,widget,name=None,focus_slot=None,metadict=None):
+        """
+        Add a widget to the GStackedWidget.
+
+        widget:         (QWidget) Widget to be added.
+        name:           (str) Metaname for the widget. Used for labeling widgets and as a key in the metadict.
+        focus_slot:     (callable) Callable function to be signaled when widget selected.
+        metadict:       (dict) Dictionary to be associated with widget in meta. Accessed via GStackedWidget.meta[name].
+        """
         QtWidgets.QStackedWidget.addWidget(self,widget)
         
         if callable(focus_slot):
-            self.currentChanged.connect(focus_slot)
+            self.currentChanged.connect(lambda i: focus_slot() if self[i]==widget else None)
         elif focus_slot is not None:
             raise TypeError("Parameter 'focus_slot' must be a callable function!")
 
         if not isinstance(name,str):
             name = "%s - %s"%(widget.__class__.__name__,self.count()-1)
+
+        if name in self.getMetanames():
+            raise ValueError("Metaname %s already in GStackedWidget! Please choose another name."%name)
         self.widgetAdded.emit(name)
+
+        self.meta[name] = {}
         
         if metadict is not None:
             self.meta[name].update(metadict)
@@ -191,17 +223,17 @@ class GStackedWidget(QtWidgets.QStackedWidget,Sequence,metaclass=GStackedMeta):
         return self.count()-1
 
     def removeIndex(self,index):
+        """
+        Remove widget by index.
+
+        index:          (int) Index of widget.
+        """
         QtWidgets.QStackedWidget.removeWidget(self,self.widget(index))
 
     def removeCurrentWidget(self):
         widget = self.currentWidget()
         if widget != 0:
             QtWidgets.QStackedWidget.removeWidget(self,widget)
-
-    def changeNameByIndex(self,index,name):
-        assert isinstance(index,int)
-        assert isinstance(name,str)
-        self.meta = OrderedDict([(name, item[1]) if i == index else item for i, item in enumerate(self.meta.items())])
 
     def getMetanames(self):
         return self.meta.keys()
@@ -210,23 +242,48 @@ class GStackedWidget(QtWidgets.QStackedWidget,Sequence,metaclass=GStackedMeta):
         return list(self.meta.keys())[index]
 
     def index(self,key):
-    	return list(self.meta.keys()).index(key)
+        """
+        Index of widget name.
+        """
+        return list(self.meta.keys()).index(key)
 
     def clear(self):
         while self.count()>0:
             self.removeIndex(0)
 
+    def setCurrentIndex(self,key):
+        """
+        Set current widget by index or metaname.
+
+        key:            (str or int) Key is the index or the metaname of the widget.
+        """
+        if isinstance(key,int):
+            pass
+        elif isinstance(key,str):
+            key = self.index(key)
+        else:
+            raise ValueError("Parameter 'key' must be of type 'int' or 'str'. Found type '%s'."%type(key))
+        QtWidgets.QStackedWidget.setCurrentIndex(self,key)
+
     def widget(self,key):
-    	if isinstance(key,int):
-    		return QtWidgets.QStackedWidget.widget(self,key)
-    	elif isinstance(key,str):
-    		if key in self.meta.keys():
-    			key = self.index(key)
-    			return QtWidgets.QStackedWidget.widget(self,key)
-    		else:
-    			raise ValueError("Key '%s' not in metadict!"%key)
-    	else:
-    		raise ValueError("Key '%s' is type '%s'. Keys must be type 'int' or 'str'!"%(key,type(key)))
+        """
+        Get widget by index or metaname.
+
+        key:            (str or int) Key is the index or the metaname of the widget.
+        """
+        if isinstance(key,int):
+            widget = self[key]
+        elif isinstance(key,str):
+            if key in self.meta.keys():
+                key = self.index(key)
+                widget = self[key]
+            else:
+                raise ValueError("Key '%s' not in metadict!"%key)
+        elif isinstance(key,QtWidgets.QWidget):
+            widget = key
+        else:
+            raise ValueError("Key '%s' is type '%s'. Keys must be type 'int', 'str' or 'QWidget'!"%(key,type(key)))
+        return QtWidgets.QStackedWidget.widget(self,widget)
 
 
 class ImageWidget(pg.GraphicsLayoutWidget):
@@ -243,3 +300,9 @@ class ImageWidget(pg.GraphicsLayoutWidget):
 
         self.viewbox.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Minimum)
         self.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Minimum)
+
+HeaderLabel = LabelMaker(family='Helvetica',size=28,bold=True)
+SubheaderLabel = LabelMaker(family='Helvetica',size=18)
+BasicLabel = LabelMaker()
+
+MaxSpacer = SpacerMaker()

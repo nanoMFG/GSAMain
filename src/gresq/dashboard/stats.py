@@ -7,9 +7,7 @@ from sklearn.manifold import TSNE
 from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtGui import QColor
 from gresq.database import dal, Base
-from gresq.util.util import ItemsetsTableModel, ResultsTableModel
-
-label_font = QtGui.QFont("Helvetica", 16, QtGui.QFont.Bold)
+from gresq.util.util import ItemsetsTableModel, ResultsTableModel, BasicLabel, HeaderLabel, SubheaderLabel
 
 
 class PlotWidget(QtGui.QWidget):
@@ -378,11 +376,9 @@ class FeatureSelectionItem(QtGui.QWidget):
         self.go_button = QtGui.QPushButton("Go to Plot >>>")
         self.go_button.setEnabled(False)
 
-        itemsets_label = QtGui.QLabel("Frequent Feature Sets")
-        itemsets_label.setFont(label_font)
-        manual_label = QtGui.QLabel("Manual Feature Selection")
-        manual_label.setFont(label_font)
-        min_support_label = QtGui.QLabel("Minimum Support")
+        itemsets_label = SubheaderLabel("Frequent Feature Sets")
+        manual_label = SubheaderLabel("Manual Feature Selection")
+        min_support_label = BasicLabel("Minimum Support")
         min_support_label.setAlignment(QtCore.Qt.AlignRight)
 
         self.layout.addWidget(itemsets_label, 0, 0)
