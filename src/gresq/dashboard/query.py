@@ -346,7 +346,7 @@ class GSAQuery(QtGui.QWidget):
         else:
             self.results.query(filters + [or_(Sample.validated == True, Sample.nanohub_userid == os.getuid())])
         self.results.results_table.selectionModel().currentChanged.connect(
-            lambda x: self.preview.select(self.results.results_model, x)
+            lambda x: self.preview.select(self.results.results_model, x) if self.results.rowCount() > 0 else None
         )
 
 
@@ -520,6 +520,7 @@ class PreviewWidget(QtGui.QTabWidget):
             self.admin_tab = AdminDisplayTab(config=config)
             self.addTab(self.admin_tab, "Admin")
 
+    @errorCheck(error_text='Error selecting entry!')
     def select(self, model=None, index=None):
         """
         Select Sample model and update preview. Can use ResultsTableModel with corresponding index,
@@ -592,6 +593,9 @@ class ResultsWidget(QtGui.QTabWidget):
         self.tsne.tsneClicked.connect(
             lambda plot, points: self.plotClicked.emit(plot, points)
         )
+
+    def rowCount(self):
+        return self.results_table.rowCount()
 
     @errorCheck(error_text="Error querying database!")
     def query(self, filters):
