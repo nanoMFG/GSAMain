@@ -122,17 +122,20 @@ class ResultsTableModel(QtCore.QAbstractTableModel):
         super(ResultsTableModel, self).__init__(parent=parent)
         self.df = pd.DataFrame()
         self.header_mapper = None
+        self.column_mapper = None
 
     def copy(self, fields=None):
         model = ResultsTableModel()
         model.df = self.df.copy()
         model.header_mapper = copy.deepcopy(self.header_mapper)
+        model.column_mapper = copy.deepcopy(self.column_mapper)
 
         if fields:
             for col in model.df.columns:
                 if col not in fields:
                     model.df.drop(columns=col, inplace=True)
                     del model.header_mapper[col]
+                    del model.column_mapper[self.header_mapper[col]]
 
         return model
 
@@ -153,6 +156,7 @@ class ResultsTableModel(QtCore.QAbstractTableModel):
                         if info["std_unit"]:
                             value += " (%s)" % info["std_unit"]
                     self.header_mapper[column] = value
+                    self.column_mapper[value] = column
                     break
 
     def read_sqlalchemy(self, statement, session, models=None):
