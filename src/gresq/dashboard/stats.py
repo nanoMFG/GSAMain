@@ -187,7 +187,7 @@ class TSNEPlot(QtGui.QWidget):
         self.legend = pg.GradientWidget(orientation="right")
         self.legend.setMaximumWidth(50)
         self.legend.sigGradientChangeFinished.connect(self.colorChange)
-        print(self.legend.colorMap())
+        # print(self.legend.colorMap())
 
         self.layout.addWidget(QtGui.QLabel("Perplexity"), 0, 0, 1, 1)
         self.layout.addWidget(self.perplexity_edit, 0, 1, 1, 1)
@@ -205,9 +205,6 @@ class TSNEPlot(QtGui.QWidget):
 
         self.select_feature.activated[str].connect(self.setBrushes)
 
-        # 2,2
-        # 1, 2
-
     # def drawLegend(self):
     # 	qp = QtGui.QPainter(self)
     # 	color = QtGui.QColor(255, 0, 0)
@@ -215,7 +212,6 @@ class TSNEPlot(QtGui.QWidget):
 
     def colorChange(self):
         feature = self.select_feature.currentText()
-        print(self.legend.listTicks())
         if feature:
             self.setBrushes(feature)
 
@@ -233,10 +229,11 @@ class TSNEPlot(QtGui.QWidget):
         self.model = model
         self.select_feature.clear()
         self.select_feature.addItem("No Coloring")
-        self.select_feature.addItems(list(self.model.df.columns))
+        self.select_feature.addItems([self.model.headerData(head,orientation=QtCore.Qt.Horizontal) for head in list(self.model.df.columns)])
         self.tsne_plot.clear()
 
     def setBrushes(self, feature):
+        feature = self.model.column_mapper[feature]
         if feature in self.model.df.columns:
             brushes = []
             if is_numeric_dtype(self.model.df[feature]):
@@ -302,7 +299,7 @@ class TSNEPlot(QtGui.QWidget):
     def run(self, features):
         self.features = features
         self.tsne = TSNE(random_state=self.random_seed)
-        print(self.model.df.columns)
+        # print(self.model.df.columns)
         # TODO: self.nonnull_indexes is often undefined
 
         if not (pd.Series(self.features).isin(self.model.df.columns).all()):
@@ -322,7 +319,7 @@ class TSNEPlot(QtGui.QWidget):
             return
 
         tsne_input = self.model.df[self.features][self.nonnull_indexes]
-        # ids = self.model.df["id"][self.nonnull_indexes]
+        ids = self.model.df["id"][self.nonnull_indexes]
         if tsne_input.empty:
             self.showError("Input dataframe should not be empty.")
             return
@@ -341,7 +338,7 @@ class TSNEPlot(QtGui.QWidget):
         self.tsne_plot.setData(
             x=self.tsne.embedding_[:, 0],
             y=self.tsne.embedding_[:, 1],
-            # data=ids.tolist()
+            data=ids.tolist()
         )
         self.resetBounds()
 
