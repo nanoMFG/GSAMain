@@ -229,11 +229,21 @@ class TSNEPlot(QtGui.QWidget):
         self.model = model
         self.select_feature.clear()
         self.select_feature.addItem("No Coloring")
-        self.select_feature.addItems([self.model.headerData(head,orientation=QtCore.Qt.Horizontal) for head in list(self.model.df.columns)])
+        self.select_feature.addItems([
+            self.model.headerData(h,orientation=QtCore.Qt.Horizontal) for h in range(len(self.model.df.columns)) 
+            if self.model.headerData(h,orientation=QtCore.Qt.Horizontal)!='id'])
         self.tsne_plot.clear()
 
+    def getColumnName(self,feature):
+        mapper = self.model.header_mapper
+        for key,value in mapper.items():
+            if feature == value:
+                return key
+
+        return feature
+
     def setBrushes(self, feature):
-        feature = self.model.column_mapper[feature]
+        feature = self.getColumnName(feature)
         if feature in self.model.df.columns:
             brushes = []
             if is_numeric_dtype(self.model.df[feature]):
