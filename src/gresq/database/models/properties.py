@@ -31,6 +31,7 @@ class Properties(Base):
             "std_unit": "nm",
             "conversions": {"nm": 1},
             "required": False,
+            "tooltip": "Thickness of graphene present on the catalyst",
         },
     )
     standard_deviation_of_growth = Column(
@@ -43,7 +44,7 @@ class Properties(Base):
         },
     )
     number_of_layers = Column(
-        Integer, info={"verbose_name": "Number of Layers", "required": False}
+        Integer, info={"verbose_name": "Number of Layers", "required": False, "tooltip": "Number of layers of graphene present on the catalyst"}
     )
     growth_coverage = Column(
         Float,
@@ -52,6 +53,7 @@ class Properties(Base):
             "std_unit": "%",
             "conversions": {"%": 1},
             "required": False,
+            "tooltip": "Percentage of area covered by graphene, for a minimum area of 100 x 100 microns",
         },
     )
     domain_size = Column(
@@ -61,6 +63,7 @@ class Properties(Base):
             "std_unit": "um^2",
             "conversions": {"um^2": 1},
             "required": False,
+            "tooltip": "Average size of graphene domains on the sample",
         },
     )
     shape = Column(
@@ -69,6 +72,7 @@ class Properties(Base):
             "verbose_name": "Shape",
             "choices": ["Nondescript", "Hexagonal", "Square", "Circle"],
             "required": False,
+            "tooltip": "Shape of the graphene domains",
         },
     )
 

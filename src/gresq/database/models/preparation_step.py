@@ -71,6 +71,7 @@ class PreparationStep(Base):
             "std_unit": "mm",
             "conversions": {"inches": 25.4, "mm": 1},
             "required": False,
+            "tooltip": "Position of the sample in the tube",
         },
     )
     helium_flow_rate = Column(
