@@ -25,6 +25,7 @@ class Recipe(Base):
             "std_unit": "um",
             "conversions": {"um": 1,"mm":1.0e-3},
             "required": False,
+            "tooltip": "Sample thickness",
         },
     )
     diameter = Column(
@@ -34,6 +35,7 @@ class Recipe(Base):
             "std_unit": "um",
             "conversions": {"um": 1,"mm":1.0e-3},
             "required": False,
+            "tooltip": "Sample diameter",
         },
     )
     length = Column(
@@ -43,12 +45,13 @@ class Recipe(Base):
             "std_unit": "um",
             "conversions": {"um": 1,"mm":1.0e-3},
             "required": False,
+            "tooltip": "Sample length",
         },
     )
 
     # EXPERIMENTAL CONDITIONS:
     catalyst = Column(
-        String(64), info={"verbose_name": "Catalyst", "choices": [], "required": True,"tooltip":"Substrate catalyst."}
+        String(64), info={"verbose_name": "Catalyst", "choices": [], "required": True,"tooltip":"Select one from the list or add your own"}
     )
     tube_diameter = Column(
         Float(precision=32),
@@ -66,6 +69,7 @@ class Recipe(Base):
             "std_unit": "mm^2",
             "conversions": {"mm^2": 1, "inches^2": 25.4 ** 2},
             "required": False,
+            "tooltip": "Cross sectional area of the tube",
         },
     )
     tube_length = Column(
@@ -84,6 +88,7 @@ class Recipe(Base):
             "std_unit": "Torr",
             "conversions": {"Torr": 1, "Pa": 1 / 133.322, "mbar": 1 / 1.33322, 'mTorr': 1.0e-3},
             "required": True,
+            "tooltip": "Pressure inside the tube before starting the flow of gases",
         },
     )
     dewpoint = Column(
