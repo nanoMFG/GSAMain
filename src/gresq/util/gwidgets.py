@@ -267,23 +267,21 @@ class GStackedWidget(QtWidgets.QStackedWidget,Sequence,metaclass=GStackedMeta):
 
     def widget(self,key):
         """
-        Get widget by index or metaname.
+        Get widget by index or item label.
 
-        key:            (str or int) Key is the index or the metaname of the widget.
+        key:            (str or int) Key is the index or the item label of the widget.
         """
         if isinstance(key,int):
-            widget = self[key]
+            widget = super(GStackedWidget,self).widget(key)
         elif isinstance(key,str):
-            if key in self.meta.keys():
+            try:
                 key = self.index(key)
-                widget = self[key]
-            else:
-                raise ValueError("Key '%s' not in metadict!"%key)
-        elif isinstance(key,QtWidgets.QWidget):
-            widget = key
+                widget = super(GStackedWidget,self).widget(key)
+            except:
+                raise ValueError("Key '%s' not in model!"%key)
         else:
-            raise ValueError("Key '%s' is type '%s'. Keys must be type 'int', 'str' or 'QWidget'!"%(key,type(key)))
-        return QtWidgets.QStackedWidget.widget(self,widget)
+            raise ValueError("Key '%s' is type '%s'. Keys must be type 'int' or 'str'!"%(key,type(key)))
+        return widget
 
 
 class ImageWidget(pg.GraphicsLayoutWidget):

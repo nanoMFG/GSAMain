@@ -23,7 +23,7 @@ class Recipe(Base):
         info={
             "verbose_name": "Thickness",
             "std_unit": "um",
-            "conversions": {"um": 1},
+            "conversions": {"um": 1,"mm":1.0e-3},
             "required": False,
             "tooltip": "Sample thickness",
         },
@@ -33,7 +33,7 @@ class Recipe(Base):
         info={
             "verbose_name": "Diameter",
             "std_unit": "um",
-            "conversions": {"um": 1},
+            "conversions": {"um": 1,"mm":1.0e-3},
             "required": False,
             "tooltip": "Sample diameter",
         },
@@ -43,7 +43,7 @@ class Recipe(Base):
         info={
             "verbose_name": "Length",
             "std_unit": "um",
-            "conversions": {"um": 1},
+            "conversions": {"um": 1,"mm":1.0e-3},
             "required": False,
             "tooltip": "Sample length",
         },
@@ -86,7 +86,7 @@ class Recipe(Base):
         info={
             "verbose_name": "Base Pressure",
             "std_unit": "Torr",
-            "conversions": {"Torr": 1, "Pa": 1 / 133.322, "mbar": 1 / 1.33322},
+            "conversions": {"Torr": 1, "Pa": 1 / 133.322, "mbar": 1 / 1.33322, 'mTorr': 1.0e-3},
             "required": True,
             "tooltip": "Pressure inside the tube before starting the flow of gases",
         },

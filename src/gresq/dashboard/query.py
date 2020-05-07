@@ -185,7 +185,7 @@ class GSAQuery(QtGui.QWidget):
         header.setSectionResizeMode(0, QtGui.QHeaderView.Stretch)
         self.filter_table.setColumnWidth(1, 40)
         self.filter_table.setColumnWidth(2, 100)
-        self.filter_table.setColumnWidth(3, 25)
+        self.filter_table.setColumnWidth(3, 30)
         self.filter_table.setWordWrap(True)
         self.filter_table.verticalHeader().setVisible(False)
         self.filter_table.setSizePolicy(
@@ -595,7 +595,7 @@ class ResultsWidget(QtGui.QTabWidget):
         )
 
     def rowCount(self):
-        return self.results_table.rowCount()
+        return self.results_model.rowCount()
 
     @errorCheck(error_text="Error querying database!")
     def query(self, filters):
@@ -650,7 +650,8 @@ class ResultsWidget(QtGui.QTabWidget):
         )
         self.tsne.setModel(
             self.results_model,
-            fields=recipe_fields
+            fields=['id']
+            + recipe_fields
             + hybrid_recipe_fields
             + raman_fields
             + properties_fields,
