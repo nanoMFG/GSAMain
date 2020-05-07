@@ -872,7 +872,7 @@ class RamanFileWidget(QtGui.QWidget):
         self.characteristic = QtGui.QLineEdit()
         self.characteristic.setValidator(QtGui.QDoubleValidator(0.0, 100.0, 2))
 
-        self.raman_display = QtGui.QWidget() # replace QtGui.QWidget() with raman display, should use file_path to load spectrum
+        self.raman_display = RamanWidget(file_path) # replace QtGui.QWidget() with raman display, should use file_path to load spectrum
 
         self.layout.addWidget(BasicLabel("Characteristic Percentage:",tooltip="Percent of sample this spectrum represents."),0,0)
         self.layout.addWidget(self.characteristic,0,1)
