@@ -27,10 +27,12 @@ from gresq.database.models import (
 from sqlalchemy import String, Integer, Float, Numeric, Date
 from gresq.config import config
 from gresq.util.csv2db import build_db
-from gsaraman import GSARaman
+#from gsaraman import GSARaman
 from gresq.recipe import Recipe as RecipeMDF
 from gresq.util.mdf_adaptor import MDFAdaptor, MDFException
 from gresq.dashboard.query import convertScripts
+from gsaraman.raw_plotter import RamanWidget
+
 
 SOFTWARE_NAME = "gresq"
 
