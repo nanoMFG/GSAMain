@@ -171,14 +171,10 @@ class ResultsTableModel(QtCore.QAbstractTableModel):
             item = self.df[column]
             return item.iloc[row].values[0]
 
-    def rowCount(self, parent):
-        if parent.isValid():
-            return 0
+    def rowCount(self,parent):
         return self.df.shape[0]
 
-    def columnCount(self, parent):
-        if parent.isValid():
-            return 0
+    def columnCount(self,parent):
         return self.df.shape[1]
 
     def data(self, index, role=QtCore.Qt.DisplayRole):

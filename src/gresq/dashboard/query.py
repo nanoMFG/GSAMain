@@ -595,7 +595,7 @@ class ResultsWidget(QtGui.QTabWidget):
         )
 
     def rowCount(self):
-        return self.results_model.rowCount()
+        return self.results_model.rowCount(parent=None)
 
     @errorCheck(error_text="Error querying database!")
     def query(self, filters):
