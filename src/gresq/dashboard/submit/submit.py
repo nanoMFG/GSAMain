@@ -1031,7 +1031,7 @@ class FileUploadTab(QtGui.QWidget):
         response = self.getResponse()
         return [
             self.validate_percentages(response),
-            self.validate_raman_files(response),
+            #self.validate_raman_files(response),
         ]
 
     def getResponse(self):
