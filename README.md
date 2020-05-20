@@ -1,9 +1,13 @@
 <!--[![Build Status](https://travis-ci.com/nanoMFG/GSAMain.svg?token=N4nkhb241rGHotEqsu3q&branch=master)](https://travis-ci.com/nanoMFG/GSAMain) -->
 
 [![Dev Status](https://img.shields.io/endpoint?url=https://salty-headland-67572.herokuapp.com/badges/phase?repo=GSAMain)](https://img.shields.io/endpoint?url=https://salty-headland-67572.herokuapp.com/badges/phase?repo=GSAMain)
+### For Developers
 
-#### Current Software Planning Document(SPD)
-[gresq_SPD_1.1.0.md](https://github.com/nanoMFG/GSAMain/blob/planning_1.1.0/doc/SPD/gresq_SPD_1.1.0.md)
+#### Software Planning Documents
+
+ * [gresq_SPD_1.1.0.md](https://github.com/nanoMFG/GSAMain/blob/planning_1.1.0/doc/SPD/gresq_SPD_1.1.0.md) \*
+ * Draft SPD \*\* <br>
+
 
 # Graphene-Synthesis-Analysis
 
