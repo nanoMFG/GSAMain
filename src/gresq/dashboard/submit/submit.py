@@ -28,10 +28,11 @@ from sqlalchemy import String, Integer, Float, Numeric, Date
 from gresq.config import config
 from gresq.util.csv2db import build_db
 from gsaraman import GSARaman
+from gsaraman import auto_fitting
 from gresq.recipe import Recipe as RecipeMDF
 from gresq.util.mdf_adaptor import MDFAdaptor, MDFException
 from gresq.dashboard.query import convertScripts
-from gsaraman.raw_plotter import RamanWidget
+from gsaraman.raw_plotter import RamanSubmitWidget
 
 
 SOFTWARE_NAME = "gresq"
@@ -874,7 +875,7 @@ class RamanFileWidget(QtGui.QWidget):
         self.characteristic = QtGui.QLineEdit()
         self.characteristic.setValidator(QtGui.QDoubleValidator(0.0, 100.0, 2))
 
-        self.raman_display = RamanWidget(file_path) # replace QtGui.QWidget() with raman display, should use file_path to load spectrum
+        self.raman_display = RamanSubmitWidget(file_path) # replace QtGui.QWidget() with raman display, should use file_path to load spectrum
 
         self.layout.addWidget(BasicLabel("Characteristic Percentage:",tooltip="Percent of sample this spectrum represents."),0,0)
         self.layout.addWidget(self.characteristic,0,1)
@@ -1005,6 +1006,7 @@ class FileUploadTab(QtGui.QWidget):
             try:
                 sm = []
                 for i in files_response["Characteristic Percentage"]:
+                    i = str(i)
                     if i.strip() != "":
                         sm.append(float("0"+i))
                 sm = sum(sm)
@@ -1012,8 +1014,8 @@ class FileUploadTab(QtGui.QWidget):
                 return "Please make sure you have input a characteristic percentage for all Raman spectra."
             if sm != 100:
                 return (
-                    "Characteristic percentages must sum to 100%. They currently sum to %s."
-                    % sm
+                    "Characteristic percentages must sum to 100%%. They currently sum to %s."
+                    %(sm)
                 )
             return True
         else:
@@ -1022,7 +1024,7 @@ class FileUploadTab(QtGui.QWidget):
     def validate_raman_files(self, files_response):
         for ri, ram in enumerate(files_response["Raman Files"]):
             try:
-                params = GSARaman.auto_fitting(ram)
+                params = auto_fitting(ram)
             except:
                 return "File formatting issue with file: %s" % ram
         return True
@@ -1031,7 +1033,7 @@ class FileUploadTab(QtGui.QWidget):
         response = self.getResponse()
         return [
             self.validate_percentages(response),
-            #self.validate_raman_files(response),
+            self.validate_raman_files(response),
         ]
 
     def getResponse(self):
