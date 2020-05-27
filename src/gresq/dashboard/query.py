@@ -32,7 +32,7 @@ from gresq.config import config
 from gsaimage import ImageEditor
 import scipy
 from scipy import signal
-from gsaraman.raw_plotter import RamanWidget
+from gsaraman.raw_plotter import RamanQueryWidget
 
 """
 Each primary field will correspond to a SQLAlchemy model. Each of these are models
@@ -1033,7 +1033,11 @@ class RamanDisplayTab(QtGui.QScrollArea):
 
     def loadSpectrum(self, data, thread_id, spectrum_model):
         raman_tabs = QtGui.QTabWidget()
-        spectrum_plot_tab = RamanWidget(data) # Replace QtGui.QWidget() with raman display, should use data to load spectrum. 
+        byte_table = io.BytesIO()
+        byte_table.write((io.BytesIO(data)).getvalue())
+        byte_table.seek(0)
+        data_table = pd.read_table(byte_table, index_col=False, error_bad_lines=False, encoding='utf-8')
+        spectrum_plot_tab = RamanQueryWidget(data_table) # Replace QtGui.QWidget() with raman display, should use data to load spectrum. 
                                             # Note: may have to use io.BytesIO(data) to convert to bytes object to read from.
         spectrum_properties_tab = FieldsDisplayWidget(
             fields=spectrum_fields, model=RamanSpectrum
