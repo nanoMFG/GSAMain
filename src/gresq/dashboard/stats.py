@@ -7,6 +7,17 @@ from sklearn.manifold import TSNE
 from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtGui import QColor
 from gresq.database import dal, Base
+from gresq.database.models import (
+    Sample,
+    Recipe,
+    Properties,
+    Author,
+    PreparationStep,
+    RamanSet,
+    RamanSpectrum,
+    SemFile,
+    SemAnalysis,
+)
 from gresq.util.util import ItemsetsTableModel, ResultsTableModel, BasicLabel, HeaderLabel, SubheaderLabel
 
 
