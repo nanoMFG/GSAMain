@@ -1105,6 +1105,7 @@ class RecipeDisplayTab(QtGui.QScrollArea):
         self.recipe_model = None
 
         self.recipe_plot = pg.PlotWidget()
+        self.recipe_plot.setMenuEnabled(False)
         # self.recipe_plot.setMouseEnabled(x=True, y=False)
 
         self.layout.addWidget(self.recipe_plot, 0, 0, 1, 2)

@@ -36,6 +36,7 @@ class PlotWidget(QtGui.QWidget):
         self.yaxisbox = QtGui.QComboBox()
         self.zaxisbox = QtGui.QComboBox()
         self.plot_widget = pg.PlotWidget()
+        self.plot_widget.setMenuEnabled(False)
 
         # self.scatter_plot emits signal when point is clicked
         # How to catch signal?
