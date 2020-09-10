@@ -15,11 +15,12 @@
 
 ## Getting Started
 
-##### On nanoHUB
+The latest production version of this application is hosted **on nanoHUB** for public use:<br/>
 [https://nanohub.org/tools/gresq](https://nanohub.org/tools/gresq)
 
-<!-- These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. 
-See deployment for notes on how to deploy the project on a live system. -->
+### Installing Locally
+These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment notes (below) for info on how to deploy the project on nanoHUB.
+
 ##### Cloning From GitHub:
 The code in the repository uses submoded fro mthe GSAImage and GSARaman repos.  Be sure to use `--recurse-submodules` when cloning:
 ```
@@ -54,7 +55,7 @@ conda env create -f <srcdir>/.conda/env_gresq_[osx|linux]_3.6.yml
 conda activate env_gresq_[osx|linux]_3.6
 ```
 
-### Installing
+#### Installing
 <!--
 A step by step series of examples that tell you have to get a development env running
 
@@ -111,6 +112,47 @@ Give an example
 ## Deployment
 
 <!-- Add additional notes about how to deploy this on a live system -->
+
+Overview of deployment:
+1. Code changes accumulate in development.
+2. `devel` branch is tested on nanoHUB.
+3. Create a Release candidate.
+4. Carry out release procedure and database migration procedure (if neccasary).
+5. Install release on nanoHUB and approve changes.
+
+### Database Procedures
+
+* All testing should be done against `gresq_testing` or `gresq_development` NOT `gresq_production`.
+* Code changes should be tested against development database before deployment.
+
+#### Database Migration
+The database migration process for a particular release should always be tested on the development database before attempting to migrate the production DB. For changes that require a migration, this should happen during step 2. above.
+
+##### Part 1: Load Production snapshot to Development
+1. Drop all tables from development DB
+2. Dump production DB to a file.
+3. Create tables from updated models
+4. Load production data dump into development tables*
+5. Test devel code using 
+
+*Note: In some cases, the mirgration may require changes to the dumpped data in order to be compatable with the new schema.  This should be handled case by case.
+
+##### Part2: Migrate Production Database
+1. Shut down external access to DB (or perhaps maintain DB for old version temporarily)
+2. Approve code chnges for new nanoHUB version
+3. Dump production table to file.
+4. Drop all production database tables.
+5. Re-create tables from updated models.
+6. Load production data from dump.
+
+
+### Local Testing
+
+### Workspace Testing on nanoHUB
+* Load latest code to your nanoHUB workspace using git command line in the nanoHUB workspace.
+* Run the `middleware/invoke` script to launch the application into your workspace.  Note: **we need a way to ensurte these test invocations of the tool do not run against the production DB.**
+
+### Release Checklist
 
 ## Built With
 <!--

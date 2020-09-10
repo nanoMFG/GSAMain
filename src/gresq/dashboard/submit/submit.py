@@ -4,6 +4,8 @@ import cv2, sys, time, json, copy, subprocess, os
 from PyQt5 import QtGui, QtCore
 import uuid
 from gresq.util.box_adaptor import BoxAdaptor
+from gresq.util.gwidgets import GStackedWidget, ImageWidget
+from gresq.util.util import BasicLabel, HeaderLabel, SubheaderLabel, sql_validator, ConfigParams, MaxSpacer
 from gresq.database import dal, Base
 from gresq import __version__ as GRESQ_VERSION
 from gsaraman import __version__ as GSARAMAN_VERSION
@@ -26,9 +28,12 @@ from sqlalchemy import String, Integer, Float, Numeric, Date
 from gresq.config import config
 from gresq.util.csv2db import build_db
 from gsaraman import GSARaman
+from gsaraman import auto_fitting
 from gresq.recipe import Recipe as RecipeMDF
 from gresq.util.mdf_adaptor import MDFAdaptor, MDFException
 from gresq.dashboard.query import convertScripts
+from gsaraman.raw_plotter import RamanSubmitWidget
+
 
 SOFTWARE_NAME = "gresq"
 
@@ -72,13 +77,6 @@ properties_fields = [
 
 author_fields = ["first_name", "last_name", "institution"]
 
-sql_validator = {
-    "int": lambda x: isinstance(x.property.columns[0].type, Integer),
-    "float": lambda x: isinstance(x.property.columns[0].type, Float),
-    "str": lambda x: isinstance(x.property.columns[0].type, String),
-    "date": lambda x: isinstance(x.property.columns[0].type, Date),
-}
-
 
 def convertValue(value, field):
     if sql_validator["int"](field):
@@ -90,36 +88,27 @@ def convertValue(value, field):
     return value
 
 
-label_font = QtGui.QFont("Helvetica", 28, QtGui.QFont.Bold)
-sublabel_font = QtGui.QFont("Helvetica", 18)
-
-
 class GSASubmit(QtGui.QTabWidget):
     """
     Main submission widget
-    mode:               Upload method (local or nanohub)
-    box_config_path:    Path to box configuration file
     """
 
     def __init__(
         self,
-        privileges={"read": True, "write": False, "validate": False},
-        mode="local",
-        parent=None,
-        box_config_path=None,
+        config,
+        parent=None
     ):
         super(GSASubmit, self).__init__(parent=parent)
-        self.mode = mode
-        self.privileges = privileges
-        self.properties = PropertiesTab()
-        self.preparation = PreparationTab()
-        self.provenance = ProvenanceTab()
-        self.file_upload = FileUploadTab(mode=self.mode)
-        self.review = ReviewTab(box_config_path=box_config_path, mode=self.mode)
+        self.config = config
+        self.properties = PropertiesTab(config=self.config)
+        self.preparation = PreparationTab(config=self.config)
+        self.provenance = ProvenanceTab(config=self.config)
+        self.file_upload = FileUploadTab(config=self.config)
+        self.review = ReviewTab(config=self.config)
 
         self.setTabPosition(QtGui.QTabWidget.South)
         self.addTab(self.preparation, "Preparation")
-        if self.privileges["write"]:
+        if self.config.canWrite():
             self.addTab(self.properties, "Properties")
             self.addTab(self.file_upload, "File Upload")
             self.addTab(self.provenance, "Provenance")
@@ -162,6 +151,9 @@ class GSASubmit(QtGui.QTabWidget):
             lambda: self.setCurrentWidget(self.provenance)
         )
 
+        if config.test:
+            self.test()
+
     def test(self):
         self.properties.testFill()
         self.provenance.testFill()
@@ -175,9 +167,9 @@ class FieldsFormWidget(QtGui.QScrollArea):
     allows users to select the appropriate unit as defined in the model. If the field is a String
     field and 'choices' is not in the model 'info' dictionary, a line edit is used instead of combo box.
 
-    fields: The fields from the model to generate the form. NOTE: fields must exist in the model!
-    model:  The model to base the form on. The model is used to determine data type of each field
-            and appropriate ancillary information found in the field's 'info' dictionary.
+    fields:         (list of str) The fields from the model to generate the form. NOTE: fields must exist in the model!
+    model:          (SQLAlchemy model) The model to base the form on. The model is used to determine data type of each field
+                    and appropriate ancillary information found in the field's 'info' dictionary.
     """
 
     def __init__(self, fields, model, parent=None):
@@ -196,7 +188,8 @@ class FieldsFormWidget(QtGui.QScrollArea):
             row = f % 9
             col = f // 9
             info = getattr(model, field).info
-            self.layout.addWidget(QtGui.QLabel(info["verbose_name"]), row, 3 * col)
+            tooltip = info['tooltip'] if 'tooltip' in info.keys() else None
+            self.layout.addWidget(BasicLabel(info["verbose_name"],tooltip=tooltip), row, 3 * col)
             if sql_validator["str"](getattr(model, field)):
                 input_set = []
                 if "choices" in info.keys():
@@ -277,6 +270,20 @@ class FieldsFormWidget(QtGui.QScrollArea):
 
         self.setWidgetResizable(True)
         self.setWidget(self.contentWidget)
+
+    def validate(self):
+        # Future implementations should use 'required' boolean field in info dict instead of a list.
+        states = []
+        for field in self.fields:
+            input_widget = self.input_widgets[field]
+            if isinstance(input_widget,QtGui.QLineEdit):
+                validator = input_widget.validator()
+                if validator != 0:
+                    val = validator.validate(input_widget.text(),0)[0]
+                    if val != QtGui.QValidator.Acceptable:
+                        states.append("Field '%s' of model '%s' has input with validation state '%s'."%(field,self.model.__class__.__name__,val))
+        return states
+
 
     def getModel(self):
         form_model = self.model()
@@ -396,10 +403,14 @@ class ProvenanceTab(QtGui.QWidget):
     Provenance information tab. Users input author information.
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, config, parent=None):
         super(ProvenanceTab, self).__init__(parent=parent)
+        self.config = config
         self.mainLayout = QtGui.QGridLayout(self)
         self.mainLayout.setAlignment(QtCore.Qt.AlignTop)
+
+        # self.authors = GStackedWidget(border=True)
+        # self.author_list = self.authors.createListWidget()
 
         self.stackedFormWidget = QtGui.QStackedWidget()
         self.stackedFormWidget.setFrameStyle(QtGui.QFrame.StyledPanel)
@@ -412,17 +423,17 @@ class ProvenanceTab(QtGui.QWidget):
         self.remove_author_btn = QtGui.QPushButton("Remove Author")
         self.nextButton = QtGui.QPushButton("Next >>>")
         self.clearButton = QtGui.QPushButton("Clear Fields")
-        spacer = QtGui.QSpacerItem(
-            self.nextButton.sizeHint().width(),
-            self.nextButton.sizeHint().height(),
-            vPolicy=QtGui.QSizePolicy.Expanding,
-        )
-        hspacer = QtGui.QSpacerItem(
-            self.nextButton.sizeHint().width(),
-            self.nextButton.sizeHint().height(),
-            vPolicy=QtGui.QSizePolicy.Expanding,
-            hPolicy=QtGui.QSizePolicy.Expanding,
-        )
+        # spacer = QtGui.QSpacerItem(
+        #     self.nextButton.sizeHint().width(),
+        #     self.nextButton.sizeHint().height(),
+        #     vPolicy=QtGui.QSizePolicy.Expanding,
+        # )
+        # hspacer = QtGui.QSpacerItem(
+        #     self.nextButton.sizeHint().width(),
+        #     self.nextButton.sizeHint().height(),
+        #     vPolicy=QtGui.QSizePolicy.Expanding,
+        #     hPolicy=QtGui.QSizePolicy.Expanding,
+        # )
 
         self.layout = QtGui.QGridLayout()
         self.layout.setAlignment(QtCore.Qt.AlignTop)
@@ -431,10 +442,10 @@ class ProvenanceTab(QtGui.QWidget):
         self.layout.addWidget(self.add_author_btn, 2, 0, 1, 1)
         self.layout.addWidget(self.remove_author_btn, 2, 1, 1, 1)
         self.layout.addWidget(self.author_list, 3, 0, 1, 2)
-        self.layout.addItem(spacer, 5, 0)
+        self.layout.addItem(MaxSpacer(), 5, 0)
         self.layout.addWidget(self.clearButton, 4, 0, 1, 2)
         self.mainLayout.addLayout(self.layout, 0, 0)
-        self.mainLayout.addItem(hspacer, 0, 1)
+        self.mainLayout.addItem(MaxSpacer(), 0, 1)
         self.mainLayout.addWidget(self.nextButton, 1, 0, 1, 2)
 
         self.add_author_btn.clicked.connect(self.addAuthor)
@@ -534,8 +545,9 @@ class PropertiesTab(QtGui.QWidget):
     Properties tab widget. Users input graphene properties and experimental parameters.
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, config, parent=None):
         super(PropertiesTab, self).__init__(parent=parent)
+        self.config = config
         self.mainLayout = QtGui.QGridLayout(self)
         self.mainLayout.setAlignment(QtCore.Qt.AlignTop)
 
@@ -558,7 +570,7 @@ class PropertiesTab(QtGui.QWidget):
         self.layout.setAlignment(QtCore.Qt.AlignTop)
         self.layout.addWidget(self.properties_form, 0, 0)
         self.layout.addWidget(
-            QtGui.QLabel(
+            BasicLabel(
                 "NOTE:\nThis section optional. Please input any properties data you may have."
             ),
             2,
@@ -593,8 +605,9 @@ class PreparationTab(QtGui.QWidget):
 
     oscm_signal = QtCore.pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, config, parent=None):
         super(PreparationTab, self).__init__(parent=parent)
+        self.config = config
         self.layout = QtGui.QGridLayout(self)
         self.layout.setAlignment(QtCore.Qt.AlignTop)
         self.layout.setAlignment(QtCore.Qt.AlignRight)
@@ -852,6 +865,24 @@ class PreparationTab(QtGui.QWidget):
         # Stop preparing recipe and go to oscm widget (not sure if this work!!!)
         self.oscm_signal.emit()
 
+class RamanFileWidget(QtGui.QWidget):
+    def __init__(self,file_path=None,parent=None):
+        super(RamanFileWidget,self).__init__(parent=parent)
+        self.file_path = file_path
+        self.layout = QtGui.QGridLayout(self)
+        self.layout.setAlignment(QtCore.Qt.AlignTop)
+
+        self.characteristic = QtGui.QLineEdit()
+        self.characteristic.setValidator(QtGui.QDoubleValidator(0.0, 100.0, 2))
+
+        self.raman_display = RamanSubmitWidget(file_path) # replace QtGui.QWidget() with raman display, should use file_path to load spectrum
+
+        self.layout.addWidget(BasicLabel("Characteristic Percentage:",tooltip="Percent of sample this spectrum represents."),0,0)
+        self.layout.addWidget(self.characteristic,0,1)
+        self.layout.addWidget(self.raman_display,1,0,1,2)
+
+    def percent(self):
+        return float("0"+self.characteristic.text())
 
 class FileUploadTab(QtGui.QWidget):
     """
@@ -860,52 +891,59 @@ class FileUploadTab(QtGui.QWidget):
     mode:   Upload method (local or nanohub)
     """
 
-    def __init__(self, parent=None, mode="local"):
+    def __init__(self, config, parent=None):
         super(FileUploadTab, self).__init__(parent=parent)
         self.layout = QtGui.QGridLayout(self)
         self.layout.setAlignment(QtCore.Qt.AlignTop)
-        self.mode = mode
-        self.sem_file_path = ""
+        self.config = config
 
-        self.raman_list = QtGui.QListWidget()
-        self.sem_list = QtGui.QListWidget()
-        self.stackedRamanFormWidget = QtGui.QStackedWidget()
-        self.stackedRamanFormWidget.setFrameStyle(QtGui.QFrame.StyledPanel)
+        self.images = GStackedWidget(border=True)
+        self.images.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Minimum)
+        self.spectra = GStackedWidget(border=True)
+        self.spectra.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Minimum)
+        self.raman_list = self.spectra.createListWidget()
+        self.sem_list = self.images.createListWidget()
 
-        self.upload_sem = QtGui.QPushButton("Upload SEM Image")
-        self.upload_raman = QtGui.QPushButton("Upload Raman Spectroscopy")
-        self.remove_sem = QtGui.QPushButton("Remove SEM Image")
-        self.remove_raman = QtGui.QPushButton("Remove Raman Spectroscopy")
+        self.upload_sem = QtGui.QPushButton("Import")
+        self.upload_raman = QtGui.QPushButton("Import")
+        self.remove_sem = QtGui.QPushButton("Remove")
+        self.remove_raman = QtGui.QPushButton("Remove")
         self.clearButton = QtGui.QPushButton("Clear Fields")
         self.wavelength_input = FieldsFormWidget(fields=["wavelength"], model=RamanFile)
 
         self.nextButton = QtGui.QPushButton("Next >>>")
-        spacer = QtGui.QSpacerItem(
-            self.nextButton.sizeHint().width(),
-            self.nextButton.sizeHint().height(),
-            vPolicy=QtGui.QSizePolicy.Expanding,
-        )
 
-        self.layout.addWidget(self.upload_sem, 0, 0, 1, 1)
-        self.layout.addWidget(self.remove_sem, 1, 0, 1, 1)
-        self.layout.addWidget(self.sem_list, 0, 1, 3, 1)
-        self.layout.addWidget(self.upload_raman, 3, 0, 1, 1)
-        self.layout.addWidget(self.wavelength_input, 4, 0, 1, 1)
-        self.layout.addWidget(
-            QtGui.QLabel("Characteristic Percentage (%):"), 5, 0, 1, 1
-        )
-        self.layout.addWidget(self.stackedRamanFormWidget, 6, 0, 1, 1)
-        self.layout.addWidget(self.remove_raman, 7, 0, 1, 1)
-        self.layout.addWidget(self.raman_list, 3, 1, 5, 1)
-        self.layout.addItem(spacer, 9, 0, 1, 2)
-        self.layout.addWidget(self.clearButton, 8, 0, 1, 2)
-        self.layout.addWidget(self.nextButton, 10, 0, 1, 2)
+        
+        sem_layout = QtGui.QGridLayout()
+        sem_layout.setAlignment(QtCore.Qt.AlignTop)
+        sem_layout.addWidget(HeaderLabel("Upload SEM"),0,0,1,2)
+        sem_layout.addWidget(self.sem_list,1,0,1,2)
+        sem_layout.addWidget(self.upload_sem,2,0,1,1)
+        sem_layout.addWidget(self.remove_sem,2,1,1,1)
+        sem_dummy = QtGui.QWidget()
+        sem_dummy.setLayout(sem_layout)
+        sem_dummy.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Preferred)
+
+        raman_layout = QtGui.QGridLayout()
+        raman_layout.setAlignment(QtCore.Qt.AlignTop)
+        raman_layout.addWidget(HeaderLabel("Upload Raman"),0,0,1,2)
+        raman_layout.addWidget(self.wavelength_input,1,0,1,2)
+        raman_layout.addWidget(self.raman_list,2,0,1,2)
+        raman_layout.addWidget(self.upload_raman,3,0,1,1)
+        raman_layout.addWidget(self.remove_raman,3,1,1,1)
+        raman_dummy = QtGui.QWidget()
+        raman_dummy.setLayout(raman_layout)
+        raman_dummy.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Preferred)
+
+        self.layout.addWidget(sem_dummy,0,0)
+        self.layout.addWidget(self.images,0,1)
+        self.layout.addWidget(raman_dummy,1,0)
+        self.layout.addWidget(self.spectra,1,1)
+        self.layout.addWidget(self.clearButton, 2, 0)
+        self.layout.addWidget(self.nextButton, 2, 1)
 
         self.upload_sem.clicked.connect(self.importSEM)
         self.upload_raman.clicked.connect(self.importRaman)
-        self.raman_list.currentRowChanged.connect(
-            self.stackedRamanFormWidget.setCurrentIndex
-        )
         self.remove_sem.clicked.connect(self.removeSEM)
         self.remove_raman.clicked.connect(self.removeRaman)
         self.clearButton.clicked.connect(self.clear)
@@ -914,53 +952,31 @@ class FileUploadTab(QtGui.QWidget):
         self.wavelength_input.setText(str(wavelength))
 
     def removeSEM(self):
-        x = self.sem_list.currentRow()
-        self.sem_list.takeItem(x)
+        self.images.removeCurrentWidget()
 
     def removeRaman(self):
-        x = self.raman_list.currentRow()
-        self.stackedRamanFormWidget.removeWidget(self.stackedRamanFormWidget.widget(x))
-        self.raman_list.takeItem(x)
+        self.spectra.removeCurrentWidget()
 
     def importSEM(self, file_path=None):
         if file_path:
-            self.sem_file_path = file_path
+            sem_file_path = file_path
         else:
-            self.sem_file_path = self.importFile()
-        if isinstance(self.sem_file_path, str):
-            self.sem_list.addItem(self.sem_file_path)
+            sem_file_path = self.importFile()
+        if isinstance(sem_file_path, str) and os.path.isfile(sem_file_path):
+            image = ImageWidget(sem_file_path)
+            self.images.addWidget(image,name=sem_file_path)
 
     def importRaman(self, file_path=None, pct=None):
         if file_path:
-            self.raman_file_path = file_path
+            raman_file_path = file_path
         else:
-            self.raman_file_path = self.importFile()
+            raman_file_path = self.importFile()
 
-        if isinstance(self.raman_file_path, str):
-            if self.stackedRamanFormWidget.count() > 0:
-                sm = sum(
-                    [
-                        float(self.stackedRamanFormWidget.widget(i).text())
-                        for i in range(self.stackedRamanFormWidget.count())
-                    ]
-                )
-            else:
-                sm = 0
-
-            self.raman_list.addItem(self.raman_file_path)
-            w = QtGui.QLineEdit()
-            w.setPlaceholderText("Input must be <= %s" % (100 - sm))
-            w.setValidator(QtGui.QDoubleValidator(0.0, 100.0 - sm, 2))
-            self.stackedRamanFormWidget.addWidget(w)
-            self.stackedRamanFormWidget.setCurrentIndex(
-                self.stackedRamanFormWidget.count() - 1
-            )
-
-            if pct:
-                w.setText(str(pct))
+        if isinstance(raman_file_path, str) and os.path.isfile(raman_file_path):
+            self.spectra.addWidget(RamanFileWidget(raman_file_path),name=raman_file_path) # RamanFileWidget claass should be modified to display spectrum
 
     def importFile(self):
-        if self.mode == "local":
+        if self.config.mode == "local":
             try:
                 file_path = QtGui.QFileDialog.getOpenFileName()
                 if isinstance(file_path, tuple):
@@ -971,7 +987,7 @@ class FileUploadTab(QtGui.QWidget):
             except Exception as e:
                 print(e)
                 return
-        elif self.mode == "nanohub":
+        elif self.config.mode == "nanohub":
             try:
                 file_path = (
                     subprocess.check_output("importfile", shell=True)
@@ -990,15 +1006,16 @@ class FileUploadTab(QtGui.QWidget):
             try:
                 sm = []
                 for i in files_response["Characteristic Percentage"]:
-                    if i != "":
-                        sm.append(float(i))
+                    i = str(i)
+                    if i.strip() != "":
+                        sm.append(float("0"+i))
                 sm = sum(sm)
             except:
                 return "Please make sure you have input a characteristic percentage for all Raman spectra."
             if sm != 100:
                 return (
-                    "Characteristic percentages must sum to 100%. They currently sum to %s."
-                    % sm
+                    "Characteristic percentages must sum to 100%%. They currently sum to %s."
+                    %(sm)
                 )
             return True
         else:
@@ -1007,7 +1024,7 @@ class FileUploadTab(QtGui.QWidget):
     def validate_raman_files(self, files_response):
         for ri, ram in enumerate(files_response["Raman Files"]):
             try:
-                params = GSARaman.auto_fitting(ram)
+                params = auto_fitting(ram)
             except:
                 return "File formatting issue with file: %s" % ram
         return True
@@ -1029,16 +1046,9 @@ class FileUploadTab(QtGui.QWidget):
             Raman Wavelength:           The wavelength of the Raman spectroscopy.
         """
         r = {
-            "SEM Image Files": [
-                self.sem_list.item(i).text() for i in range(self.sem_list.count())
-            ],
-            "Raman Files": [
-                self.raman_list.item(i).text() for i in range(self.raman_list.count())
-            ],
-            "Characteristic Percentage": [
-                self.stackedRamanFormWidget.widget(i).text()
-                for i in range(self.stackedRamanFormWidget.count())
-            ],
+            "SEM Image Files": list(self.images.getMetanames()),
+            "Raman Files": list(self.spectra.getMetanames()),
+            "Characteristic Percentage": [spec.percent() for spec in self.spectra],
             "Raman Wavelength": self.wavelength_input.getResponse()["wavelength"][
                 "value"
             ],
@@ -1046,29 +1056,22 @@ class FileUploadTab(QtGui.QWidget):
         return r
 
     def clear(self):
-        while self.raman_list.count() > 0:
-            self.raman_list.setCurrentRow(0)
-            self.removeRaman()
-        while self.sem_list.count() > 0:
-            self.sem_list.setCurrentRow(0)
-            self.removeSEM()
+        self.images.clear()
+        self.spectra.clear()
         self.wavelength_input.clear()
 
 
 class ReviewTab(QtGui.QScrollArea):
     """
     Review tab widget. Allows users to look over input and submit. Validates data and then uploads to MDF.
-
-    box_config_path:    Path to box configuration file
     """
 
-    def __init__(self, parent=None, box_config_path=None, mode="local"):
+    def __init__(self, config, parent=None):
         super(ReviewTab, self).__init__(parent=parent)
+        self.config = config
         self.properties_response = None
         self.preparation_response = None
         self.files_response = None
-        self.box_config_path = box_config_path
-        self.mode = mode
         self.submitButton = QtGui.QPushButton("Submit")
 
     def zipdir(self, path, ziph):
@@ -1100,7 +1103,7 @@ class ReviewTab(QtGui.QScrollArea):
         json.dump(response_dict, dump_file)
         dump_file.close()
 
-        box_adaptor = BoxAdaptor(self.box_config_path)
+        box_adaptor = BoxAdaptor(self.config.box_config_path)
         upload_folder = box_adaptor.create_upload_folder()
 
         zip_path = mdf_path + ".zip"
@@ -1137,7 +1140,7 @@ class ReviewTab(QtGui.QScrollArea):
             )
 
     def upload_file(self, file_path, folder_name=None):
-        box_adaptor = BoxAdaptor(self.box_config_path)
+        box_adaptor = BoxAdaptor(self.config.box_config_path)
         upload_folder = box_adaptor.create_upload_folder(folder_name=folder_name)
         box_file = box_adaptor.upload_file(upload_folder, file_path, str(uuid.uuid4()))
 
@@ -1166,14 +1169,10 @@ class ReviewTab(QtGui.QScrollArea):
         self.layout = QtGui.QGridLayout(self.contentWidget)
         self.layout.setAlignment(QtCore.Qt.AlignTop)
 
-        propertiesLabel = QtGui.QLabel("Properties")
-        propertiesLabel.setFont(label_font)
-        preparationLabel = QtGui.QLabel("Recipe")
-        preparationLabel.setFont(label_font)
-        filesLabel = QtGui.QLabel("Files")
-        filesLabel.setFont(label_font)
-        authorsLabel = QtGui.QLabel("Authors")
-        authorsLabel.setFont(label_font)
+        propertiesLabel = HeaderLabel("Properties")
+        preparationLabel = HeaderLabel("Recipe")
+        filesLabel = HeaderLabel("Files")
+        authorsLabel = HeaderLabel("Authors")
 
         # Author response
         self.layout.addWidget(
@@ -1182,7 +1181,7 @@ class ReviewTab(QtGui.QScrollArea):
         for a, auth in enumerate(provenance_response["author"]):
             row = self.layout.rowCount()
             self.layout.addWidget(
-                QtGui.QLabel(
+                BasicLabel(
                     "%s, %s   [%s]"
                     % (
                         auth["last_name"]["value"],
@@ -1196,25 +1195,25 @@ class ReviewTab(QtGui.QScrollArea):
         self.layout.addWidget(
             propertiesLabel, self.layout.rowCount(), 0, QtCore.Qt.AlignLeft
         )
-        label = QtGui.QLabel()
+        label = BasicLabel()
         for field in properties_response.keys():
             info = getattr(Properties, field).info
             row = self.layout.rowCount()
             value = properties_response[field]["value"]
             unit = convertScripts(properties_response[field]["unit"])
 
-            label = QtGui.QLabel(info["verbose_name"])
+            label = BasicLabel(info["verbose_name"])
             self.layout.addWidget(
                 label, row, 0, QtCore.Qt.AlignLeft | QtCore.Qt.AlignCenter
             )
             self.layout.addWidget(
-                QtGui.QLabel(str(value)),
+                BasicLabel(str(value)),
                 row,
                 1,
                 QtCore.Qt.AlignRight | QtCore.Qt.AlignCenter,
             )
             self.layout.addWidget(
-                QtGui.QLabel(str(unit)),
+                BasicLabel(str(unit)),
                 row,
                 2,
                 QtCore.Qt.AlignLeft | QtCore.Qt.AlignCenter,
@@ -1248,18 +1247,18 @@ class ReviewTab(QtGui.QScrollArea):
             row = self.layout.rowCount()
             value = recipe_response[field]["value"]
             unit = convertScripts(recipe_response[field]["unit"])
-            label = QtGui.QLabel(info["verbose_name"])
+            label = BasicLabel(info["verbose_name"])
             self.layout.addWidget(
                 label, row, 0, QtCore.Qt.AlignLeft | QtCore.Qt.AlignCenter
             )
             self.layout.addWidget(
-                QtGui.QLabel(str(value)),
+                BasicLabel(str(value)),
                 row,
                 1,
                 QtCore.Qt.AlignRight | QtCore.Qt.AlignCenter,
             )
             self.layout.addWidget(
-                QtGui.QLabel(str(unit)),
+                BasicLabel(str(unit)),
                 row,
                 2,
                 QtCore.Qt.AlignLeft | QtCore.Qt.AlignCenter,
@@ -1275,14 +1274,13 @@ class ReviewTab(QtGui.QScrollArea):
             )
 
         self.layout.addWidget(
-            QtGui.QLabel("Preparation Steps:"),
+            BasicLabel("Preparation Steps:"),
             self.layout.rowCount(),
             0,
             QtCore.Qt.AlignLeft,
         )
         for step, step_response in enumerate(preparation_response["preparation_step"]):
-            stepLabel = QtGui.QLabel("Step %s" % step)
-            stepLabel.setFont(sublabel_font)
+            stepLabel = SubheaderLabel("Step %s" % step)
             self.layout.addWidget(
                 stepLabel, self.layout.rowCount(), 0, QtCore.Qt.AlignLeft
             )
@@ -1291,18 +1289,18 @@ class ReviewTab(QtGui.QScrollArea):
                 row = self.layout.rowCount()
                 value = step_response[field]["value"]
                 unit = convertScripts(step_response[field]["unit"])
-                label = QtGui.QLabel(info["verbose_name"])
+                label = BasicLabel(info["verbose_name"])
                 self.layout.addWidget(
                     label, row, 0, QtCore.Qt.AlignLeft | QtCore.Qt.AlignCenter
                 )
                 self.layout.addWidget(
-                    QtGui.QLabel(str(value)),
+                    BasicLabel(str(value)),
                     row,
                     1,
                     QtCore.Qt.AlignRight | QtCore.Qt.AlignCenter,
                 )
                 self.layout.addWidget(
-                    QtGui.QLabel(str(unit)),
+                    BasicLabel(str(unit)),
                     row,
                     2,
                     QtCore.Qt.AlignLeft | QtCore.Qt.AlignCenter,
@@ -1331,30 +1329,30 @@ class ReviewTab(QtGui.QScrollArea):
             filesLabel, self.layout.rowCount(), 0, QtCore.Qt.AlignLeft
         )
         self.layout.addWidget(
-            QtGui.QLabel("SEM Image Files:"), self.layout.rowCount(), 0
+            BasicLabel("SEM Image Files:"), self.layout.rowCount(), 0
         )
         for k in range(len(files_response["SEM Image Files"])):
             row = self.layout.rowCount()
             name = files_response["SEM Image Files"][k]
-            label = QtGui.QLabel("%s" % (name))
+            label = BasicLabel("%s" % (name))
             self.layout.addWidget(
                 label, row, 0, QtCore.Qt.AlignLeft | QtCore.Qt.AlignCenter
             )
 
         self.layout.addWidget(
-            QtGui.QLabel("Raman Wavelength"), self.layout.rowCount(), 0
+            BasicLabel("Raman Wavelength"), self.layout.rowCount(), 0
         )
         self.layout.addWidget(
-            QtGui.QLabel(files_response["Raman Wavelength"]), self.layout.rowCount(), 1
+            BasicLabel(files_response["Raman Wavelength"]), self.layout.rowCount(), 1
         )
         self.layout.addWidget(
-            QtGui.QLabel("Raman Spectroscopy Files:"), self.layout.rowCount(), 0
+            BasicLabel("Raman Spectroscopy Files:"), self.layout.rowCount(), 0
         )
         for k in range(len(files_response["Raman Files"])):
             row = self.layout.rowCount()
             name = files_response["Raman Files"][k]
             pct = files_response["Characteristic Percentage"][k]
-            label = QtGui.QLabel("[%s]  %s" % (pct, name))
+            label = BasicLabel("[%s]  %s" % (pct, name))
             self.layout.addWidget(
                 label, row, 0, QtCore.Qt.AlignLeft | QtCore.Qt.AlignCenter
             )
@@ -1421,7 +1419,7 @@ class ReviewTab(QtGui.QScrollArea):
                 software_name=gresq_soft.name, software_version=gresq_soft.version
             )
 
-            if self.mode == "nanohub":
+            if self.config.mode == "nanohub":
                 s.nanohub_userid = os.getuid()
             for field, item in provenance_response["sample"].items():
                 value = item["value"]
@@ -1638,11 +1636,11 @@ class ReviewTab(QtGui.QScrollArea):
                         #   )
                         # dataset_id = self.upload_raman(response_dict,raman_dict,box_file,dataset_id)
                         session.commit()
-
-                        for ram in files_response["Raman Files"]:
-                            os.remove(ram)
-                        for sem in files_response["SEM Image Files"]:
-                            os.remove(sem)
+                        if config.mode == 'nanohub':
+                            for ram in files_response["Raman Files"]:
+                                os.remove(ram)
+                            for sem in files_response["SEM Image Files"]:
+                                os.remove(sem)
 
                         success_dialog = QtGui.QMessageBox(self)
                         success_dialog.setText("Recipe successfully submitted.")

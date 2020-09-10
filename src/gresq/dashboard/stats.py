@@ -7,9 +7,18 @@ from sklearn.manifold import TSNE
 from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtGui import QColor
 from gresq.database import dal, Base
-from gresq.util.util import ItemsetsTableModel, ResultsTableModel
-
-label_font = QtGui.QFont("Helvetica", 16, QtGui.QFont.Bold)
+from gresq.database.models import (
+    Sample,
+    Recipe,
+    Properties,
+    Author,
+    PreparationStep,
+    RamanSet,
+    RamanSpectrum,
+    SemFile,
+    SemAnalysis,
+)
+from gresq.util.util import ItemsetsTableModel, ResultsTableModel, BasicLabel, HeaderLabel, SubheaderLabel
 
 
 class PlotWidget(QtGui.QWidget):
@@ -189,7 +198,7 @@ class TSNEPlot(QtGui.QWidget):
         self.legend = pg.GradientWidget(orientation="right")
         self.legend.setMaximumWidth(50)
         self.legend.sigGradientChangeFinished.connect(self.colorChange)
-        print(self.legend.colorMap())
+        # print(self.legend.colorMap())
 
         self.layout.addWidget(QtGui.QLabel("Perplexity"), 0, 0, 1, 1)
         self.layout.addWidget(self.perplexity_edit, 0, 1, 1, 1)
@@ -207,9 +216,6 @@ class TSNEPlot(QtGui.QWidget):
 
         self.select_feature.activated[str].connect(self.setBrushes)
 
-        # 2,2
-        # 1, 2
-
     # def drawLegend(self):
     # 	qp = QtGui.QPainter(self)
     # 	color = QtGui.QColor(255, 0, 0)
@@ -217,7 +223,6 @@ class TSNEPlot(QtGui.QWidget):
 
     def colorChange(self):
         feature = self.select_feature.currentText()
-        print(self.legend.listTicks())
         if feature:
             self.setBrushes(feature)
 
@@ -235,10 +240,21 @@ class TSNEPlot(QtGui.QWidget):
         self.model = model
         self.select_feature.clear()
         self.select_feature.addItem("No Coloring")
-        self.select_feature.addItems(list(self.model.df.columns))
+        self.select_feature.addItems([
+            self.model.headerData(h,orientation=QtCore.Qt.Horizontal) for h in range(len(self.model.df.columns)) 
+            if self.model.headerData(h,orientation=QtCore.Qt.Horizontal)!='id'])
         self.tsne_plot.clear()
 
+    def getColumnName(self,feature):
+        mapper = self.model.header_mapper
+        for key,value in mapper.items():
+            if feature == value:
+                return key
+
+        return feature
+
     def setBrushes(self, feature):
+        feature = self.getColumnName(feature)
         if feature in self.model.df.columns:
             brushes = []
             if is_numeric_dtype(self.model.df[feature]):
@@ -304,7 +320,7 @@ class TSNEPlot(QtGui.QWidget):
     def run(self, features):
         self.features = features
         self.tsne = TSNE(random_state=self.random_seed)
-        print(self.model.df.columns)
+        # print(self.model.df.columns)
         # TODO: self.nonnull_indexes is often undefined
 
         if not (pd.Series(self.features).isin(self.model.df.columns).all()):
@@ -324,7 +340,7 @@ class TSNEPlot(QtGui.QWidget):
             return
 
         tsne_input = self.model.df[self.features][self.nonnull_indexes]
-        # ids = self.model.df["id"][self.nonnull_indexes]
+        ids = self.model.df["id"][self.nonnull_indexes]
         if tsne_input.empty:
             self.showError("Input dataframe should not be empty.")
             return
@@ -343,7 +359,7 @@ class TSNEPlot(QtGui.QWidget):
         self.tsne_plot.setData(
             x=self.tsne.embedding_[:, 0],
             y=self.tsne.embedding_[:, 1],
-            # data=ids.tolist()
+            data=ids.tolist()
         )
         self.resetBounds()
 
@@ -378,11 +394,9 @@ class FeatureSelectionItem(QtGui.QWidget):
         self.go_button = QtGui.QPushButton("Go to Plot >>>")
         self.go_button.setEnabled(False)
 
-        itemsets_label = QtGui.QLabel("Frequent Feature Sets")
-        itemsets_label.setFont(label_font)
-        manual_label = QtGui.QLabel("Manual Feature Selection")
-        manual_label.setFont(label_font)
-        min_support_label = QtGui.QLabel("Minimum Support")
+        itemsets_label = SubheaderLabel("Frequent Feature Sets")
+        manual_label = SubheaderLabel("Manual Feature Selection")
+        min_support_label = BasicLabel("Minimum Support")
         min_support_label.setAlignment(QtCore.Qt.AlignRight)
 
         self.layout.addWidget(itemsets_label, 0, 0)

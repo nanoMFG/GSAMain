@@ -1,45 +1,209 @@
 import os
-from PyQt5 import QtGui, QtCore
+import numpy as np
+from PIL import Image
+from PyQt5 import QtGui, QtCore, QtWidgets
 import pandas as pd
 import copy
 import io
+import operator
 import requests
+import traceback
+import inspect
 from mlxtend.frequent_patterns import apriori
-
-from gresq.database.models import Sample
+import functools
 import logging
+from sqlalchemy import String, Integer, Float, Numeric, Date
+from collections.abc import Sequence
+from collections import OrderedDict, deque
+import pyqtgraph as pg
+from gresq.util.gwidgets import LabelMaker, SpacerMaker, BasicLabel, SubheaderLabel, HeaderLabel, MaxSpacer
 
 logger = logging.getLogger(__name__)
 
+sql_validator = {
+    "int": lambda x: isinstance(x.property.columns[0].type, Integer),
+    "float": lambda x: isinstance(x.property.columns[0].type, Float),
+    "str": lambda x: isinstance(x.property.columns[0].type, String),
+    "date": lambda x: isinstance(x.property.columns[0].type, Date),
+}
 
-class DownloadThread(QtCore.QThread):
+operators = {
+    "==": operator.eq,
+    "!=": operator.ne,
+    "<": operator.lt,
+    ">": operator.gt,
+    "<=": operator.le,
+    ">=": operator.ge,
+}
+
+
+def errorCheck(success_text=None, error_text="Error!",logging=True,show_traceback=False):
     """
-    Threading class for downloading files. Can be used to download files in parallel.
+    Decorator for class functions to catch errors and display a dialog box for a success or error.
+    Checks if method is a bound method in order to properly handle parents for dialog box.
 
-    url:                    Box download url.
-    thread_id:              Thread ID that used to identify the thread.
-    info:                   Dictionary for extra parameters.
+    success_text:               (str) What header to show in the dialog box when there is no error. None displays no dialog box at all.
+    error_text:                 (str) What header to show in the dialog box when there is an error.
+    logging:                    (bool) Whether to write error to log. True writes to log, False does not.
+    show_traceback:             (bool) Whether to display full traceback in error dialog box. 
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            if inspect.ismethod(func):
+                self = args[0]
+            else:
+                self = None
+            try:
+                return func(*args, **kwargs)
+                if success_text:
+                    success_dialog = QtWidgets.QMessageBox(self)
+                    success_dialog.setText(success_text)
+                    success_dialog.setWindowModality(QtCore.Qt.WindowModal)
+                    success_dialog.exec()
+            except Exception as e:
+                error_dialog = QtWidgets.QMessageBox(self)
+                error_dialog.setWindowModality(QtCore.Qt.WindowModal)
+                error_dialog.setText(error_text)
+                if logging:
+                    logger.exception(traceback.format_exc())
+                if show_traceback:
+                    error_dialog.setInformativeText(traceback.format_exc())
+                else:
+                    error_dialog.setInformativeText(str(e))
+                error_dialog.exec()
+
+        return wrapper
+    return decorator
+
+
+class ConfigParams:
+    def __init__(self,box_config_path=None,mode='local',read=True,write=False,validate=False,test=False):
+        assert mode in ['local','nanohub']
+        self.box_config_path = box_config_path
+        self.mode = mode
+        self.read = read
+        self.write = write
+        self.validate = validate
+        self.test = test
+
+    def canRead(self):
+        return self.read
+
+    def canWrite(self):
+        return self.write
+
+    def canValidate(self):
+        return self.validate
+
+    def canRead(self):
+        return self.read
+
+    def setRead(self,flag):
+        assert isinstance(flag,bool)
+        self.read = flag
+
+    def setWrite(self,flag):
+        assert isinstance(flag,bool)
+        self.write = flag
+
+    def setValidate(self,flag):
+        assert isinstance(flag,bool)
+        self.validate = flag
+
+
+class ResultsTableModel(QtCore.QAbstractTableModel):
+    """
+    This PyQt TableModel is used for displaying data queried from a SQL query 
+    in a TableView.
     """
 
-    downloadFinished = QtCore.pyqtSignal(object, int, object)
+    def __init__(self, parent=None):
+        super(ResultsTableModel, self).__init__(parent=parent)
+        self.df = pd.DataFrame()
+        self.header_mapper = None
 
-    def __init__(self, url, thread_id, info={}):
-        super(DownloadThread, self).__init__()
-        self.url = url
-        self.thread_id = thread_id
-        self.info = info
-        self.data = None
+    def copy(self, fields=None):
+        model = ResultsTableModel()
+        model.df = self.df.copy()
+        model.header_mapper = copy.deepcopy(self.header_mapper)
 
-        self.finished.connect(
-            lambda: self.downloadFinished.emit(self.data, self.thread_id, self.info)
-        )
+        if fields:
+            for col in model.df.columns:
+                if col not in fields:
+                    model.df.drop(columns=col, inplace=True)
+                    del model.header_mapper[col]
 
-    def __del__(self):
-        self.wait()
+        return model
 
-    def run(self):
-        r = requests.get(self.url)
-        self.data = r.content
+    def setHeaderMapper(self, models):
+        self.header_mapper = {}
+        for column in list(self.df.columns):
+            for model in models:
+                if hasattr(model, column):
+                    info = getattr(model, column).info
+                    if "verbose_name" in info:
+                        value = info["verbose_name"]
+                    else:
+                        logger.warning(
+                            f"column: {column} in {model.__name__} has no verbose_name in info."
+                        )
+                        value = column
+                    if "std_unit" in info:
+                        if info["std_unit"]:
+                            value += " (%s)" % info["std_unit"]
+                    self.header_mapper[column] = value
+                    break
+
+    def read_sqlalchemy(self, statement, session, models=None):
+        self.beginResetModel()
+        self.df = pd.read_sql_query(statement, session.connection())
+
+        if models:
+            self.setHeaderMapper(models)
+        else:
+            self.header_mapper = None
+
+        self.endResetModel()
+
+    def value(self, column, row):
+        if isinstance(column, str):
+            item = self.df[column]
+            return item.iloc[row].values[0]
+
+    def rowCount(self,parent):
+        return self.df.shape[0]
+
+    def columnCount(self,parent):
+        return self.df.shape[1]
+
+    def data(self, index, role=QtCore.Qt.DisplayRole):
+        if index.isValid():
+            if role == QtCore.Qt.DisplayRole:
+                i, j = index.row(), index.column()
+                value = self.df.iloc[i, j]
+                if pd.isnull(value):
+                    return ""
+                else:
+                    return str(value)
+        return QtCore.QVariant()
+
+    def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
+        if role == QtCore.Qt.DisplayRole and orientation == QtCore.Qt.Horizontal:
+            if self.header_mapper:
+                return self.header_mapper[self.df.columns[section]]
+            else:
+                return self.df.columns[section]
+
+        return QtCore.QAbstractTableModel.headerData(self, section, orientation, role)
+
+    def sort(self, column, order=QtCore.Qt.AscendingOrder):
+        self.layoutAboutToBeChanged.emit()
+        if order == QtCore.Qt.AscendingOrder:
+            self.df = self.df.sort_values(by=self.df.columns[column], ascending=True)
+        elif order == QtCore.Qt.DescendingOrder:
+            self.df = self.df.sort_values(by=self.df.columns[column], ascending=False)
+        self.layoutChanged.emit()
 
 
 class ItemsetsTableModel(QtCore.QAbstractTableModel):
@@ -112,131 +276,3 @@ class ItemsetsTableModel(QtCore.QAbstractTableModel):
             ["Support", "# Features", "Feature Set"]
         ]
         self.endResetModel()
-
-
-class ResultsTableModel(QtCore.QAbstractTableModel):
-    """
-    This PyQt TableModel is used for displaying data queried from a SQL query 
-    in a TableView.
-    """
-
-    def __init__(self, parent=None):
-        super(ResultsTableModel, self).__init__(parent=parent)
-        self.df = pd.DataFrame()
-        self.header_mapper = None
-
-    def copy(self, fields=None):
-        model = ResultsTableModel()
-        model.df = self.df.copy()
-        model.header_mapper = copy.deepcopy(self.header_mapper)
-
-        if fields:
-            for col in model.df.columns:
-                if col not in fields:
-                    model.df.drop(columns=col, inplace=True)
-                    del model.header_mapper[col]
-
-        return model
-
-    def setHeaderMapper(self, models):
-        self.header_mapper = {}
-        for column in list(self.df.columns):
-            for model in models:
-                if hasattr(model, column):
-                    info = getattr(model, column).info
-                    if "verbose_name" in info:
-                        value = info["verbose_name"]
-                    else:
-                        logger.warning(
-                            f"column: {column} in {model.__name__} has no verbose_name in info."
-                        )
-                        value = column
-                    if "std_unit" in info:
-                        if info["std_unit"]:
-                            value += " (%s)" % info["std_unit"]
-                    self.header_mapper[column] = value
-                    break
-
-    def read_sqlalchemy(self, statement, session, models=None):
-        self.beginResetModel()
-        self.df = pd.read_sql_query(statement, session.connection())
-
-        if models:
-            self.setHeaderMapper(models)
-        else:
-            self.header_mapper = None
-
-        self.endResetModel()
-
-    def value(self, column, row):
-        if isinstance(column, str):
-            item = self.df[column]
-            return item.iloc[row].values[0]
-
-    def rowCount(self, parent):
-        return self.df.shape[0]
-
-    def columnCount(self, parent):
-        return self.df.shape[1]
-
-    def data(self, index, role=QtCore.Qt.DisplayRole):
-        if index.isValid():
-            if role == QtCore.Qt.DisplayRole:
-                i, j = index.row(), index.column()
-                value = self.df.iloc[i, j]
-                if pd.isnull(value):
-                    return ""
-                else:
-                    return str(value)
-        return QtCore.QVariant()
-
-    def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
-        if role == QtCore.Qt.DisplayRole and orientation == QtCore.Qt.Horizontal:
-            if self.header_mapper:
-                return self.header_mapper[self.df.columns[section]]
-            else:
-                return self.df.columns[section]
-
-        return QtCore.QAbstractTableModel.headerData(self, section, orientation, role)
-
-    def sort(self, column, order=QtCore.Qt.AscendingOrder):
-        self.layoutAboutToBeChanged.emit()
-        if order == QtCore.Qt.AscendingOrder:
-            self.df = self.df.sort_values(by=self.df.columns[column], ascending=True)
-        elif order == QtCore.Qt.DescendingOrder:
-            self.df = self.df.sort_values(by=self.df.columns[column], ascending=False)
-        self.layoutChanged.emit()
-
-
-def downloadAllImageMasks(session, directory):
-    def saveTo(data, path):
-        with open(path, "wb") as f:
-            f.write(data)
-
-    for sample_model in session.query(Sample).all():
-        for analysis in sample_model.analyses:
-            sem = analysis.sem_file_model
-            mask_url = analysis.mask_url
-            img_url = sem.url
-
-            par_path = os.path.join(directory, sample_model)
-            thread = DownloadThread(img_url, sample_model.id)
-            thread.downloadFinished.connect(lambda x, y, z: saveTo)
-
-
-def errorCheck(func, success_text="Success!", error_text="Error!"):
-    def wrapper(self, *args, **kwargs):
-        try:
-            return func(self, *args, **kwargs)
-            success_dialog = QtGui.QMessageBox(self)
-            success_dialog.setText(success_text)
-            success_dialog.setWindowModality(QtCore.Qt.WindowModal)
-            success_dialog.exec()
-        except Exception as e:
-            error_dialog = QtGui.QMessageBox(self)
-            error_dialog.setWindowModality(QtCore.Qt.WindowModal)
-            error_dialog.setText(error_text)
-            error_dialog.setInformativeText(str(e))
-            error_dialog.exec()
-
-    return wrapper
