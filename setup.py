@@ -3,6 +3,7 @@ from setuptools import find_packages, setup
 
 with open(os.path.join('.', 'VERSION')) as version_file:
     version = version_file.read().strip()
+    print(f"version: {version}")
 setup(
     name='gresq',
     version=version,
