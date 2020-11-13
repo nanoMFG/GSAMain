@@ -130,7 +130,7 @@ def convert_db(data):
 
 
 def build_db(session, filepath, sem_raman_path=None, nrun=None, box_config_path=None):
-    data = pd.read_csv(os.path.join(filepath, "recipe_2019-08-27.csv"))
+    data = pd.read_csv(os.path.join(filepath, "recipe_trial.csv"))
     data = convert_db(data)
     box_adaptor = BoxAdaptor(box_config_path)
 

@@ -60,7 +60,7 @@ class PreparationStep(Base):
         info={
             "verbose_name": "Furnace Pressure",
             "std_unit": "Torr",
-            "conversions": {"Torr": 1, "Pa": 1 / 133.322, "mbar": 1 / 1.33322},
+            "conversions": {"Torr": 1, "Pa": 1 / 133.322, "mbar": 1 / 1.33322, "mTorr":1.0e-3},
             "required": True,
         },
     )
@@ -71,6 +71,7 @@ class PreparationStep(Base):
             "std_unit": "mm",
             "conversions": {"inches": 25.4, "mm": 1},
             "required": False,
+            "tooltip": "Position of the sample in the tube",
         },
     )
     helium_flow_rate = Column(

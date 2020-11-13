@@ -14,7 +14,7 @@ conf = Config(prefix=config_prefix, suffix=config_suffix, debug=True, try_secret
 dal.init_db(conf, privileges={"read": True, "write": True, "validate": True})
 
 BOX_CONFIG_PATH = os.environ["BOX_CONFIG_PATH"]
-csv2db_file = os.path.join(os.getcwd(), "data", "SEM_Raman_Data")
+csv2db_file = os.path.join(os.getcwd(), "data", "SEM_Raman_Test")
 
 with dal.session_scope() as session:
     build_db(
