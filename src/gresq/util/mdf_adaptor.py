@@ -1,6 +1,8 @@
 from mdf_connect_client import MDFConnectClient
 from datetime import datetime
 import uuid
+from mdf_forge.forge import Forge
+
 
 
 class MDFException(Exception):
@@ -9,26 +11,26 @@ class MDFException(Exception):
 
 class MDFAdaptor:
     def __init__(self):
-        self.mdfcc = MDFConnectClient(test=True, service_instance="prod")
+        self.mdfcc = MDFConnectClient(test=False, service_instance="prod")
+        self.forge = Forge("mdf-test")
 
     def upload_recipe(self, recipe, box_file):
-        experiment_date = datetime.now()
+        title = "Graphene Synthesis on " + recipe.catalyst+" " +\
+                recipe.authors[0]['institution']
 
-        self.mdfcc.create_dc_block(
-            title="Graphene Synthesis Sample " + "TBD",
-            authors=[
-                "%s, %s" % (auth["last_name"], auth["first_name"])
-                for auth in recipe.authors
-            ],
-            affiliations=[auth["institution"] for auth in recipe.authors],
-            publication_year=recipe.experiment_year,
-        )
-        self.mdfcc.add_data_source(box_file.get_shared_link_download_url(access="open"))
+        self.mdfcc.create_dc_block(title=title,
+                                   authors=["%s, %s"%(auth['last_name'],auth['first_name']) for auth in recipe.authors],
+                                   affiliations=[auth['institution'] for auth in recipe.authors],
+                                   publication_year=recipe.experiment_year
+                                   )
+        self.mdfcc.add_data_source(box_file.get_shared_link_download_url(access='open'))
+        self.mdfcc.add_organization("nanomfg")
 
         # Don't publish specific recipes. Later on, we will bundle datasets and
         # and publish an omnibus dataset
         # mdfcc.add_service("globus_publish")
-        self.mdfcc.set_source_name(str(uuid.uuid4()))
+        source_id = "NanoHub GreSQ ID "+str(recipe.recipe['primary_key'])
+        self.mdfcc.set_source_name(source_id)
 
         submission = self.mdfcc.get_submission()
 
@@ -47,7 +49,13 @@ class MDFAdaptor:
         print("\n\n\n\n------>", submission)
 
         try:
-            mdf_result = self.mdfcc.submit_dataset(submission=submission)
+            mdf_result = self.mdfcc.submit_dataset(submission=submission, update=False)
+
+            if not mdf_result["success"]:
+                print("New insert failed. Trying with update=True")
+                submission['update'] = True
+                mdf_result = self.mdfcc.submit_dataset(submission=submission,
+                                                       update=True)
         except Exception as e:
             print("Exception submitting dataset to mdf ", str(e))
             raise MDFException(e)
@@ -59,49 +67,54 @@ class MDFAdaptor:
 
         print("Submitted to MDF -----> " + str(mdf_result))
         self.mdfcc.reset_submission()
-        return mdf_result["source_id"]
+        return mdf_result['source_id']
 
-    def upload_raman_analysis(
-        self, recipe, recipe_dataset_id, raman_set, raman_box_file
-    ):
+    def upload_raman_analysis(self, recipe, recipe_source_id, raman_set, raman_box_file):
 
-        self.mdfcc.create_dc_block(
-            title="Graphene Synthesis Raman Analysis",
-            authors=[
-                "%s, %s" % (auth["last_name"], auth["first_name"])
-                for auth in recipe.authors
-            ],
-            affiliations=[auth["institution"] for auth in recipe.authors],
-            publication_year=recipe.experiment_year,
-            related_dois=recipe_dataset_id,
-        )
-        self.mdfcc.add_data_source(
-            raman_box_file.get_shared_link_download_url(access="open")
-        )
+        raman_analysis_authors = [
+            "Matthew Robertson", "Joshua Schiller", "Kristina Miller", "Aagam Shah",
+            "Kevin Cruise", "Kaihao Zhang", "Mitisha Surana", "Chae Seol", "Darren Adams",
+            "Elif Ertekin", "Sameh Tawfick"
+        ]
 
-        self.mdfcc.set_source_name(str(uuid.uuid4()))
+        self.mdfcc.create_dc_block(title="Graphene Synthesis Raman Analysis",
+                                   authors=raman_analysis_authors,
+                                   affiliations=["University of Illinois at Urbana Champaign"],
+                                   publication_year=2019
+                                   )
+
+        related_identifier = "https://petreldata.net/mdf/detail/{}".format(recipe_source_id)
+        self.mdfcc.dc['relatedIdentifiers'] =  [{
+                "relatedIdentifier": related_identifier,
+                "relatedIdentifierType": "URL",
+                "relationType": "IsDerivedFrom"
+        }]
+
+        self.mdfcc.add_organization("nanomfg")
+
+        self.mdfcc.add_data_source(raman_box_file.get_shared_link_download_url(access='open'))
+
+        source_id = "Raman analysis of "+recipe_source_id
+        self.mdfcc.set_source_name(source_id)
+
+        raman_mapping = {
+            "raman.peaks": "peaks",
+            "raman.ratios": "ratios"
+        }
+        self.mdfcc.add_index('json', raman_mapping)
 
         submission = self.mdfcc.get_submission()
-
-        submission["projects"] = {}
-        submission["projects"]["nanomfg"] = {
-            "d_to_g": raman_set["d_to_g"],
-            "gp_to_g": raman_set["gp_to_g"],
-            "d_peak_shift": raman_set["d_peak_shift"],
-            "d_peak_amplitude": raman_set["d_peak_amplitude"],
-            "d_fwhm": raman_set["d_fwhm"],
-            "g_peak_shift": raman_set["g_peak_shift"],
-            "g_peak_amplitude": raman_set["g_peak_amplitude"],
-            "g_fwhm": raman_set["g_fwhm"],
-            "g_prime_peak_shift": raman_set["g_prime_peak_shift"],
-            "g_prime_peak_amplitude": raman_set["g_prime_peak_amplitude"],
-            "g_prime_fwhm": raman_set["g_prime_fwhm"],
-        }
 
         print("\n\n\n\n------>", submission)
 
         try:
-            mdf_result = self.mdfcc.submit_dataset(submission=submission)
+            mdf_result = self.mdfcc.submit_dataset(submission=submission, update=False)
+            if not mdf_result["success"]:
+                print("New insert failed. Trying with update=True")
+                submission['update'] = True
+                mdf_result = self.mdfcc.submit_dataset(submission=submission,
+                                                       update=True)
+
         except Exception as e:
             print("Exception submitting raman analysis dataset to mdf ", str(e))
             raise MDFException(e)
@@ -113,4 +126,7 @@ class MDFAdaptor:
 
         print("Submitted raman analysis to MDF -----> " + str(mdf_result))
         self.mdfcc.reset_submission()
-        return mdf_result["source_id"]
+        return mdf_result['source_id']
+
+    def get_status(self, source_id, raw=False):
+        return self.mdfcc.check_status(source_id, raw=raw)
