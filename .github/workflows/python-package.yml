@@ -34,6 +34,7 @@ jobs:
     - name: Install package
       run: |
         pip install ./gsaraman
+        pip install ./gsaimage
         pip install .
     - name: Test with pytest
       run: |
