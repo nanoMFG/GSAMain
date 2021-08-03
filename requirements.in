@@ -1,0 +1,4 @@
+boxsdk
+mdf_connect_client
+mdf_forge
+git+https://gitlab.com/torosant/pyclientoscm.git#egg=oscm_client 

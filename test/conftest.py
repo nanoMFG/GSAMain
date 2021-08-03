@@ -3,7 +3,7 @@ import pytest
 import random
 from gresq.database import dal, Base
 from gresq.database.models import Sample, RamanSet
-from .database.factories import SampleFactory, SoftwareFactory
+#from .database.factories import SampleFactory, SoftwareFactory
 
 @pytest.fixture(scope="class")
 def sample():
