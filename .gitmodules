@@ -4,3 +4,6 @@
 [submodule "gsaraman"]
 	path = gsaraman
 	url = git@github.com:nanoMFG/GSA-Raman.git
+[submodule "GSA-Database"]
+	path = gsadatabase
+	url = https://github.com/nanoMFG/GSA-Database
