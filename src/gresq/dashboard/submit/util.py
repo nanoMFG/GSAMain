@@ -1,5 +1,5 @@
 from sqlalchemy.sql.expression import and_
-from ...database.models import Software
+from grdb.database.v1_1_0.models import Software
 
 
 def get_software_version_details(row):
