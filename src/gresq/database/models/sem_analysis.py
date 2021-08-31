@@ -10,7 +10,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from gresq.database import Base
+from grdb.database.v1_1_0 import Base
 
 
 class SemAnalysis(Base):

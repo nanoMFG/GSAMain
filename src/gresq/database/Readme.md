@@ -10,12 +10,12 @@ model.py - Depricated
 
 Models are defined in `./models` and are imported to the `models` package level.  Import as follows:
 ```
-from gresq.database.models import Sample, Recipe
+from grdb.database.v1_1_0.models import Sample, Recipe
 ```
 
 ## Data Access Layer (DAL)
 ```
-from gresq.database import dal
+from grdb.database.v1_1_0 import dal
 ```
 
 ## Basic Queries

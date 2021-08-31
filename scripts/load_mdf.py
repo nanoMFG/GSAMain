@@ -8,7 +8,7 @@ from boxsdk import DevelopmentClient
 from boxsdk.object.folder import Folder
 from mdf_connect_client import MDFConnectClient
 
-from src.gresq.database import preparation_step, sample, GresqEncoder
+from src.grdb.database.v1_1_0 import preparation_step, sample, GresqEncoder
 
 
 """

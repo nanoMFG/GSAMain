@@ -11,7 +11,7 @@ import traceback
 import inspect
 from mlxtend.frequent_patterns import apriori
 import functools
-from gresq.database.models import Sample
+from grdb.database.v1_1_0.models import Sample
 import logging
 from sqlalchemy import String, Integer, Float, Numeric, Date
 from collections.abc import Sequence

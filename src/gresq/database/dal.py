@@ -6,7 +6,7 @@ import ast
 from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
-from gresq.database import Base
+from grdb.database.v1_1_0 import Base
 
 # Uncomment to hav all SQL dumped to the console.
 # import logging

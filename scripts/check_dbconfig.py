@@ -1,6 +1,6 @@
 import sys
 sys.path.append("../src")
-from gresq.database import dal, Base
+from grdb.database.v1_1_0 import dal, Base
 from gresq.config import config
 
 print('dev default URI: ' + config['development'].DATABASEURI)

@@ -1,8 +1,8 @@
 import os
 
 from gresq.config import Config
-from gresq.database import dal, Base
-from gresq.database.models import Sample
+from grdb.database.v1_1_0 import dal, Base
+from grdb.database.v1_1_0.models import Sample
 import logging
 logging.basicConfig(level=logging.DEBUG)
 

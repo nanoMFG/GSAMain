@@ -6,12 +6,12 @@ import uuid
 from gresq.util.box_adaptor import BoxAdaptor
 from gresq.util.gwidgets import GStackedWidget, ImageWidget
 from gresq.util.util import BasicLabel, HeaderLabel, SubheaderLabel, sql_validator, ConfigParams, MaxSpacer
-from gresq.database import dal, Base
+from grdb.database.v1_1_0 import dal, Base
 from gresq import __version__ as GRESQ_VERSION
 from gsaraman import __version__ as GSARAMAN_VERSION
 from gsaimage import __version__ as GSAIMAGE_VERSION
 from .util import get_or_add_software_row
-from gresq.database.models import (
+from grdb.database.v1_1_0.models import (
     Sample,
     Recipe,
     Author,

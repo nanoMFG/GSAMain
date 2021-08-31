@@ -1,13 +1,13 @@
 """
-Package init for gresq.database.  Currently all models are imported here to
+Package init for grdb.database.v1_1_0.  Currently all models are imported here to
 provide implicit import support.
 
 Examples:
-    $ from gresq.database import sample
+    $ from grdb.database.v1_1_0 import sample
 
 Todo:
     * Move to explicit imports eg:
-    $ from gresq.database.model import sample_id
+    $ from grdb.database.v1_1_0.model import sample_id
     * Possibly make model a Package.
 """
 import typing

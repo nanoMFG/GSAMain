@@ -1,7 +1,7 @@
 # from faker import Faker
 # from gresq.dashboard.submit.util import check_software_version, get_or_add_software_row
-# from gresq.database import dal
-# from gresq.database.models import Software
+# from grdb.database.v1_1_0 import dal
+# from grdb.database.v1_1_0.models import Software
 # from gresq import __version__ as gresq_version
 # from gsaimage import __version__ as gsaimage_version
 # from gsaraman import __version__ as gsaraman_version

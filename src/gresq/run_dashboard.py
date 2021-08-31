@@ -5,7 +5,7 @@ import argparse
 import logging
 from PyQt5 import QtGui
 from gresq.config import Config
-from gresq.database import dal
+from grdb.database.v1_1_0 import dal
 from gresq.dashboard import GSADashboard
 
 

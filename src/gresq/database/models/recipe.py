@@ -4,7 +4,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy import select, func, text, and_
 from sqlalchemy.sql import exists
 
-from gresq.database import Base, class_registry
+from grdb.database.v1_1_0 import Base, class_registry
 
 
 class Recipe(Base):

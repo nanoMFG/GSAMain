@@ -1,5 +1,5 @@
-from gresq.database import dal, Base
-from gresq.database.models import Sample, PreparationStep
+from grdb.database.v1_1_0 import dal, Base
+from grdb.database.v1_1_0.models import Sample, PreparationStep
 from gresq.config import config
 import pandas as pd
 import os

@@ -6,8 +6,8 @@ import copy
 from sklearn.manifold import TSNE
 from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtGui import QColor
-from gresq.database import dal, Base
-from gresq.database.models import (
+from grdb.database.v1_1_0 import dal, Base
+from grdb.database.v1_1_0.models import (
     Sample,
     Recipe,
     Properties,
