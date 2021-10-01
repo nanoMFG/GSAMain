@@ -57,6 +57,8 @@ class GSADashboard(QtWidgets.QMainWindow):
         self.mainWidget.addTab(self.query_tab, "Query")
         self.mainWidget.addTab(self.submit_tab, "Submit")
         self.mainWidget.addTab(self.oscm_tab, "OSCM")
+        self.mainWidget.addTab(self.query_tab, "Query_2_0")
+        self.mainWidget.addTab(self.submit_tab, "Submit_2_0")
 
         self.setCentralWidget(self.mainWidget)
 
