@@ -5,6 +5,7 @@ import argparse
 import logging
 from PyQt5 import QtGui
 from gresq.config import Config
+from grdb.database import dal as dal_2_0
 from grdb.database.v1_1_0 import dal
 from gresq.dashboard import GSADashboard
 
@@ -107,7 +108,8 @@ def main():
     # logging.debug(db_conf.DATABASEURI)
     # logging.debug(db_conf.DATABASEARGS)
 
-    dal.init_db(db_conf, privileges=privileges)
+#    dal.init_db(db_conf, privileges=privileges)
+    dal_2_0.init_db(db_conf, privileges=privileges)
 
     box_config_path = os.path.abspath(kwargs["box_config_path"])
 

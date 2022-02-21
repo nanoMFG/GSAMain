@@ -15,15 +15,18 @@ from gresq.util.io import DownloadThread, DownloadPool, DownloadRunner
 from gresq.util.util import ConfigParams, sql_validator, operators, ResultsTableModel, errorCheck, BasicLabel, HeaderLabel
 from gresq.util.box_adaptor import BoxAdaptor
 from gresq.dashboard.stats import TSNEWidget, PlotWidget
-from grdb.database.v1_1_0 import dal, Base
-from grdb.database.v1_1_0.models import (
-    Sample,
+from grdb.database import dal, Base
+from grdb.database.models import (
+    Experiment,
+    Substrate,
+    EnvironmentConditions,
+    Furnace,
     Recipe,
     Properties,
     Author,
     PreparationStep,
-    RamanSet,
-    RamanSpectrum,
+    RamanFile,
+    RamanAnalysis,
     SemFile,
     SemAnalysis,
 )
@@ -49,7 +52,6 @@ preparation_fields = [
     "sample_location",
     "helium_flow_rate",
     "hydrogen_flow_rate",
-    "carbon_source",
     "carbon_source_flow_rate",
     "argon_flow_rate",
     "cooling_rate",
@@ -64,24 +66,35 @@ properties_fields = [
     "domain_size",
 ]
 
-recipe_fields = [
+substrate_fields = [
     "catalyst",
-    "tube_diameter",
-    "cross_sectional_area",
-    "tube_length",
-    "base_pressure",
     "thickness",
     "diameter",
     "length",
-    "sample_surface_area",
-    "dewpoint",
+    "surface_area",
+]
+
+furnace_fields = [
+    "tube_diameter",
+    "cross_sectional_area",
+    "tube_length",
+    "length_of_heated_region",
+]
+
+environment_conditions_fields = [
+    "dew_point",
+    "ambient_temperature",
+]
+
+recipe_fields = [
+    "base_pressure",
+    # "carbon_source",
 ]
 
 hybrid_recipe_fields = [
     "maximum_temperature",
     "maximum_pressure",
     "average_carbon_flow_rate",
-    "carbon_source",
     "uses_helium",
     "uses_hydrogen",
     "uses_argon",
@@ -104,15 +117,18 @@ spectrum_fields = [
     "g_prime_fwhm",
 ]
 
-sample_fields = ["id", "experiment_date", "validated"]
+experiment_fields = ["id", "experiment_date", "validated"]
 
-results_fields = sample_fields + properties_fields + raman_fields
+results_fields = experiment_fields + properties_fields + raman_fields
 
 selection_list = {
-    "Experimental Conditions": {"fields": recipe_fields, "model": Recipe},
+    "Furnace": {"fields": furnace_fields, "model": Furnace},
+    "Substrate": {"fields": substrate_fields, "model": Substrate},
+    "Environment Conditions": {"fields": environment_conditions_fields, "model": EnvironmentConditions},
+    "Recipe": {"fields": recipe_fields , "model": Recipe},
     "Preparation": {"fields": preparation_fields, "model": PreparationStep},
     "Properties": {"fields": properties_fields, "model": Properties},
-    "Raman Analysis": {"fields": raman_fields, "model": RamanSet},
+    "Raman Analysis": {"fields": raman_fields, "model": RamanAnalysis},
     "Provenance Information": {"fields": author_fields, "model": Author},
 }
 
@@ -202,7 +218,7 @@ class GSAQuery(QtGui.QWidget):
         if self.config.canWrite() or self.config.canValidate():
             self.preview.admin_tab.updateQuery.connect(lambda: self.query(self.filters))
             self.preview.admin_tab.queryUnvalidated.connect(
-                lambda: self.query([Sample.validated.is_(False)])
+                lambda: self.query([Experiment.validated.is_(False)])
             )
 
         self.addFilterBtn = QtGui.QPushButton("Add Filter")
@@ -345,7 +361,7 @@ class GSAQuery(QtGui.QWidget):
         if self.config.canValidate():
             self.results.query(filters)
         else:
-            self.results.query(filters + [or_(Sample.validated == True, Sample.nanohub_userid == os.getuid())])
+            self.results.query(filters + [or_(Experiment.validated == True, Experiment.nanohub_userid == os.getuid())])
         self.results.results_table.selectionModel().currentChanged.connect(
             lambda x: self.preview.select(self.results.results_model, x) if self.results.rowCount() > 0 else None
         )
@@ -469,10 +485,10 @@ class DetailWidget(QtGui.QWidget):
         self.properties = FieldsDisplayWidget(
             fields=properties_fields, model=Properties
         )
-        self.conditions = FieldsDisplayWidget(
-            fields=recipe_fields + hybrid_recipe_fields, model=Recipe
-        )
-
+        selection_list_for_conditions = ["Recipe", "Substrate", "Furnace", "Environment Conditions"]
+        self.conditions = MultipleFieldsDisplayWidget(condition_list=selection_list_for_conditions
+            )
+            
         propertiesLabel = HeaderLabel("Properties")
         conditionsLabel = HeaderLabel("Conditions")
 
@@ -489,7 +505,7 @@ class DetailWidget(QtGui.QWidget):
 
 class PreviewWidget(QtGui.QTabWidget):
     """
-    Widget for displaying data associated with selected Sample. Contains tabs for:
+    Widget for displaying data associated with selected Experiment. Contains tabs for:
         -Graphene details
         -SEM data (raw and postprocessed)
         -Raman data (raw and postprocessed)
@@ -524,11 +540,11 @@ class PreviewWidget(QtGui.QTabWidget):
     @errorCheck(error_text='Error selecting entry!')
     def select(self, model=None, index=None):
         """
-        Select Sample model and update preview. Can use ResultsTableModel with corresponding index,
-        standalone Sample model or a Sample id.
+        Select Experiment model and update preview. Can use ResultsTableModel with corresponding index,
+        standalone Experiment model or a Experiment id.
 
-        model:              ResultsTableModel object or Sample model if index=None. If None, index refers to Sample id.
-        index:              Index from ResultsWidget table or Sample id if model=None. If None, model refers to a Sample model.
+        model:              ResultsTableModel object or Experiment model if index=None. If None, index refers to Experiment id.
+        index:              Index from ResultsWidget table or Experiment id if model=None. If None, model refers to a Experiment model.
         """
 
         with dal.session_scope() as session:
@@ -537,7 +553,7 @@ class PreviewWidget(QtGui.QTabWidget):
                     i = int(model.df["id"].values[index.row()])
                 else:
                     i = index
-                s = session.query(Sample).filter(Sample.id == i)[0]
+                s = session.query(Experiment).filter(Experiment.id == i)[0]
             elif index == None and model != None:
                 s = model
             else:
@@ -558,8 +574,8 @@ class PreviewWidget(QtGui.QTabWidget):
 class ResultsWidget(QtGui.QTabWidget):
     """
     Widget for displaying results associated with a query. Contains tabs:
-        - Results:              Each row associated with a sample and column corresponding to
-                                a field. Clicking a row selects that sample for the PreviewWidget.
+        - Results:              Each row associated with an  experiment and column corresponding to
+                                a field. Clicking a row selects that experiment for the PreviewWidget.
         - t-SNE:                Allows users to conduct t-SNE visualization on queried data.
         - Plot:                 Allows users to scatter plot queried data.
     """
@@ -608,55 +624,72 @@ class ResultsWidget(QtGui.QTabWidget):
         self.results_model = ResultsTableModel()
         if len(filters) > 0:
             with dal.session_scope() as session:
-                all_sample_fields = [
-                    c.key for c in Sample.__table__.columns
+                all_experiment_fields = [
+                    c.key for c in Experiment.__table__.columns
                 ]  # +['author_last_names']
-                sample_columns = tuple([getattr(Sample, s) for s in all_sample_fields])
+                experiment_columns = tuple([getattr(Experiment, e) for e in experiment_fields])
                 recipe_columns = tuple(
-                    [getattr(Recipe, r) for r in recipe_fields + hybrid_recipe_fields]
+                    [getattr(Recipe, r) for r in recipe_fields]
                 )
+                substrate_columns = tuple(
+                    [getattr(Substrate, sb) for sb in substrate_fields]
+                )
+                furnace_columns = tuple(
+                    [getattr(Furnace, f) for f in furnace_fields]
+                )
+                environment_conditions_columns = tuple(
+                    [getattr(EnvironmentConditions, e) for e in environment_conditions_fields]
+                )
+                
                 properties_columns = tuple(
                     [getattr(Properties, p) for p in properties_fields]
                 )
-                raman_columns = tuple([getattr(RamanSet, r) for r in raman_fields])
+                raman_columns = tuple([getattr(RamanAnalysis, r) for r in raman_fields])
 
                 query_columns = (
-                    sample_columns + raman_columns + recipe_columns + properties_columns
-                )
+                    experiment_columns + recipe_columns + raman_columns + properties_columns + substrate_columns + environment_conditions_columns + furnace_columns 
+                ) 
 
                 q = (
                     session.query(*query_columns)
-                    .join(Recipe, Sample.id == Recipe.sample_id)
-                    .join(Properties, Sample.id == Properties.sample_id)
-                    .join(RamanSet, Sample.id == RamanSet.sample_id)
-                    .outerjoin(PreparationStep, PreparationStep.recipe_id == Recipe.id)
-                    .outerjoin(Author, Sample.id == Author.sample_id)
+                    .join(Recipe, Recipe.id == Experiment.recipe_id)
+                    .join(Substrate, Substrate.id == Experiment.substrate_id)
+                    .join(Furnace, Furnace.id == Experiment.furnace_id)
+                    .join(EnvironmentConditions, EnvironmentConditions.id == Experiment.environment_conditions_id)
+                    .join(Properties, Experiment.id == Properties.experiment_id)
+                    .join(RamanFile, Experiment.id == RamanFile.experiment_id)
+                    .outerjoin(RamanAnalysis, RamanAnalysis.raman_file_id == RamanFile.id)
+                    .outerjoin(PreparationStep, PreparationStep.recipe_id == Recipe.id) 
+                    .join(Author, Author.id == Experiment.submitted_by) #check: why is it called this? why not author
                     .filter(*filters)
                     .distinct()
                 )
 
                 self.results_model.read_sqlalchemy(
-                    q.statement, session, models=[Sample, Recipe, Properties, RamanSet]
-                )
-
+                    q.statement, session, models=[Experiment, Recipe, PreparationStep, Properties, RamanAnalysis, Substrate, Furnace, EnvironmentConditions]
+                ) 
+                
         self.results_table.setModel(self.results_model)
+
         for c in range(self.results_model.columnCount(parent=None)):
             if self.results_model.df.columns[c] not in results_fields:
                 self.results_table.hideColumn(c)
         self.results_table.resizeColumnsToContents()
         self.plot.setModel(
             self.results_model,
-            xfields=recipe_fields + hybrid_recipe_fields,
-            yfields=raman_fields + properties_fields,
+            xfields= recipe_fields + hybrid_recipe_fields,
+            yfields= raman_fields + properties_fields,
         )
-        self.tsne.setModel(
-            self.results_model,
-            fields=['id']
-            + recipe_fields
-            + hybrid_recipe_fields
-            + raman_fields
-            + properties_fields,
-        )
+        print("I reached here as well")
+
+        # self.tsne.setModel(
+        #     self.results_model,
+        #     fields=['id']
+        #     + recipe_fields
+        #     + hybrid_recipe_fields
+        #     + raman_fields
+        #     + properties_fields,
+        # )
 
 
 class FieldsDisplayWidget(QtGui.QScrollArea):
@@ -734,6 +767,88 @@ class FieldsDisplayWidget(QtGui.QScrollArea):
                     value = ""
             self.fields[field]["value"].setText(str(value))
 
+class MultipleFieldsDisplayWidget(QtGui.QScrollArea):
+    """
+    Generic widget that creates a display from the selected fields from a particular model.
+
+    fields:             (list of str) The fields from the model to generate the form. Note: fields must exist in the model.
+    model:              (SQLAlchemy model) The model to base the display on.
+    """
+
+    def __init__(self, condition_list, elements_per_col=100, parent=None):
+        
+       #fields= selection_list[selection]["fields"], model=selection_list[selection]["model"]
+        super(MultipleFieldsDisplayWidget, self).__init__(parent=parent)
+        #self.base_model = model
+        self.contentWidget = QtGui.QWidget()
+        self.layout = QtGui.QGridLayout(self.contentWidget)
+        self.layout.setAlignment(QtCore.Qt.AlignTop)
+        self.fields = {}
+        f=0
+
+        for condition in condition_list:
+            model=selection_list[condition]["model"]
+            fields=selection_list[condition]["fields"]
+            for field in fields:
+                self.fields[field] = {}
+                info = getattr(model, field).info
+                if "std_unit" in info:
+                    if info["std_unit"]:
+                        unit = convertScripts(info["std_unit"])
+                        label = "%s (%s):" % (info["verbose_name"], unit)
+                    else:
+                        label = "%s:" % (info["verbose_name"])
+                else:
+                    label = "%s:" % (info["verbose_name"])
+                tooltip = info['tooltip'] if 'tooltip' in info.keys() else None
+                self.fields[field]["label"] = BasicLabel(label,tooltip=tooltip)
+                self.fields[field]["label"].setWordWrap(True)
+                # self.fields[field]['label'].setMaximumWidth(120)
+                # self.fields[field]['label'].setMinimumHeight(self.fields[field]['label'].sizeHint().height())
+                self.fields[field]["value"] = BasicLabel()
+                self.fields[field]["value"].setMinimumWidth(50)
+                self.fields[field]["value"].setAlignment(QtCore.Qt.AlignCenter)
+                self.layout.addWidget(
+                    self.fields[field]["label"],
+                    f % elements_per_col,
+                    2 * (f // elements_per_col),
+                )
+                self.layout.addWidget(
+                    self.fields[field]["value"],
+                    f % elements_per_col,
+                    2 * (f // elements_per_col) + 1,
+                )
+                f+=1
+
+        self.setWidgetResizable(True)
+        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.setWidget(self.contentWidget)
+
+    def setData(self, model, index=None, ndecimal=3):
+        """
+        Update data displayed in the FieldsDisplayWidget for selected index in ResultsTableModel or from a SQLAlchemy object.
+
+        model:              ResultsTableModel or SQLAlchemy object
+        index:              Index from ResultsWidget table. Ignored if SQLAlchemy object.
+        """
+        for field in self.fields.keys():
+            if index:
+                if field in model.df.columns:
+                    value = model.df[field].iloc[index.row()]
+                    if pd.isnull(value):
+                        value = ""
+                    elif value != None and isinstance(value, float):
+                        value = round(value, ndecimal)
+            else:
+                try:
+                    value = getattr(model, field)
+                    if value != None and isinstance(value, float):
+                        value = round(value, ndecimal)
+                except Exception as e:
+                    print(type(value), e)
+                    value = ""
+            self.fields[field]["value"].setText(str(value))
+
 
 
 class RawImageTab(pg.GraphicsLayoutWidget):
@@ -766,12 +881,12 @@ class SEMAdminTab(QtGui.QScrollArea):
     Widget for handling admin functionality in the SEM display tab.
 
     sem_id:             (int) sem_file model ID
-    sample_id:          (int) sample model ID
+    experiment_id:          (int) experiment model ID
     """
-    def __init__(self, sem_id, sample_id, parent=None):
+    def __init__(self, sem_id, experiment_id, parent=None):
         super(SEMAdminTab, self).__init__(parent=parent)
         self.sem_id = sem_id
-        self.sample_id = sample_id
+        self.experiment_id = experiment_id
 
         self.set_default_button = QtGui.QPushButton("Set Default Analysis")
         self.set_primary_button = QtGui.QPushButton("Set Primary Analysis")
@@ -841,20 +956,20 @@ class SEMAdminTab(QtGui.QScrollArea):
     @errorCheck(error_text="Error setting as primary SEM!")
     def setPrimary(self):
         with dal.session_scope() as session:
-            sample_model = (
-                session.query(Sample).filter(Sample.id == self.sample_id).first()
+            experiment_model = (
+                session.query(Experiment).filter(Experiment.id == self.experiment_id).first()
             )
-            sample_model.primary_sem_file_id = self.sem_id
+            experiment_model.primary_sem_file_id = self.sem_id
             session.commit()
 
         self.setPrimaryStatus()
 
     def setPrimaryStatus(self):
         with dal.session_scope() as session:
-            sample_model = (
-                session.query(Sample).filter(Sample.id == self.sample_id).first()
+            experiment_model = (
+                session.query(Experiment).filter(Experiment.id == self.experiment_id).first()
             )
-            self.primary_label.setText(str(sample_model.primary_sem_file_id == self.sem_id))        
+            self.primary_label.setText(str(experiment_model.primary_sem_file_id == self.sem_id))        
 
 
 class SEMDisplayTab(QtGui.QScrollArea):
@@ -869,7 +984,7 @@ class SEMDisplayTab(QtGui.QScrollArea):
         self.progress_bar = QtGui.QProgressBar()
         self.file_list = QtGui.QListWidget()
         self.sem_info = QtGui.QStackedWidget()
-        self.sample_id = None
+        self.experiment_id = None
         self.threadpool = DownloadPool(2)
 
         self.setWidgetResizable(True)
@@ -899,8 +1014,8 @@ class SEMDisplayTab(QtGui.QScrollArea):
         with dal.session_scope() as session:
             analysis = SemAnalysis()
             analysis.sem_file_id = sem_id
-            sample_model = (
-                session.query(Sample).filter(Sample.id == self.sample_id).first()
+            experiment_model = (
+                session.query(Experiment).filter(Experiment.id == self.experiment_id).first()
             )
             analysis.automated = False
             analysis.growth_coverage = float(np.mean(mask.astype(int)))
@@ -916,7 +1031,7 @@ class SEMDisplayTab(QtGui.QScrollArea):
             session.add(analysis)
             session.commit()
 
-            self.update(sample_model, force_refresh=True)
+            self.update(experiment_model, force_refresh=True)
 
     def update_progress_bar(self, *args, **kwargs):
         self.progress_bar.setValue(100 * self.threadpool.doneCount() / self.threadpool.count())
@@ -935,12 +1050,12 @@ class SEMDisplayTab(QtGui.QScrollArea):
         if self.config.canValidate():
             edit_tab = ImageEditor(sem_id=sem.id, config=self.config)
             edit_tab.submitClicked.connect(lambda x,y,z: self.submitMask(x,y,z))
-            admin_tab = SEMAdminTab(sem_id=sem.id, sample_id=self.sample_id)
+            admin_tab = SEMAdminTab(sem_id=sem.id, experiment_id=self.experiment_id)
 
             sem_tabs.addTab(edit_tab, "Mask Editor")
             sem_tabs.addTab(admin_tab, "Admin")
 
-        thread = DownloadThread(url=sem.url, thread_id=sem.sample_id, info={"sem_id": sem.id})
+        thread = DownloadThread(url=sem.url, thread_id=sem.experiment_id, info={"sem_id": sem.id})
         runner = self.threadpool.addThread(thread)
         runner.finished[object, int, object].connect(image_tab.loadImage)
         runner.finished.connect(self.update_progress_bar)
@@ -955,9 +1070,9 @@ class SEMDisplayTab(QtGui.QScrollArea):
         return sem_tabs
 
     @errorCheck(error_text="Error updating SEM display!")
-    def update(self, sample_model=None, force_refresh=False):
-        if sample_model != None:
-            if sample_model.id != self.sample_id or force_refresh:
+    def update(self, experiment_model=None, force_refresh=False):
+        if experiment_model != None:
+            if experiment_model.id != self.experiment_id or force_refresh:
                 self.file_list.clear()
                 self.progress_bar.reset()
 
@@ -965,10 +1080,10 @@ class SEMDisplayTab(QtGui.QScrollArea):
                     self.sem_info.removeWidget(self.sem_info.widget(0))
 
                 self.threadpool.terminate()
-                self.sample_id = sample_model.id
-                if len(sample_model.sem_files) > 0:
+                self.experiment_id = experiment_model.id
+                if len(experiment_model.sem_files) > 0:
                     self.progress_bar.setValue(1)
-                    for sem in sample_model.sem_files:
+                    for sem in experiment_model.sem_files:
                         self.file_list.addItem("SEM ID: %s" % sem.id)
                         self.sem_info.addWidget(self.createSEMTabs(sem))
                     self.threadpool.run()
@@ -1018,9 +1133,9 @@ class RamanDisplayTab(QtGui.QScrollArea):
         self.file_list = QtGui.QListWidget()
         self.raman_info = QtGui.QStackedWidget()
         self.weighted_values = FieldsDisplayWidget(
-            fields=raman_fields, model=RamanSet, elements_per_col=1
+            fields=raman_fields, model=RamanAnalysis, elements_per_col=1
         )
-        self.sample_id = None
+        self.experiment_id = None
         self.threads = []
 
         self.file_list.setFixedWidth(130)
@@ -1040,13 +1155,13 @@ class RamanDisplayTab(QtGui.QScrollArea):
         spectrum_plot_tab = RamanQueryWidget(data_table) # Replace QtGui.QWidget() with raman display, should use data to load spectrum. 
                                             # Note: may have to use io.BytesIO(data) to convert to bytes object to read from.
         spectrum_properties_tab = FieldsDisplayWidget(
-            fields=spectrum_fields, model=RamanSpectrum
+            fields=spectrum_fields, model=RamanAnalysis
         )
         spectrum_properties_tab.setData(spectrum_model)
         raman_tabs.addTab(spectrum_plot_tab, "Spectrum")
         raman_tabs.addTab(spectrum_properties_tab, "Properties")
 
-        if self.sample_id == thread_id:
+        if self.experiment_id == thread_id:
             self.file_list.addItem(
                 "Spectrum %s (%s%%)"
                 % (str(self.file_list.count() + 1), round(spectrum_model.percent, 2))
@@ -1057,9 +1172,9 @@ class RamanDisplayTab(QtGui.QScrollArea):
             )
 
     @errorCheck(error_text="Error updating Raman display!")
-    def update(self, sample_model=None):
-        if sample_model != None:
-            if sample_model.id != self.sample_id:
+    def update(self, experiment_model=None):
+        if experiment_model != None:
+            if experiment_model.id != self.experiment_id:
                 self.file_list.clear()
                 self.progress_bar.reset()
 
@@ -1069,15 +1184,15 @@ class RamanDisplayTab(QtGui.QScrollArea):
                     self.raman_info.removeWidget(w)
 
                 self.threads = []
-                self.sample_id = sample_model.id
-                raman_analysis = sample_model.raman_analysis
+                self.experiment_id = experiment_model.id
+                raman_analysis = experiment_model.raman_analysis
                 self.weighted_values.setData(raman_analysis)
                 if len(raman_analysis.raman_spectra) > 0:
                     self.progress_bar.setValue(1)
                     for spectrum in raman_analysis.raman_spectra:
                         thread = DownloadThread(
                             url=spectrum.raman_file.url,
-                            thread_id=raman_analysis.sample_id,
+                            thread_id=raman_analysis.experiment_id,
                             info={"spectrum": spectrum},
                         )
                         thread.downloadFinished.connect(
@@ -1243,7 +1358,7 @@ class AdminDisplayTab(QtGui.QScrollArea):
 
     def __init__(self, config, parent=None):
         super(AdminDisplayTab, self).__init__(parent=parent)
-        self.sample_id = None
+        self.experiment_id = None
         self.config = config
 
         self.contentWidget = QtGui.QWidget()
@@ -1277,18 +1392,18 @@ class AdminDisplayTab(QtGui.QScrollArea):
         self.layout.addWidget(self.delete_button, 2, 0, 1, 3)
 
     @errorCheck(error_text="Error updating admin display!")
-    def update(self, sample_model):
-        self.sample_id = sample_model.id
-        self.validate_status_label.setText(str(sample_model.validated))
+    def update(self, experiment_model):
+        self.experiment_id = experiment_model.id
+        self.validate_status_label.setText(str(experiment_model.validated))
 
         if self.config.canWrite() or self.config.canValidate():
             if self.config.canValidate():
                 self.delete_button.setEnabled(True)
             elif (
                 self.config.canWrite()
-                and sample_model.nanohub_userid
-                and sample_model.nanohub_userid == os.getuid()
-                and sample_model.validate == False
+                and experiment_model.nanohub_userid
+                and experiment_model.nanohub_userid == os.getuid()
+                and experiment_model.validate == False
             ):
                 self.delete_button.setEnabled(True)
             else:
@@ -1311,7 +1426,7 @@ class AdminDisplayTab(QtGui.QScrollArea):
             if btn.text() == "OK":
                 try:
                     with dal.session_scope() as session:
-                        model = session.query(Sample).get(self.sample_id)
+                        model = session.query(experiment).get(self.experiment_id)
                         session.delete(model)
                         session.commit()
 
@@ -1332,9 +1447,9 @@ class AdminDisplayTab(QtGui.QScrollArea):
         confirmation_dialog.exec()
 
     def toggle_validate_model(self):
-        if self.sample_id:
+        if self.experiment_id:
             with dal.session_scope() as session:
-                model = session.query(Sample).get(self.sample_id)
+                model = session.query(Experiment).get(self.experiment_id)
                 model.validated = not model.validated
                 session.commit()
                 self.validate_status_label.setText(str(model.validated))
