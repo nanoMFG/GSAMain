@@ -47,21 +47,21 @@ class GSADashboard(QtWidgets.QMainWindow):
         helpMenu = mainMenu.addMenu('&Help')
         helpMenu.addAction(aboutAction)
 
-   #     self.query_tab = GSAQuery(config=self.config)
+        # self.query_tab = GSAQuery(config=self.config)
         self.query_2_0_tab = GSAQuery_2_0(config=self.config)
-     #   self.submit_tab = GSASubmit(config=self.config)
-        self.submit_2_0_tab = GSASubmit_2_0(config=self.config)
- #       self.oscm_tab = GSAOscm(server_instance="prod")
-  #      self.submit_tab.preparation.oscm_signal.connect(
-   #         lambda: self.setCurrentWidget(self.oscm_tab)
-#        )
+        # self.submit_tab = GSASubmit(config=self.config)
+        # self.submit_2_0_tab = GSASubmit_2_0(config=self.config)
+        # self.oscm_tab = GSAOscm(server_instance="prod")
+        # self.submit_tab.preparation.oscm_signal.connect(
+        #     lambda: self.setCurrentWidget(self.oscm_tab)
+        # )
 
         self.mainWidget = QtGui.QTabWidget()
-    #    self.mainWidget.addTab(self.query_tab, "Query")
-   #     self.mainWidget.addTab(self.submit_tab, "Submit")
-   #     self.mainWidget.addTab(self.oscm_tab, "OSCM")
+        # self.mainWidget.addTab(self.query_tab, "Query")
+        # self.mainWidget.addTab(self.submit_tab, "Submit")
+        # self.mainWidget.addTab(self.oscm_tab, "OSCM")
         self.mainWidget.addTab(self.query_2_0_tab, "Query_2_0")
-        self.mainWidget.addTab(self.submit_2_0_tab, "Submit_2_0")
+        # self.mainWidget.addTab(self.submit_2_0_tab, "Submit_2_0")
 
         self.setCentralWidget(self.mainWidget)
 

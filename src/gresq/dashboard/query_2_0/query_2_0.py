@@ -1,4 +1,5 @@
 from __future__ import division
+from ctypes import sizeof
 import pandas as pd
 import numpy as np
 import sys, operator, os
@@ -43,7 +44,7 @@ Each primary field will correspond to a SQLAlchemy model. Each of these are mode
 models and the fields that will be displayed are controlled via the field lists
 below.
 """
-
+# made changes here - Mitisha
 preparation_fields = [
     "name",
     "duration",
@@ -480,12 +481,13 @@ class DetailWidget(QtGui.QWidget):
     """
     Widget that displays information pertaining to the properties and conditions of the entry.
     """
+    # made changes here - Mitisha
     def __init__(self, parent=None):
         super(DetailWidget, self).__init__(parent=parent)
         self.properties = FieldsDisplayWidget(
             fields=properties_fields, model=Properties
         )
-        selection_list_for_conditions = ["Recipe", "Substrate", "Furnace", "Environment Conditions"]
+        selection_list_for_conditions = ["Recipe","Substrate", "Furnace"]
         self.conditions = MultipleFieldsDisplayWidget(condition_list=selection_list_for_conditions
             )
             
@@ -498,9 +500,11 @@ class DetailWidget(QtGui.QWidget):
         layout.addWidget(conditionsLabel, 0, 1)
         layout.addWidget(self.conditions, 1, 1)
 
-    def update(self, properties_model, recipe_model):
+    def update(self, properties_model, recipe_model, substrate_model, furnace_model):
         self.properties.setData(properties_model)
         self.conditions.setData(recipe_model)
+        self.conditions.setData(substrate_model)
+        self.conditions.setData(furnace_model)
 
 
 class PreviewWidget(QtGui.QTabWidget):
@@ -562,7 +566,8 @@ class PreviewWidget(QtGui.QTabWidget):
                 error_msg.showMessage("Both model and index are unable to be found.")
                 error_msg.exec_()
                 return
-            self.detail_tab.update(s.properties, s.recipe)
+            print("Experiment: ", (s),"\n Raman File: ", (s.raman_files))
+            self.detail_tab.update(s.properties, s.recipe,s.substrate, s.furnace)
             self.sem_tab.update(s)
             self.raman_tab.update(s)
             self.recipe_tab.update(s.recipe)
@@ -621,15 +626,17 @@ class ResultsWidget(QtGui.QTabWidget):
 
         filters:                list of sqlalchemy filters
         """
+        # made changes here - Mitisha
+        
         self.results_model = ResultsTableModel()
         if len(filters) > 0:
             with dal.session_scope() as session:
                 all_experiment_fields = [
                     c.key for c in Experiment.__table__.columns
                 ]  # +['author_last_names']
-                experiment_columns = tuple([getattr(Experiment, e) for e in experiment_fields])
+                experiment_columns = tuple([getattr(Experiment, e) for e in all_experiment_fields])
                 recipe_columns = tuple(
-                    [getattr(Recipe, r) for r in recipe_fields]
+                    [getattr(Recipe, r) for r in recipe_fields]# + hybrid_recipe_fields]
                 )
                 substrate_columns = tuple(
                     [getattr(Substrate, sb) for sb in substrate_fields]
@@ -647,26 +654,41 @@ class ResultsWidget(QtGui.QTabWidget):
                 raman_columns = tuple([getattr(RamanAnalysis, r) for r in raman_fields])
 
                 query_columns = (
-                    experiment_columns + recipe_columns + raman_columns + properties_columns + substrate_columns + environment_conditions_columns + furnace_columns 
+                    furnace_columns + experiment_columns + recipe_columns + raman_columns + properties_columns + substrate_columns + environment_conditions_columns  
                 ) 
+                #What we want is - one-to-many - "some join"(Parent, )
+                #parent.child_id doesnt exist, Child.parent_id exists
+                #Parent.id and Child.id exist
 
+                #
                 q = (
                     session.query(*query_columns)
+                    #Experiment linked to all by many-to-one
                     .join(Recipe, Recipe.id == Experiment.recipe_id)
                     .join(Substrate, Substrate.id == Experiment.substrate_id)
                     .join(Furnace, Furnace.id == Experiment.furnace_id)
-                    .join(EnvironmentConditions, EnvironmentConditions.id == Experiment.environment_conditions_id)
-                    .join(Properties, Experiment.id == Properties.experiment_id)
-                    .join(RamanFile, Experiment.id == RamanFile.experiment_id)
+                    # #Linked to experiment by one-to-one
+                    .outerjoin(EnvironmentConditions, EnvironmentConditions.id == Experiment.environment_conditions_id)
+                    .outerjoin(Properties, Experiment.id == Properties.experiment_id)
+                    # #Linked to experiment by one-to-many
+                    .outerjoin(RamanFile, Experiment.id == RamanFile.experiment_id)
+                    # #Linked to parent by one-to-many
                     .outerjoin(RamanAnalysis, RamanAnalysis.raman_file_id == RamanFile.id)
                     .outerjoin(PreparationStep, PreparationStep.recipe_id == Recipe.id) 
-                    .join(Author, Author.id == Experiment.submitted_by) #check: why is it called this? why not author
+                    # #Linked to Experiment by many-to-many
+                    # ses3.query(Experiment,Recipe).filter(Experiment.recipe_id==Recipe.id)
+                    .outerjoin(Author, Author.id == Experiment.submitted_by) #check: why is it called this? why not author
                     .filter(*filters)
                     .distinct()
                 )
 
+                # result = session.query(Recipe)\
+                # .options(contains_eager(Recipe.experiments))\
+                # .join(Row)\
+                # .filter(Table.name == 'abc', Row.status == True).one()
+
                 self.results_model.read_sqlalchemy(
-                    q.statement, session, models=[Experiment, Recipe, PreparationStep, Properties, RamanAnalysis, Substrate, Furnace, EnvironmentConditions]
+                    q.statement, session, models=[Furnace, Experiment, Recipe, PreparationStep, Properties, RamanAnalysis, Substrate, EnvironmentConditions]
                 ) 
                 
         self.results_table.setModel(self.results_model)
@@ -680,16 +702,15 @@ class ResultsWidget(QtGui.QTabWidget):
             xfields= recipe_fields + hybrid_recipe_fields,
             yfields= raman_fields + properties_fields,
         )
-        print("I reached here as well")
 
-        # self.tsne.setModel(
-        #     self.results_model,
-        #     fields=['id']
-        #     + recipe_fields
-        #     + hybrid_recipe_fields
-        #     + raman_fields
-        #     + properties_fields,
-        # )
+        self.tsne.setModel(
+            self.results_model,
+            fields=['id']
+            + recipe_fields
+            + hybrid_recipe_fields
+            + raman_fields
+            + properties_fields,
+        )
 
 
 class FieldsDisplayWidget(QtGui.QScrollArea):
@@ -767,6 +788,7 @@ class FieldsDisplayWidget(QtGui.QScrollArea):
                     value = ""
             self.fields[field]["value"].setText(str(value))
 
+# made changes here - Mitisha - added new class 
 class MultipleFieldsDisplayWidget(QtGui.QScrollArea):
     """
     Generic widget that creates a display from the selected fields from a particular model.
@@ -845,8 +867,10 @@ class MultipleFieldsDisplayWidget(QtGui.QScrollArea):
                     if value != None and isinstance(value, float):
                         value = round(value, ndecimal)
                 except Exception as e:
-                    print(type(value), e)
-                    value = ""
+                    continue
+                    # value = ""
+                    # print(type(value), e)
+                    
             self.fields[field]["value"].setText(str(value))
 
 
@@ -901,7 +925,7 @@ class SEMAdminTab(QtGui.QScrollArea):
         with dal.session_scope() as session:
             sem = session.query(SemFile).filter(SemFile.id == self.sem_id).first()
 
-            for a, analysis in enumerate(sem.analyses):
+            for a, analysis in enumerate(sem.sem_analyses):
                 mask_widget = RawImageTab()
 
                 self.sem_list.addItem(str(analysis.id))
@@ -1172,7 +1196,40 @@ class RamanDisplayTab(QtGui.QScrollArea):
             )
 
     @errorCheck(error_text="Error updating Raman display!")
+    # def update(self, raman_file_model=None):
+    #     # print("\n SELF is:", self, "\n Model is:", raman_file_model, "\n trying to print id", raman_file_model.id)
+    #     if raman_file_model != None:
+    #         if raman_file_model.id != self.experiment_id:
+    #             self.file_list.clear()
+    #             self.progress_bar.reset()
+
+    #             for w in [
+    #                 self.raman_info.widget(i) for i in range(self.raman_info.count())
+    #             ]:
+    #                 self.raman_info.removeWidget(w)
+
+    #             self.threads = []
+    #             # self.experiment_id = raman_file_model.id
+    #             raman_analysis = raman_file_model.raman_analyses
+    #             self.weighted_values.setData(raman_analysis)
+    #             if len(raman_analysis) > 0:
+    #                 self.progress_bar.setValue(1)
+    #                 for spectrum in raman_analysis:
+    #                     thread = DownloadThread(
+    #                         url=spectrum.raman_file.url,
+    #                         thread_id=raman_analysis.raman_file.experiment_id,
+    #                         info={"spectrum": spectrum},
+    #                     )
+    #                     thread.downloadFinished.connect(
+    #                         lambda data, thread_id, info: self.loadSpectrum(data, thread_id, info['spectrum'])
+    #                     )
+    #                     thread.start()
+    #                     print("Thread started.")
+    #                     self.threads.append(thread)
+    #             else:
+    #                 self.progress_bar.setValue(100)
     def update(self, experiment_model=None):
+    # print("\n SELF is:", self, "\n Model is:", raman_file_model, "\n trying to print id", raman_file_model.id)
         if experiment_model != None:
             if experiment_model.id != self.experiment_id:
                 self.file_list.clear()
@@ -1184,25 +1241,26 @@ class RamanDisplayTab(QtGui.QScrollArea):
                     self.raman_info.removeWidget(w)
 
                 self.threads = []
-                self.experiment_id = experiment_model.id
-                raman_analysis = experiment_model.raman_analysis
-                self.weighted_values.setData(raman_analysis)
-                if len(raman_analysis.raman_spectra) > 0:
-                    self.progress_bar.setValue(1)
-                    for spectrum in raman_analysis.raman_spectra:
-                        thread = DownloadThread(
-                            url=spectrum.raman_file.url,
-                            thread_id=raman_analysis.experiment_id,
-                            info={"spectrum": spectrum},
-                        )
-                        thread.downloadFinished.connect(
-                            lambda data, thread_id, info: self.loadSpectrum(data, thread_id, info['spectrum'])
-                        )
-                        thread.start()
-                        print("Thread started.")
-                        self.threads.append(thread)
-                else:
-                    self.progress_bar.setValue(100)
+                raman_file=experiment_model.raman_files
+                if raman_file:
+                    #this may have problems when multiple raman files are present - need to check
+                    raman_analysis = raman_file[0].raman_analyses
+                    self.weighted_values.setData(raman_analysis)
+                    if len(raman_analysis) > 0:
+                        self.progress_bar.setValue(1)
+                        for spectrum in raman_analysis:
+                            thread = DownloadThread(
+                                url=spectrum.raman_file.url,
+                                thread_id=raman_analysis.raman_file.experiment_id,
+                                info={"spectrum": spectrum},
+                            )
+                            thread.downloadFinished.connect(
+                                lambda data, thread_id, info: self.loadSpectrum(data, thread_id, info['spectrum'])
+                            )
+                            thread.start()
+                            self.threads.append(thread)
+                    else:
+                        self.progress_bar.setValue(100)
 
 
 class RecipeDisplayTab(QtGui.QScrollArea):
