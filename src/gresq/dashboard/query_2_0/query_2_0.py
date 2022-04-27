@@ -1317,8 +1317,10 @@ class RecipeDisplayTab(QtGui.QScrollArea):
         self.recipe_plot.clear()
         self.recipe_model = recipe_model
         if self.recipe_model:
+            session = dal.Session()
+            steps = session.query(PreparationStep).filter(PreparationStep.recipe_id == recipe_model.id).all()
             step_list = sorted(
-                self.recipe_model.preparation_steps, key=lambda x: getattr(x, "step")
+                steps, key=lambda x: getattr(x, "step")
             )
             self.data = {
                 "furnace_pressure": [],
