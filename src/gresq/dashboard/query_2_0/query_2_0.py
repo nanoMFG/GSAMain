@@ -1229,7 +1229,7 @@ class RamanDisplayTab(QtGui.QScrollArea):
     #             else:
     #                 self.progress_bar.setValue(100)
     def update(self, experiment_model=None):
-    # print("\n SELF is:", self, "\n Model is:", raman_file_model, "\n trying to print id", raman_file_model.id)
+        #print("\n SELF is:", self, "\n Model is:", experiment_model, "\n trying to print id", experiment_model.id)
         if experiment_model != None:
             if experiment_model.id != self.experiment_id:
                 self.file_list.clear()
@@ -1241,10 +1241,16 @@ class RamanDisplayTab(QtGui.QScrollArea):
                     self.raman_info.removeWidget(w)
 
                 self.threads = []
-                raman_file=experiment_model.raman_files
+                raman_files=experiment_model.raman_files
+                raman_file = None
+                #print(f"raman_files ar {raman_files}")
+                if raman_files:
+                    raman_file = raman_files[0]
+        
                 if raman_file:
                     #this may have problems when multiple raman files are present - need to check
-                    raman_analysis = raman_file[0].raman_analyses
+                    session = dal.Session()
+                    raman_analysis = session.query(RamanAnalysis).filter(RamanAnalysis.raman_file_id == raman_file.id).all()
                     self.weighted_values.setData(raman_analysis)
                     if len(raman_analysis) > 0:
                         self.progress_bar.setValue(1)
