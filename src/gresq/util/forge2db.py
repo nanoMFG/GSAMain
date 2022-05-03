@@ -1,5 +1,5 @@
 from mdf_forge.forge import Forge
-from gresq.database.models import MdfForge
+from grdb.database.v1_1_0.models import MdfForge
 
 
 def build_db(session):

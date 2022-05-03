@@ -30,8 +30,8 @@ import os
 import sys
 import uuid
 
-from gresq.database.models import sample, Sample
-from gresq.database import dal
+from grdb.database.v1_1_0.models import sample, Sample
+from grdb.database.v1_1_0 import dal
 from gresq.config import config
 # import pandas as pd
 from gresq.recipe import Recipe

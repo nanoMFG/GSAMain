@@ -86,10 +86,19 @@ pip install -e .
 ## Running the tests
 
 <!-- Explain how to run the automated tests for this system -->
-
-After installing, run the following from the repostory root:
+Additional prerequisites for testing are:  
 ```
 pytest
+factory_boy
+```
+
+After installing, run the following from the repository root:
+```
+pytest -v
+```
+Note, to avoid broken DB tests:  
+```
+pytest -v --ignore=test/database/models --ignore=test/util
 ```
 
 ### Break down into end to end tests

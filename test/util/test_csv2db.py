@@ -1,7 +1,7 @@
 import os
 import pytest
-from gresq.database.dal import dal
-from gresq.database import Base
+from grdb.database.v1_1_0.dal import dal
+from grdb.database.v1_1_0 import Base
 from gresq.config import Config
 from gresq.util.csv2db3 import build_db
 

@@ -1,7 +1,7 @@
 import os
 
 from gresq.config import Config
-from gresq.database import dal
+from grdb.database.v1_1_0 import dal
 
 #config_prefix = os.getenv('GRESQ_TEST_CONFIG_PREFIX', 'TEST_DATABASE') 
 #config_suffix = os.getenv('GRESQ_TEST_CONFIG_SUFFIX', '_ADMIN')

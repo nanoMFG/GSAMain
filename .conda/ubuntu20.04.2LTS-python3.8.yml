@@ -1,0 +1,44 @@
+name: gresq38
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.8
+  - pyqtgraph
+  - sqlalchemy
+  - opencv
+  - pillow
+  - pandas
+  - mlxtend
+  - qimage2ndarray
+  - scikit-image
+  - jsonschema
+  - pymysql
+  - pip
+  - pip:
+    - attrs==21.2.0
+    - boxsdk==2.12.1
+    - certifi==2021.5.30
+    - cffi==1.14.5
+    - chardet==4.0.0
+    - cryptography==3.4.7
+    - fair-research-login==0.2.2
+    - globus-nexus-client==0.3.0
+    - globus-sdk==2.0.1
+    - idna==2.10
+    - mdf-connect-client==0.3.8
+    - mdf-forge==0.7.6
+    - mdf-toolbox==0.5.7
+    - nameparser==1.0.6
+    - git+https://gitlab.com/torosant/pyclientoscm.git#egg=oscm_client
+    - pycparser==2.20
+    - pyjwt[crypto]==1.7.1
+    - requests==2.25.1
+    - requests-toolbelt==0.9.1
+    - six==1.16.0
+    - tqdm==4.61.2
+    - urllib3==1.26.6
+    - wrapt==1.12.1
+
+    
+  

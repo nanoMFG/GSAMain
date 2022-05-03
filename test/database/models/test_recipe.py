@@ -12,8 +12,8 @@ Conventions:
 """
 from math import isclose
 
-from gresq.database import dal
-from gresq.database.models import Sample, Recipe
+from grdb.database.v1_1_0 import dal
+from grdb.database.v1_1_0.models import Sample, Recipe
 
 class TestRecipeQueries:
     def test_simple(self, sample, all_sample_query):

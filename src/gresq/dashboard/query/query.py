@@ -15,8 +15,8 @@ from gresq.util.io import DownloadThread, DownloadPool, DownloadRunner
 from gresq.util.util import ConfigParams, sql_validator, operators, ResultsTableModel, errorCheck, BasicLabel, HeaderLabel
 from gresq.util.box_adaptor import BoxAdaptor
 from gresq.dashboard.stats import TSNEWidget, PlotWidget
-from gresq.database import dal, Base
-from gresq.database.models import (
+from grdb.database.v1_1_0 import dal, Base
+from grdb.database.v1_1_0.models import (
     Sample,
     Recipe,
     Properties,
@@ -36,7 +36,7 @@ from gsaraman.raw_plotter import RamanQueryWidget
 
 """
 Each primary field will correspond to a SQLAlchemy model. Each of these are models
-(whose schema is in gresq/database.py). Secondary fields are attributes of these
+(whose schema is in grdb.database.v1_1_0.py). Secondary fields are attributes of these
 models and the fields that will be displayed are controlled via the field lists
 below.
 """

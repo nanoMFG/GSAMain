@@ -11,7 +11,7 @@ import traceback
 import inspect
 import functools
 import json
-from gresq.database.models import Sample
+from grdb.database.v1_1_0.models import Sample
 from gresq.util.util import errorCheck
 import logging
 from sqlalchemy import String, Integer, Float, Numeric, Date

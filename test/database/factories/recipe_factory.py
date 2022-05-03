@@ -1,8 +1,8 @@
 import factory
 import random
 
-from gresq.database.models import Recipe
-from gresq.database.dal import dal
+from grdb.database.v1_1_0.models import Recipe
+from grdb.database.v1_1_0.dal import dal
 
 LIST_SIZES = [1, 2, 3, 4, 5, 6]
 

@@ -6,23 +6,39 @@ import uuid
 from gresq.util.box_adaptor import BoxAdaptor
 from gresq.util.gwidgets import GStackedWidget, ImageWidget
 from gresq.util.util import BasicLabel, HeaderLabel, SubheaderLabel, sql_validator, ConfigParams, MaxSpacer
-from grdb.database.v1_1_0 import dal, Base
+from grdb.database import dal, Base
 from gresq import __version__ as GRESQ_VERSION
 from gsaraman import __version__ as GSARAMAN_VERSION
 from gsaimage import __version__ as GSAIMAGE_VERSION
-from .util import get_or_add_software_row
-from grdb.database.v1_1_0.models import (
-    Sample,
-    Recipe,
+from .util_2_0 import get_or_add_software_row
+# from grdb.database.v1_1_0.models import (
+#     Sample,
+#     Recipe,
+#     Author,
+#     Properties,
+#     PreparationStep,
+#     Properties,
+#     RamanFile,
+#     SemFile,
+#     RamanSet,
+#     RamanSpectrum,
+#     Software,
+# )
+
+from grdb.database.models import (
     Author,
+    EnvironmentConditions,
+    Experiment,
+    Furnace,
     Properties,
     PreparationStep,
-    Properties,
     RamanFile,
+    Recipe,
+    RamanAnalysis,
     SemFile,
-    RamanSet,
-    RamanSpectrum,
+    SemAnalysis,
     Software,
+    Substrate,
 )
 from sqlalchemy import String, Integer, Float, Numeric, Date
 from gresq.config import config
@@ -31,13 +47,13 @@ from gsaraman import GSARaman
 from gsaraman import auto_fitting
 from gresq.recipe import Recipe as RecipeMDF
 from gresq.util.mdf_adaptor import MDFAdaptor, MDFException
-from gresq.dashboard.query import convertScripts
+from gresq.dashboard.query_2_0 import convertScripts
 from gsaraman.raw_plotter import RamanSubmitWidget
 
 
 SOFTWARE_NAME = "gresq"
 
-sample_fields = ["material_name", "experiment_date"]
+experiment_fields = ["material_name", "experiment_date"]
 
 preparation_fields = [
     "name",
@@ -47,23 +63,14 @@ preparation_fields = [
     "sample_location",
     "helium_flow_rate",
     "hydrogen_flow_rate",
-    "argon_flow_rate",
-    "carbon_source",
     "carbon_source_flow_rate",
+    "argon_flow_rate",
     "cooling_rate",
 ]
 
 recipe_fields = [
-    "catalyst",
-    "tube_diameter",
-    "cross_sectional_area",
-    "tube_length",
     "base_pressure",
-    "thickness",
-    "diameter",
-    "length",
-    "sample_surface_area",
-    "dewpoint",
+     "carbon_source",
 ]
 
 properties_fields = [
@@ -74,6 +81,27 @@ properties_fields = [
     "domain_size",
     "shape",
 ]
+
+substrate_fields = [
+    "catalyst",
+    "thickness",
+    "diameter",
+    "length",
+    "surface_area",
+]
+
+furnace_fields = [
+    "tube_diameter",
+    "cross_sectional_area",
+    "tube_length",
+    "length_of_heated_region",
+]
+
+environment_conditions_fields = [
+    "dew_point",
+    "ambient_temperature",
+]
+
 
 author_fields = ["first_name", "last_name", "institution"]
 
@@ -414,7 +442,7 @@ class ProvenanceTab(QtGui.QWidget):
 
         self.stackedFormWidget = QtGui.QStackedWidget()
         self.stackedFormWidget.setFrameStyle(QtGui.QFrame.StyledPanel)
-        self.sample_input = FieldsFormWidget(fields=sample_fields, model=Sample)
+        self.experiment_input = FieldsFormWidget(fields=experiment_fields, model=Experiment)
         self.author_list = QtGui.QListWidget()
         self.author_list.currentRowChanged.connect(
             self.stackedFormWidget.setCurrentIndex
@@ -437,7 +465,7 @@ class ProvenanceTab(QtGui.QWidget):
 
         self.layout = QtGui.QGridLayout()
         self.layout.setAlignment(QtCore.Qt.AlignTop)
-        self.layout.addWidget(self.sample_input, 0, 0, 1, 2)
+        self.layout.addWidget(self.experiment_input, 0, 0, 1, 2)
         self.layout.addWidget(self.stackedFormWidget, 1, 0, 1, 2)
         self.layout.addWidget(self.add_author_btn, 2, 0, 1, 1)
         self.layout.addWidget(self.remove_author_btn, 2, 1, 1, 1)
@@ -526,13 +554,13 @@ class ProvenanceTab(QtGui.QWidget):
         response = []
         for i in range(self.stackedFormWidget.count()):
             response.append(self.stackedFormWidget.widget(i).getResponse())
-        return {"author": response, "sample": self.sample_input.getResponse()}
+        return {"author": response, "sample": self.experiment_input.getResponse()}
 
     def clear(self):
         while self.author_list.count() > 0:
             self.author_list.setCurrentRow(0)
             self.removeAuthor()
-        self.sample_input.clear()
+        self.experiment_input.clear()
 
     def testFill(self):
         for _ in range(3):
@@ -641,17 +669,29 @@ class PreparationTab(QtGui.QWidget):
         self.miniLayout.addWidget(self.addStepButton, 0, 0)
         self.miniLayout.addWidget(self.steps_list, 1, 0)
         self.miniLayout.addWidget(self.removeStepButton, 2, 0)
+        
+        self.layout.addLayout(self.miniLayout, 0, 0, 5, 1)
+        
+        self.furnaceParams = FieldsFormWidget(fields=furnace_fields, model=Furnace)
+        self.substrateParams = FieldsFormWidget(fields=substrate_fields, model=Substrate)
+        self.environmentconditionsParams = FieldsFormWidget(fields=environment_conditions_fields, model=EnvironmentConditions)
         self.recipeParams = FieldsFormWidget(fields=recipe_fields, model=Recipe)
-        self.layout.addLayout(self.miniLayout, 0, 0, 3, 1)
-        self.layout.addWidget(self.recipeParams, 0, 1, 1, 1)
+        
+        self.layout.addWidget(self.furnaceParams, 0, 1, 1, 1)
+        self.layout.addWidget(self.substrateParams, 0, 2, 1, 1)
+        self.layout.addWidget(self.environmentconditionsParams, 1, 1, 1, 2)
+        self.layout.addWidget(self.recipeParams, 2, 1, 1, 2)
+       
         self.layout.addItem(spacer, 0, 1, 1, 2)
-        self.layout.addWidget(self.stackedFormWidget, 1, 1, 1, 2)
-        self.layout.addWidget(self.clearButton, 2, 1, 1, 1)
-        self.layout.addWidget(self.oscm_button, 2, 2, 1, 1)
-        self.layout.addWidget(self.nextButton, 3, 0, 1, 3)
+        self.layout.addWidget(self.stackedFormWidget, 3, 1, 1, 2)
+        
+        self.layout.addWidget(self.clearButton, 4, 1, 1, 1)
+        self.layout.addWidget(self.oscm_button, 4, 2, 1, 1)
+       
+        self.layout.addWidget(self.nextButton, 5, 0, 1, 3)
 
     def testFill(self):
-        self.recipeParams.testFill()
+        self.furnaceParams.testFill()
         for step in range(3):
             self.addStep()
             self.stackedFormWidget.currentWidget().testFill()
@@ -1436,15 +1476,15 @@ class ReviewTab(QtGui.QScrollArea):
             for f in files_response["SEM Image Files"]:
                 print(f)
                 sf = SemFile()
-                sf.sample_id = s.id
+                sf.experiment_id = s.id
                 sf.filename = os.path.basename(f)
                 sf.url = self.upload_file(f)
                 session.add(sf)
                 session.flush()
 
             ### RAMAN IS A SEPARATE DATASET FROM SAMPLE ###
-            rs = RamanSet()
-            rs.sample_id = s.id
+            rs = RamanAnalysis()
+            rs.experiment_id = s.id
             rs.experiment_date = provenance_response["sample"]["experiment_date"][
                 "value"
             ]
@@ -1453,7 +1493,7 @@ class ReviewTab(QtGui.QScrollArea):
             for ri, ram in enumerate(files_response["Raman Files"]):
                 rf = RamanFile()
                 rf.filename = os.path.basename(ram)
-                rf.sample_id = s.id
+                rf.experiment_id = s.id
                 rf.url = self.upload_file(ram)
                 if files_response["Raman Wavelength"] != None:
                     rf.wavelength = files_response["Raman Wavelength"]
@@ -1522,7 +1562,7 @@ class ReviewTab(QtGui.QScrollArea):
 
             # Recipe
             c = Recipe()
-            c.sample_id = s.id
+            c.experiment_id = s.id
             for field, item in preparation_response["recipe"].items():
                 value = item["value"]
                 unit = item["unit"]
@@ -1546,7 +1586,7 @@ class ReviewTab(QtGui.QScrollArea):
 
             # Properties
             pr = Properties()
-            pr.sample_id = s.id
+            pr.experiment_id = s.id
             for field, item in properties_response.items():
                 value = item["value"]
                 unit = item["unit"]
@@ -1600,7 +1640,7 @@ class ReviewTab(QtGui.QScrollArea):
 
             for auth in provenance_response["author"]:
                 a = Author()
-                a.sample_id = s.id
+                a.experiment_id = s.id
                 for field, item in auth.items():
                     value = item["value"]
                     if value != None:
@@ -1682,20 +1722,20 @@ def make_test_dict(test_sem_file=None, test_raman_file=None):
 
     with dal.session_scope() as session:
         s = Sample()
-        for field in sample_fields:
-            setattr(s, field, random_fill(field, Sample))
+        for field in experiment_fields:
+            setattr(s, field, random_fill(field, Experiment))
         session.add(s)
         session.flush()
 
         if test_sem_file:
             sf = SemFile()
-            sf.sample_id = s.id
+            sf.experiment_id = s.id
             sf.filename = os.path.basename(test_sem_file)
             session.add(sf)
             session.flush()
 
         c = Recipe()
-        c.sample_id = s.id
+        c.experiment_id = s.id
         for field in recipe_fields:
             setattr(c, field, random_fill(field, Recipe))
         session.add(c)
@@ -1713,7 +1753,7 @@ def make_test_dict(test_sem_file=None, test_raman_file=None):
             session.flush()
 
         pr = Properties()
-        pr.sample_id = s.id
+        pr.experiment_id = s.id
         for field in properties_fields:
             setattr(pr, field, random_fill(field, Properties))
         session.add(pr)
@@ -1721,20 +1761,20 @@ def make_test_dict(test_sem_file=None, test_raman_file=None):
 
         for _ in range(3):
             a = Author()
-            a.sample_id = s.id
+            a.experiment_id = s.id
             for field in author_fields:
                 setattr(a, field, random_fill(field, Author))
             session.add(a)
             session.flush()
 
         if test_raman_file:
-            rs = RamanSet()
+            rs = RamanAnalysis()
             session.add(rs)
             session.flush()
             for ri, ram in enumerate([test_raman_file]):
                 rf = RamanFile()
                 rf.filename = os.path.basename(ram)
-                rf.sample_id = s.id
+                rf.experiment_id = s.id
                 if files_response["Raman Wavelength"] != None:
                     rf.wavelength = 800
                 session.add(rf)

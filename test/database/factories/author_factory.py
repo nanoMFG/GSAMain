@@ -1,7 +1,7 @@
 import factory
 
-from gresq.database.models import Author
-from gresq.database.dal import dal
+from grdb.database.v1_1_0.models import Author
+from grdb.database.v1_1_0.dal import dal
 
 
 class AuthorFactory(factory.alchemy.SQLAlchemyModelFactory):

@@ -1,7 +1,7 @@
 import factory
 
-from gresq.database.models import Software
-from gresq.database.dal import dal
+from grdb.database.v1_1_0.models import Software
+from grdb.database.v1_1_0.dal import dal
 
 
 class SoftwareFactory(factory.alchemy.SQLAlchemyModelFactory):

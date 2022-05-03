@@ -1,9 +1,9 @@
 
 import pytest
 import random
-from gresq.database import dal, Base
-from gresq.database.models import Sample, RamanSet
-from .database.factories import SampleFactory, SoftwareFactory
+from grdb.database.v1_1_0 import dal, Base
+from grdb.database.v1_1_0.models import Sample, RamanSet
+#from .database.factories import SampleFactory, SoftwareFactory
 
 @pytest.fixture(scope="class")
 def sample():
