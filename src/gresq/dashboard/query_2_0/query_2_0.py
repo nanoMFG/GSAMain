@@ -551,29 +551,32 @@ class PreviewWidget(QtGui.QTabWidget):
         index:              Index from ResultsWidget table or Experiment id if model=None. If None, model refers to a Experiment model.
         """
 
-        with dal.session_scope() as session:
-            if index:
-                if model:
-                    i = int(model.df["id"].values[index.row()])
-                else:
-                    i = index
-                s = session.query(Experiment).filter(Experiment.id == i)[0]
-            elif index == None and model != None:
-                s = model
+        session = dal.Session()
+        #with dal.session_scope() as session:
+        if index:
+            if model:
+                i = int(model.df["id"].values[index.row()])
             else:
-                # index == None and model == none
-                error_msg = QtWidgets.QErrorMessage()
-                error_msg.showMessage("Both model and index are unable to be found.")
-                error_msg.exec_()
-                return
-            print("Experiment: ", (s),"\n Raman File: ", (s.raman_files))
-            self.detail_tab.update(s.properties, s.recipe,s.substrate, s.furnace)
-            self.sem_tab.update(s)
-            self.raman_tab.update(s)
-            self.recipe_tab.update(s.recipe)
-            self.provenance_tab.update(s.authors)
-            if self.admin_tab:
-                self.admin_tab.update(s)
+                i = index
+            s = session.query(Experiment).filter(Experiment.id == i)[0]
+        elif index == None and model != None:
+            s = model
+        else:
+            # index == None and model == none
+            error_msg = QtWidgets.QErrorMessage()
+            error_msg.showMessage("Both model and index are unable to be found.")
+            error_msg.exec_()
+            return
+
+        self.detail_tab.update(s.properties, s.recipe,s.substrate, s.furnace)
+        self.provenance_tab.update(s.authors)
+        self.recipe_tab.update(s.recipe)
+        if self.admin_tab:
+            self.admin_tab.update(s)
+        self.sem_tab.update(s)
+        self.raman_tab.update(s)
+
+        session.close()
 
 
 class ResultsWidget(QtGui.QTabWidget):
@@ -784,7 +787,8 @@ class FieldsDisplayWidget(QtGui.QScrollArea):
                     if value != None and isinstance(value, float):
                         value = round(value, ndecimal)
                 except Exception as e:
-                    print(type(value), e)
+                    #print(type(value), e)
+                    print(e)
                     value = ""
             self.fields[field]["value"].setText(str(value))
 
@@ -1105,14 +1109,15 @@ class SEMDisplayTab(QtGui.QScrollArea):
 
                 self.threadpool.terminate()
                 self.experiment_id = experiment_model.id
-                if len(experiment_model.sem_files) > 0:
-                    self.progress_bar.setValue(1)
-                    for sem in experiment_model.sem_files:
-                        self.file_list.addItem("SEM ID: %s" % sem.id)
-                        self.sem_info.addWidget(self.createSEMTabs(sem))
-                    self.threadpool.run()
-                else:
-                    self.progress_bar.setValue(100)
+                if experiment_model.sem_files is not None:
+                    if len(experiment_model.sem_files) > 0:
+                        self.progress_bar.setValue(1)
+                        for sem in experiment_model.sem_files:
+                            self.file_list.addItem("SEM ID: %s" % sem.id)
+                            self.sem_info.addWidget(self.createSEMTabs(sem))
+                        self.threadpool.run()
+                    else:
+                        self.progress_bar.setValue(100)
 
 
 class ProvenanceDisplayTab(QtGui.QScrollArea):
@@ -1246,27 +1251,28 @@ class RamanDisplayTab(QtGui.QScrollArea):
                 #print(f"raman_files ar {raman_files}")
                 if raman_files:
                     raman_file = raman_files[0]
-        
+                experiment_id = experiment_model.id
                 if raman_file:
                     #this may have problems when multiple raman files are present - need to check
                     session = dal.Session()
-                    raman_analysis = session.query(RamanAnalysis).filter(RamanAnalysis.raman_file_id == raman_file.id).all()
-                    self.weighted_values.setData(raman_analysis)
-                    if len(raman_analysis) > 0:
-                        self.progress_bar.setValue(1)
-                        for spectrum in raman_analysis:
-                            thread = DownloadThread(
-                                url=spectrum.raman_file.url,
-                                thread_id=raman_analysis.raman_file.experiment_id,
-                                info={"spectrum": spectrum},
-                            )
-                            thread.downloadFinished.connect(
-                                lambda data, thread_id, info: self.loadSpectrum(data, thread_id, info['spectrum'])
-                            )
-                            thread.start()
-                            self.threads.append(thread)
-                    else:
-                        self.progress_bar.setValue(100)
+                    raman_analyses = session.query(RamanAnalysis).filter(RamanAnalysis.raman_file_id == raman_file.id).all()
+                    if raman_analyses:
+                        self.weighted_values.setData(raman_analyses)
+                        if len(raman_analyses) > 0:
+                            self.progress_bar.setValue(1)
+                            for spectrum in raman_analyses:
+                                thread = DownloadThread(
+                                    url=spectrum.raman_file.url,
+                                    thread_id=experiment_id,
+                                    info={"spectrum": spectrum},
+                                )
+                                thread.downloadFinished.connect(
+                                    lambda data, thread_id, info: self.loadSpectrum(data, thread_id, info['spectrum'])
+                                )
+                                thread.start()
+                                self.threads.append(thread)
+                        else:
+                            self.progress_bar.setValue(100)
 
 
 class RecipeDisplayTab(QtGui.QScrollArea):
